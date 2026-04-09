@@ -5,567 +5,253 @@ import { Button } from '@/src/components/ui/button';
 import { Card } from '@/src/components/ui/card';
 import { Input } from '@/src/components/ui/input';
 import { Badge } from '@/src/components/ui/badge';
-import { ArrowLeft, CheckCircle2, ShieldCheck, Ticket as TicketIcon, Calendar, MapPin, Copy, Download } from 'lucide-react';
+import { CreditCard, Wallet, Landmark, Smartphone, CheckCircle2, ArrowLeft, ShieldCheck, Ticket as TicketIcon, Calendar, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
+import { db, auth, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/src/context/AuthContext';
-
-interface SelectedTicket {
-  type: string;
-  price: number;
-  quantity: number;
-}
-
-interface Event {
-  id: string;
-  title: string;
-  date: any;
-  venue: string;
-  location: string;
-  image: string;
-  [key: string]: any;
-}
-
-interface OrderData {
-  buyerId: string;
-  buyerEmail: string;
-  buyerName: string;
-  buyerDni: string;
-  eventId: string;
-  eventTitle: string;
-  items: SelectedTicket[];
-  subtotal: number;
-  fee: number;
-  total: number;
-  status: 'confirmed';
-  paymentMethod: 'pending';
-  createdAt: any;
-}
-
-interface TicketData {
-  orderId: string;
-  eventId: string;
-  buyerId: string;
-  buyerEmail: string;
-  ticketType: string;
-  price: number;
-  status: 'valid';
-  qrCode: string;
-  createdAt: any;
-}
-
-interface SuccessState {
-  orderId: string;
-  tickets: Array<{
-    id: string;
-    qrCode: string;
-    type: string;
-  }>;
-}
-
-// Generate UUID for QR codes
-function generateUUID(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
 
 export default function Checkout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
-
-  const { event, selectedTickets } = location.state || {};
+  const { event, selectedTickets } = location.state || { 
+    event: { id: 'demo', title: 'Evento Demo', venue: 'Estadio Obras', location: 'CABA', image: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&q=80&w=1000' },
+    selectedTickets: [{ type: 'General', price: 8500, quantity: 1 }]
+  };
 
   const [step, setStep] = useState(1);
+  const [paymentMethod, setPaymentMethod] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [buyerInfo, setBuyerInfo] = useState({
-    name: user?.displayName || '',
-    email: user?.email || '',
-    dni: '',
-  });
-  const [successState, setSuccessState] = useState<SuccessState | null>(null);
+  const [guestInfo, setGuestInfo] = useState({ name: '', email: '', dni: '' });
+  const { user } = useAuth();
 
-  // Redirect if no event data
-  useEffect(() => {
-    if (!event || !selectedTickets) {
-      navigate('/eventos');
-    }
-  }, [event, selectedTickets, navigate]);
+  const methods = [
+    { id: 'mp', name: 'Mercado Pago', icon: Smartphone, desc: 'Paga con tu saldo o tarjetas guardadas' },
+    { id: 'card', name: 'Tarjeta de Crédito/Débito', icon: CreditCard, desc: 'Visa, Mastercard, Amex, Cabal' },
+    { id: 'transf', name: 'Transferencia Bancaria', icon: Landmark, desc: 'CBU/CVU - Acreditación inmediata' },
+    { id: 'crypto', name: 'Criptomonedas', icon: Wallet, desc: 'BTC, ETH, USDT (vía Binance Pay)' },
+  ];
 
-  if (!event || !selectedTickets) {
-    return null;
-  }
+  const subtotal = selectedTickets.reduce((acc: number, t: any) => acc + (t.price * t.quantity), 0);
+  const serviceFee = Math.round(subtotal * 0.1);
+  const total = subtotal + serviceFee;
 
-  // Calculate totals
-  const subtotal = selectedTickets.reduce(
-    (acc: number, ticket: SelectedTicket) => acc + ticket.price * ticket.quantity,
-    0
-  );
-  const platformFee = Math.round(subtotal * 0.035); // 3.5% fee
-  const total = subtotal + platformFee;
-
-  const handleConfirmPurchase = async () => {
-    // Validate buyer info
-    if (!buyerInfo.name || !buyerInfo.email || !buyerInfo.dni) {
-      alert('Por favor completa todos los campos');
-      return;
-    }
-
+  const handlePayment = async () => {
     setIsProcessing(true);
     try {
-      const buyerId = user?.uid || `guest-${Date.now()}`;
-
-      // Create order document
-      const orderData: OrderData = {
-        buyerId,
-        buyerEmail: buyerInfo.email,
-        buyerName: buyerInfo.name,
-        buyerDni: buyerInfo.dni,
-        eventId: event.id,
-        eventTitle: event.title,
-        items: selectedTickets,
-        subtotal,
-        fee: platformFee,
-        total,
-        status: 'confirmed',
-        paymentMethod: 'pending',
-        createdAt: Timestamp.now(),
-      };
-
-      const orderDocRef = await addDoc(collection(db, 'orders'), orderData);
-      const orderId = orderDocRef.id;
-
-      // Create ticket documents
-      const createdTickets = [];
-      for (const selectedTicket of selectedTickets) {
-        for (let i = 0; i < selectedTicket.quantity; i++) {
-          const qrCode = generateUUID();
-          const ticketData: TicketData = {
-            orderId,
+      // Create a ticket for each selected ticket type and quantity
+      for (const ticket of selectedTickets) {
+        for (let i = 0; i < ticket.quantity; i++) {
+          const ticketData = {
             eventId: event.id,
-            buyerId,
-            buyerEmail: buyerInfo.email,
-            ticketType: selectedTicket.type,
-            price: selectedTicket.price,
+            buyerId: user?.uid || 'guest',
+            buyerName: user?.displayName || guestInfo.name,
+            buyerEmail: user?.email || guestInfo.email,
+            buyerDni: guestInfo.dni,
+            type: ticket.type,
+            price: ticket.price,
+            qrCode: `ENTRA-${Math.random().toString(36).substring(2, 11).toUpperCase()}`,
             status: 'valid',
-            qrCode,
-            createdAt: Timestamp.now(),
+            purchasedAt: Timestamp.now()
           };
-
-          const ticketDocRef = await addDoc(collection(db, 'tickets'), ticketData);
-          createdTickets.push({
-            id: ticketDocRef.id,
-            qrCode,
-            type: selectedTicket.type,
-          });
+          
+          await addDoc(collection(db, 'tickets'), ticketData);
         }
       }
-
-      // Set success state and move to confirmation step
-      setSuccessState({
-        orderId,
-        tickets: createdTickets,
-      });
       setStep(3);
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'orders/tickets');
-      alert('Error al procesar la compra. Por favor intenta nuevamente.');
+      handleFirestoreError(error, OperationType.CREATE, 'tickets');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const formatEventDate = (date: any) => {
-    if (date?.toDate) {
-      return date.toDate().toLocaleDateString('es-AR', {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      });
-    }
-    return '';
-  };
-
-  // Step 1: Buyer Information
-  const step1Content = (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 20 }}
-      className="space-y-6"
-    >
-      <h2 className="text-2xl font-heading font-black tracking-tighter">Tus Datos</h2>
-
-      {!user && (
-        <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4">
-          <p className="text-sm text-primary font-bold mb-3">
-            Inicia sesión para una compra más rápida
-          </p>
-          <Link to="/auth/login">
-            <Button className="w-full orange-gradient border-none font-bold rounded-xl h-11">
-              Iniciar Sesión
-            </Button>
-          </Link>
-        </div>
-      )}
-
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Nombre Completo
-          </label>
-          <Input
-            value={buyerInfo.name}
-            onChange={(e) => setBuyerInfo({ ...buyerInfo, name: e.target.value })}
-            placeholder="Como figura en tu documento"
-            className="bg-white/5 border-white/10 h-12 rounded-2xl"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-              Email
-            </label>
-            <Input
-              type="email"
-              value={buyerInfo.email}
-              onChange={(e) => setBuyerInfo({ ...buyerInfo, email: e.target.value })}
-              placeholder="tu@email.com"
-              className="bg-white/5 border-white/10 h-12 rounded-2xl"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-              DNI
-            </label>
-            <Input
-              value={buyerInfo.dni}
-              onChange={(e) => setBuyerInfo({ ...buyerInfo, dni: e.target.value })}
-              placeholder="Sin puntos ni espacios"
-              className="bg-white/5 border-white/10 h-12 rounded-2xl"
-            />
-          </div>
-        </div>
-      </div>
-
-      <Button
-        disabled={!buyerInfo.name || !buyerInfo.email || !buyerInfo.dni}
-        onClick={() => setStep(2)}
-        className="w-full h-14 orange-gradient border-none font-bold text-lg rounded-2xl"
-      >
-        Siguiente: Revisar y Confirmar
-      </Button>
-    </motion.div>
-  );
-
-  // Step 2: Review and Confirm
-  const step2Content = (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 20 }}
-      className="space-y-6"
-    >
-      <h2 className="text-2xl font-heading font-black tracking-tighter">Revisar Compra</h2>
-
-      <div className="space-y-4">
-        <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
-          <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4">
-            Datos del Comprador
-          </h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Nombre:</span>
-              <span className="font-bold">{buyerInfo.name}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Email:</span>
-              <span className="font-bold">{buyerInfo.email}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">DNI:</span>
-              <span className="font-bold">{buyerInfo.dni}</span>
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            onClick={() => setStep(1)}
-            className="w-full mt-4 text-xs font-bold"
-          >
-            Editar
-          </Button>
-        </div>
-
-        <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
-          <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4">
-            Entradas
-          </h3>
-          <div className="space-y-2">
-            {selectedTickets.map((ticket: SelectedTicket, index: number) => (
-              <div key={index} className="flex justify-between text-sm">
-                <span className="text-muted-foreground">
-                  {ticket.quantity}x {ticket.type}
-                </span>
-                <span className="font-bold">
-                  ${(ticket.quantity * ticket.price).toLocaleString('es-AR')}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex gap-4">
-        <Button
-          variant="ghost"
-          onClick={() => setStep(1)}
-          className="h-12 px-6 font-bold"
-        >
-          Volver
-        </Button>
-        <Button
-          disabled={isProcessing}
-          onClick={handleConfirmPurchase}
-          className="flex-grow h-12 orange-gradient border-none font-bold rounded-2xl"
-        >
-          {isProcessing ? 'Procesando...' : 'Confirmar Compra'}
-        </Button>
-      </div>
-    </motion.div>
-  );
-
-  // Step 3: Success
-  const step3Content = successState && (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="space-y-8"
-    >
-      <div className="text-center space-y-6">
-        <div className="w-20 h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto">
-          <CheckCircle2 className="w-12 h-12" />
-        </div>
-        <div className="space-y-2">
-          <h2 className="text-4xl font-heading font-black tracking-tighter">
-            ¡Compra Exitosa!
-          </h2>
-          <p className="text-lg text-muted-foreground">
-            Orden #{successState.orderId.substring(0, 8).toUpperCase()}
-          </p>
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        {successState.tickets.map((ticket, index) => (
-          <Card
-            key={index}
-            className="glass p-4 rounded-2xl border-white/10 flex items-center justify-between"
-          >
-            <div className="flex items-center gap-3">
-              <TicketIcon className="w-5 h-5 text-primary" />
-              <div>
-                <p className="text-sm font-bold">{ticket.type}</p>
-                <p className="text-xs text-muted-foreground">{ticket.qrCode}</p>
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(ticket.qrCode);
-              }}
-              className="hover:bg-white/10 p-2 rounded-lg transition-colors"
-              title="Copiar código QR"
-            >
-              <Copy className="w-4 h-4" />
-            </button>
-          </Card>
-        ))}
-      </div>
-
-      <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4">
-        <p className="text-sm text-primary font-bold mb-2">
-          Confirmación enviada a {buyerInfo.email}
-        </p>
-        <p className="text-xs text-primary/80">
-          Tus códigos QR y detalles de entrada han sido enviados. Preséntalos en la entrada del evento.
-        </p>
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-3">
-        <Button className="orange-gradient border-none font-bold h-12 rounded-2xl flex items-center justify-center gap-2">
-          <Download className="w-4 h-4" />
-          Descargar (PDF)
-        </Button>
-        <Link to="/eventos" className="flex-grow">
-          <Button
-            variant="outline"
-            className="w-full h-12 rounded-2xl border-white/10 font-bold"
-          >
-            Volver al Inicio
-          </Button>
-        </Link>
-      </div>
-    </motion.div>
-  );
-
   return (
     <div className="pt-32 pb-20 px-6 max-w-5xl mx-auto">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-        {/* Main Content */}
+        {/* Left: Form */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Header */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 mb-8">
             <Link to="/eventos">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full hover:bg-primary/10 hover:text-primary h-12 w-12"
-              >
-                <ArrowLeft className="w-5 h-5" />
+              <Button variant="ghost" size="icon" className="rounded-full hover:bg-primary/10 hover:text-primary">
+                <ArrowLeft className="w-6 h-6" />
               </Button>
             </Link>
-            <h1 className="text-3xl font-heading font-black tracking-tighter uppercase">
-              {step === 3 ? 'Compra Completada' : 'Finalizar Compra'}
-            </h1>
+            <h1 className="text-3xl font-heading font-black tracking-tighter uppercase">Finalizar Compra</h1>
           </div>
 
-          {/* Progress Indicators */}
-          {step !== 3 && (
-            <div className="flex items-center gap-3">
-              {[1, 2].map((i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <motion.div
-                    animate={{
-                      backgroundColor: step >= i ? 'rgb(249, 115, 22)' : 'rgba(255, 255, 255, 0.05)',
-                      borderColor:
-                        step >= i ? 'rgb(249, 115, 22)' : 'rgba(255, 255, 255, 0.1)',
-                    }}
-                    className={cn(
-                      'w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border transition-colors'
-                    )}
-                  >
-                    {step > i ? (
-                      <CheckCircle2 className="w-5 h-5" />
-                    ) : (
-                      <span>{i}</span>
-                    )}
-                  </motion.div>
-                  {i < 2 && (
-                    <motion.div
-                      animate={{
-                        backgroundColor:
-                          step > i ? 'rgb(249, 115, 22)' : 'rgba(255, 255, 255, 0.05)',
-                      }}
-                      className="w-12 h-1 rounded-full"
-                    />
-                  )}
+          {/* Progress */}
+          <div className="flex items-center gap-4 mb-12">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="flex items-center gap-2">
+                <div className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors",
+                  step >= i ? "bg-primary text-white" : "bg-white/5 text-muted-foreground border border-white/10"
+                )}>
+                  {i}
                 </div>
-              ))}
-            </div>
-          )}
-
-          {/* Content */}
-          <div className="mt-8">
-            {step === 1 && step1Content}
-            {step === 2 && step2Content}
-            {step === 3 && step3Content}
+                {i < 3 && <div className={cn("w-12 h-0.5 rounded-full", step > i ? "bg-primary" : "bg-white/5")} />}
+              </div>
+            ))}
           </div>
-        </div>
 
-        {/* Summary Sidebar */}
-        {step !== 3 && (
-          <div className="lg:sticky lg:top-28 lg:h-fit">
-            <Card className="glass p-6 rounded-[2.5rem] border-white/10 space-y-6">
-              {/* Event Info */}
-              <div className="space-y-3">
-                <div className="relative w-full h-24 rounded-2xl overflow-hidden">
-                  <img
-                    src={event.image}
-                    alt={event.title}
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
+          {step === 1 && (
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+              <div className="flex justify-between items-end mb-6">
+                <h2 className="text-xl font-heading font-bold">Tus Datos</h2>
+                {!user && (
+                  <Button variant="link" onClick={() => window.location.href='/auth/login'} className="text-primary p-0 h-auto font-bold">
+                    ¿Ya tenés cuenta? Iniciá sesión
+                  </Button>
+                )}
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Nombre Completo</label>
+                  <Input 
+                    value={user?.displayName || guestInfo.name} 
+                    onChange={e => setGuestInfo({...guestInfo, name: e.target.value})}
+                    placeholder="Como figura en tu DNI"
+                    className="bg-white/5 border-white/10 h-12 rounded-xl" 
                   />
                 </div>
-                <h3 className="text-sm font-heading font-bold line-clamp-2">
-                  {event.title}
-                </h3>
-                <div className="space-y-1 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 flex-shrink-0" />
-                    <span>{formatEventDate(event.date)}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 flex-shrink-0" />
-                    <span>{event.venue}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t border-white/5" />
-
-              {/* Tickets Summary */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                  Entradas
-                </h4>
                 <div className="space-y-2">
-                  {selectedTickets.map((ticket: SelectedTicket, i: number) => (
-                    <div key={i} className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        {ticket.quantity}x {ticket.type}
-                      </span>
-                      <span className="font-bold">
-                        ${(ticket.quantity * ticket.price).toLocaleString('es-AR')}
-                      </span>
+                  <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">DNI</label>
+                  <Input 
+                    value={guestInfo.dni}
+                    onChange={e => setGuestInfo({...guestInfo, dni: e.target.value})}
+                    placeholder="Sin puntos" 
+                    className="bg-white/5 border-white/10 h-12 rounded-xl" 
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Email</label>
+                  <Input 
+                    value={user?.email || guestInfo.email} 
+                    onChange={e => setGuestInfo({...guestInfo, email: e.target.value})}
+                    type="email" 
+                    placeholder="Donde recibirás tus entradas"
+                    className="bg-white/5 border-white/10 h-12 rounded-xl" 
+                  />
+                </div>
+              </div>
+              
+              <Button 
+                disabled={! (user || (guestInfo.name && guestInfo.email && guestInfo.dni))} 
+                onClick={() => setStep(2)} 
+                className="w-full h-14 orange-gradient border-none font-bold text-lg rounded-xl mt-8"
+              >
+                Siguiente: Método de Pago
+              </Button>
+            </motion.div>
+          )}
+
+          {step === 2 && (
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+              <h2 className="text-xl font-heading font-bold mb-6">Método de Pago</h2>
+              <div className="grid grid-cols-1 gap-4">
+                {methods.map(m => (
+                  <button
+                    key={m.id}
+                    onClick={() => setPaymentMethod(m.id)}
+                    className={cn(
+                      "flex items-center gap-4 p-6 rounded-2xl border transition-all text-left group",
+                      paymentMethod === m.id ? "bg-primary/10 border-primary" : "bg-white/5 border-white/5 hover:border-white/20"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-12 h-12 rounded-xl flex items-center justify-center transition-colors",
+                      paymentMethod === m.id ? "bg-primary text-white" : "bg-white/10 text-muted-foreground group-hover:text-primary"
+                    )}>
+                      <m.icon className="w-6 h-6" />
                     </div>
-                  ))}
-                </div>
+                    <div>
+                      <div className="font-bold">{m.name}</div>
+                      <div className="text-xs text-muted-foreground">{m.desc}</div>
+                    </div>
+                    {paymentMethod === m.id && <CheckCircle2 className="ml-auto w-6 h-6 text-primary" />}
+                  </button>
+                ))}
               </div>
 
-              <div className="border-t border-white/5" />
+              {paymentMethod === 'mp' && (
+                <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl text-xs text-blue-400">
+                  <strong>Nota:</strong> Para activar Mercado Pago real, cargá tu <code>MP_ACCESS_TOKEN</code> en los Secrets del proyecto.
+                </div>
+              )}
 
-              {/* Pricing */}
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-bold">${subtotal.toLocaleString('es-AR')}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Comisión (3.5%)</span>
-                  <span className="font-bold">
-                    ${platformFee.toLocaleString('es-AR')}
-                  </span>
-                </div>
-
-                <div className="border-t border-white/5 pt-3 flex justify-between items-end">
-                  <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                    Total
-                  </span>
-                  <span className="text-3xl font-heading font-black orange-text-gradient">
-                    ${total.toLocaleString('es-AR')}
-                  </span>
-                </div>
+              <div className="flex gap-4 mt-8">
+                <Button variant="ghost" onClick={() => setStep(1)} className="h-14 px-8 font-bold">Volver</Button>
+                <Button 
+                  disabled={!paymentMethod || isProcessing}
+                  onClick={handlePayment} 
+                  className="flex-grow h-14 orange-gradient border-none font-bold text-lg rounded-xl"
+                >
+                  {isProcessing ? "Procesando..." : "Confirmar y Pagar"}
+                </Button>
               </div>
+            </motion.div>
+          )}
 
-              {/* Security Note */}
-              <div className="bg-primary/5 rounded-2xl p-4 border border-primary/10 flex gap-3">
-                <ShieldCheck className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                <p className="text-[11px] text-muted-foreground leading-relaxed uppercase tracking-wider font-bold">
-                  Tu compra está protegida por ENTRA. Tus datos personales no son compartidos.
-                </p>
+          {step === 3 && (
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-12 space-y-6">
+              <div className="w-24 h-24 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-8">
+                <CheckCircle2 className="w-12 h-12" />
               </div>
-            </Card>
-          </div>
-        )}
+              <h2 className="text-4xl font-heading font-black tracking-tighter">¡Compra Exitosa!</h2>
+              <p className="text-muted-foreground text-lg max-w-md mx-auto">
+                Tus entradas han sido enviadas a <span className="text-foreground font-bold">{user?.email || guestInfo.email}</span>
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
+                <Button className="orange-gradient border-none font-bold h-12 px-8 rounded-xl">Descargar Entradas (PDF)</Button>
+                <Link to="/eventos">
+                  <Button variant="outline" className="h-12 px-8 rounded-xl border-white/10">Volver al Inicio</Button>
+                </Link>
+              </div>
+            </motion.div>
+          )}
+        </div>
+
+        {/* Right: Summary */}
+        <div className="space-y-6">
+          <Card className="glass p-8 rounded-[2.5rem] border-white/10 sticky top-28">
+            <h3 className="text-xl font-heading font-bold mb-6 flex items-center gap-2">
+              <TicketIcon className="w-5 h-5 text-primary" />
+              Resumen
+            </h3>
+            
+            <div className="space-y-4 mb-8">
+              {selectedTickets.map((t: any, i: number) => (
+                <div key={i} className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{t.quantity}x {t.type}</span>
+                  <span className="font-bold">${(t.price * t.quantity).toLocaleString('es-AR')}</span>
+                </div>
+              ))}
+              <div className="flex justify-between text-sm pt-4 border-t border-white/5">
+                <span className="text-muted-foreground">Subtotal</span>
+                <span className="font-bold">${subtotal.toLocaleString('es-AR')}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Cargo por servicio (10%)</span>
+                <span className="font-bold">${serviceFee.toLocaleString('es-AR')}</span>
+              </div>
+              <div className="pt-4 border-t border-white/5 flex justify-between items-end">
+                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Total</span>
+                <span className="text-3xl font-heading font-black text-primary">${total.toLocaleString('es-AR')}</span>
+              </div>
+            </div>
+
+            <div className="bg-primary/5 rounded-2xl p-4 border border-primary/10 flex items-start gap-3">
+              <ShieldCheck className="w-5 h-5 text-primary mt-0.5" />
+              <div className="text-[10px] text-muted-foreground leading-relaxed uppercase tracking-wider font-bold">
+                Tu compra está protegida por el sistema de seguridad de ENTRÁ by DER.
+              </div>
+            </div>
+          </Card>
+        </div>
       </div>
     </div>
   );
 }
-
