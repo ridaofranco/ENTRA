@@ -1,0 +1,77 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and role information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique identifier from Firebase Auth" },
+        "email": { "type": "string", "format": "email", "description": "User email address" },
+        "displayName": { "type": "string", "description": "User's full name" },
+        "photoURL": { "type": "string", "format": "uri", "description": "User's profile picture URL" },
+        "role": { "type": "string", "enum": ["buyer", "organizer", "admin"], "description": "User's role in the platform" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Event": {
+      "title": "Event",
+      "description": "Event details and ticket configuration",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the event" },
+        "title": { "type": "string", "description": "Event title" },
+        "description": { "type": "string", "description": "Detailed description of the event" },
+        "date": { "type": "string", "format": "date-time", "description": "Event date and time" },
+        "location": { "type": "string", "description": "City/Area of the event" },
+        "venue": { "type": "string", "description": "Specific venue name" },
+        "price": { "type": "number", "description": "Base price for the event" },
+        "image": { "type": "string", "format": "uri", "description": "Event flyer image URL" },
+        "category": { "type": "string", "description": "Event category (Música, Deportes, etc.)" },
+        "organizerId": { "type": "string", "description": "UID of the organizer who created the event" },
+        "tickets": {
+          "type": "array",
+          "description": "Available ticket types and prices"
+        }
+      },
+      "required": ["title", "date", "venue", "organizerId"]
+    },
+    "Ticket": {
+      "title": "Ticket",
+      "description": "A ticket purchased by a user for an event",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the ticket" },
+        "eventId": { "type": "string", "description": "ID of the event" },
+        "buyerId": { "type": "string", "description": "UID of the buyer" },
+        "buyerName": { "type": "string", "description": "Name of the buyer" },
+        "buyerEmail": { "type": "string", "format": "email", "description": "Email of the buyer" },
+        "type": { "type": "string", "description": "Ticket type (General, VIP, etc.)" },
+        "price": { "type": "number", "description": "Price paid for the ticket" },
+        "qrCode": { "type": "string", "description": "Unique QR code data" },
+        "status": { "type": "string", "enum": ["valid", "used", "cancelled"], "description": "Current status of the ticket" },
+        "purchasedAt": { "type": "string", "format": "date-time", "description": "When the ticket was purchased" }
+      },
+      "required": ["eventId", "buyerId", "qrCode", "status"]
+    },
+    "CheckIn": {
+      "title": "CheckIn",
+      "description": "Log of a ticket being scanned at an event",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the check-in log" },
+        "ticketId": { "type": "string", "description": "ID of the ticket scanned" },
+        "eventId": { "type": "string", "description": "ID of the event" },
+        "gateId": { "type": "string", "description": "ID of the gate where it was scanned" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the check-in occurred" },
+        "attendeeName": { "type": "string", "description": "Name of the attendee" }
+      },
+      "required": ["ticketId", "eventId", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": { "schema": "User", "description": "User profiles" },
+    "/events/{eventId}": { "schema": "Event", "description": "Events collection" },
+    "/tickets/{ticketId}": { "schema": "Ticket", "description": "Tickets collection" },
+    "/events/{eventId}/checkins/{checkinId}": { "schema": "CheckIn", "description": "Check-ins for a specific event" }
+  }
+}
