@@ -17,6 +17,8 @@ import Auth from '@/src/pages/Auth';
 import CreateEvent from '@/src/pages/CreateEvent';
 import Contact from '@/src/pages/Contact';
 import Profile from '@/src/pages/Profile';
+import AdminDashboard from '@/src/pages/AdminDashboard';
+import PlatformConfig from '@/src/pages/PlatformConfig';
 
 export default function App() {
   return (
@@ -60,14 +62,14 @@ export default function App() {
             {/* Admin Routes */}
             <Route path="/admin/dashboard" element={
               <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
-                <div className="pt-32 px-6 text-center">Admin Dashboard Placeholder</div>
+                <AdminDashboard />
               </ProtectedRoute>
             } />
 
             {/* SuperAdmin Routes */}
             <Route path="/admin/config" element={
               <ProtectedRoute allowedRoles={['superadmin']}>
-                <div className="pt-32 px-6 text-center">Platform Config Placeholder</div>
+                <PlatformConfig />
               </ProtectedRoute>
             } />
           </Routes>

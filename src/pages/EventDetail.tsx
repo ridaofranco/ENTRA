@@ -201,7 +201,8 @@ export default function EventDetail() {
                     title: event.title,
                     venue: event.venue,
                     location: event.location,
-                    image: event.image
+                    image: event.image,
+                    date: event.date
                   },
                   selectedTickets: event.tickets
                     .filter(t => (quantities[t.type] || 0) > 0)
@@ -230,3 +231,4 @@ export default function EventDetail() {
     </div>
   );
 }
+
