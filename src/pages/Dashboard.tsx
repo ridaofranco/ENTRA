@@ -1,249 +1,385 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Card } from '@/src/components/ui/card';
-import { Button } from '@/src/components/ui/button';
-import { Badge } from '@/src/components/ui/badge';
-import { 
-  TrendingUp, 
-  Users, 
-  Ticket, 
-  Calendar, 
-  Plus, 
-  MoreVertical,
-  ArrowUpRight,
-  ArrowDownRight
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  Plus, DollarSign, Ticket, Calendar, Users, TrendingUp,
+  MapPin, BarChart3, Loader2, Eye, ChevronRight
 } from 'lucide-react';
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer 
-} from 'recharts';
-import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
-import { useAuth } from '@/src/context/AuthContext';
-import { cn } from '@/lib/utils';
+import { collection, query, where, getDocs, doc, getDoc, orderBy } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { db, auth } from '@/src/lib/firebase';
+
+interface EventData {
+  id: string;
+  title: string;
+  date: any;
+  venue: string;
+  location: string;
+  image: string;
+  category: string;
+  status: string;
+  tickets: Array<{ type: string; price: number; available: number }>;
+  ticketsSold: number;
+  totalRevenue: number;
+  organizerEmail: string;
+}
+
+interface OrderData {
+  id: string;
+  buyerName: string;
+  buyerEmail: string;
+  eventTitle: string;
+  eventId: string;
+  items: Array<{ type: string; quantity: number; price: number }>;
+  total: number;
+  status: string;
+  createdAt: any;
+}
 
 export default function Dashboard() {
-  const { user, profile, updateRole } = useAuth();
-  const [events, setEvents] = useState<any[]>([]);
-  const [stats, setStats] = useState({
-    totalSales: 0,
-    ticketsSold: 0,
-    attendees: 0,
-    activeEvents: 0
-  });
+  const navigate = useNavigate();
+  const [user, setUser] = useState<any>(null);
+  const [events, setEvents] = useState<EventData[]>([]);
+  const [recentOrders, setRecentOrders] = useState<OrderData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'eventos' | 'ventas'>('eventos');
 
+  // Auth
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      if (!user) return;
-      try {
-        // Fetch events created by this user - simplified query
-        const eventsCol = collection(db, 'events');
-        const q = query(eventsCol, where('organizerId', '==', user.uid));
-        const snapshot = await getDocs(q);
-        const eventsData = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
-        
-        // Sort client-side to avoid index requirement for composite query
-        const sortedEvents = eventsData.sort((a: any, b: any) => {
-          const dateA = a.date?.toDate() || 0;
-          const dateB = b.date?.toDate() || 0;
-          return dateB - dateA;
-        });
-        
-        setEvents(sortedEvents.slice(0, 5));
-
-        // Fetch all tickets for these events to calculate stats
-        // In a real app, we'd query tickets where eventId is in the list of organizer's events
-        // For demo, we'll fetch all and filter client-side if needed, or just show all for now
-        const ticketsCol = collection(db, 'tickets');
-        const ticketsSnapshot = await getDocs(ticketsCol);
-        const allTickets = ticketsSnapshot.docs.map(doc => doc.data());
-        
-        // Filter tickets that belong to the organizer's events
-        const organizerEventIds = eventsData.map(e => e.id);
-        const organizerTickets = allTickets.filter(t => organizerEventIds.includes(t.eventId));
-        
-        const totalSales = organizerTickets.reduce((acc, t) => acc + (t.price || 0), 0);
-        const ticketsSold = organizerTickets.length;
-        const attendees = organizerTickets.filter(t => t.status === 'used').length;
-
-        setStats({
-          totalSales,
-          ticketsSold,
-          attendees,
-          activeEvents: eventsData.length
-        });
-      } catch (error) {
-        handleFirestoreError(error, OperationType.LIST, 'dashboard');
-      } finally {
-        setLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        setUser(firebaseUser);
+      } else {
+        navigate('/auth/login');
       }
-    };
+    });
+    return () => unsubscribe();
+  }, [navigate]);
 
-    fetchDashboardData();
+  // Load data
+  useEffect(() => {
+    if (user) loadDashboardData();
   }, [user]);
 
-  const chartData = [
-    { name: 'Lun', sales: 4000 },
-    { name: 'Mar', sales: 3000 },
-    { name: 'Mie', sales: 2000 },
-    { name: 'Jue', sales: 2780 },
-    { name: 'Vie', sales: 1890 },
-    { name: 'Sab', sales: 2390 },
-    { name: 'Dom', sales: 3490 },
-  ];
+  const loadDashboardData = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      // Load all events (for organizer: their events; for admin: all events)
+      let eventsQuery;
+      const isSuperAdmin = user.email === 'ridaofrancorg@gmail.com';
 
-  const statCards = [
-    { title: 'Ventas Totales', value: `$${stats.totalSales.toLocaleString('es-AR')}`, icon: TrendingUp, trend: '+12.5%', isUp: true },
-    { title: 'Tickets Vendidos', value: stats.ticketsSold.toString(), icon: Ticket, trend: '+5.2%', isUp: true },
-    { title: 'Asistentes', value: stats.attendees.toString(), icon: Users, trend: '-2.1%', isUp: false },
-    { title: 'Eventos Activos', value: stats.activeEvents.toString(), icon: Calendar, trend: '0%', isUp: true },
-  ];
+      if (isSuperAdmin) {
+        eventsQuery = query(collection(db, 'events'));
+      } else {
+        eventsQuery = query(collection(db, 'events'), where('organizerEmail', '==', user.email));
+      }
 
-  return (
-    <div className="pt-32 pb-20 px-6 max-w-7xl mx-auto">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
-        <div>
-          <h1 className="text-4xl font-heading font-black tracking-tighter uppercase mb-2">Dashboard</h1>
-          <p className="text-muted-foreground">Bienvenido de nuevo, <span className="text-foreground font-bold">{user?.displayName}</span></p>
-        </div>
-        <div className="flex gap-4">
-          {profile?.role === 'buyer' && (
-            <Button 
-              variant="outline"
-              onClick={() => updateRole('organizer')}
-              className="border-primary/30 text-primary hover:bg-primary/5 font-bold h-12 px-6 rounded-xl"
-            >
-              Convertirme en Organizador
-            </Button>
-          )}
-          <Button 
-            onClick={() => window.location.href='/crear-evento'}
-            className="orange-gradient border-none font-bold h-12 px-8 rounded-xl shadow-lg shadow-primary/20"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Crear Evento
-          </Button>
-        </div>
+      const eventsSnap = await getDocs(eventsQuery);
+      const eventsList: EventData[] = eventsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as EventData));
+      setEvents(eventsList);
+
+      // Load recent orders for these events
+      const eventIds = eventsList.map(e => e.id);
+      if (eventIds.length > 0) {
+        // Firestore 'in' queries support max 30 items
+        const batchIds = eventIds.slice(0, 30);
+        const ordersQuery = query(
+          collection(db, 'orders'),
+          where('eventId', 'in', batchIds)
+        );
+        const ordersSnap = await getDocs(ordersQuery);
+        const ordersList: OrderData[] = ordersSnap.docs.map(d => ({ id: d.id, ...d.data() } as OrderData));
+
+        // Sort newest first
+        ordersList.sort((a, b) => {
+          const aTime = a.createdAt?.seconds || 0;
+          const bTime = b.createdAt?.seconds || 0;
+          return bTime - aTime;
+        });
+
+        setRecentOrders(ordersList.slice(0, 20));
+      }
+    } catch (error) {
+      console.error('Dashboard load error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ==================== COMPUTED STATS ====================
+  const totalRevenue = events.reduce((sum, e) => sum + (e.totalRevenue || 0), 0);
+  const totalTicketsSold = events.reduce((sum, e) => sum + (e.ticketsSold || 0), 0);
+  const activeEvents = events.filter(e => e.status === 'active').length;
+  const totalCapacity = events.reduce((sum, e) => {
+    const cap = (e.tickets || []).reduce((s: number, t: any) => s + (t.available || 0), 0);
+    return sum + cap + (e.ticketsSold || 0);
+  }, 0);
+
+  const formatDate = (date: any) => {
+    try {
+      if (date?.toDate) return date.toDate().toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
+      if (date?.seconds) return new Date(date.seconds * 1000).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch { }
+    return '';
+  };
+
+  const formatShortDate = (date: any) => {
+    try {
+      if (date?.toDate) return date.toDate().toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+      if (date?.seconds) return new Date(date.seconds * 1000).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+    } catch { }
+    return '';
+  };
+
+  // ==================== LOADING ====================
+  if (loading) {
+    return (
+      <div className="pt-32 pb-20 px-6 max-w-6xl mx-auto flex flex-col items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-10 h-10 text-orange-500 animate-spin mb-4" />
+        <p className="text-zinc-400">Cargando dashboard...</p>
       </div>
+    );
+  }
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-        {statCards.map((stat, i) => (
+  // ==================== RENDER ====================
+  return (
+    <div className="pt-32 pb-20 px-6 max-w-6xl mx-auto">
+      {/* Header */}
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between mb-10">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight">Dashboard</h1>
+          <p className="text-zinc-400 mt-1">Gestion de tus eventos y ventas</p>
+        </div>
+        <Link to="/crear-evento">
+          <button className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold px-5 py-3 rounded-2xl hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg shadow-orange-500/20">
+            <Plus className="w-5 h-5" />
+            Crear Evento
+          </button>
+        </Link>
+      </motion.div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+        {[
+          {
+            label: 'Ingresos Totales',
+            value: `$${totalRevenue.toLocaleString('es-AR')}`,
+            icon: DollarSign,
+            color: 'text-green-500',
+            bg: 'bg-green-500/10',
+          },
+          {
+            label: 'Tickets Vendidos',
+            value: totalTicketsSold.toLocaleString('es-AR'),
+            icon: Ticket,
+            color: 'text-orange-500',
+            bg: 'bg-orange-500/10',
+          },
+          {
+            label: 'Eventos Activos',
+            value: activeEvents.toString(),
+            icon: Calendar,
+            color: 'text-blue-500',
+            bg: 'bg-blue-500/10',
+          },
+          {
+            label: 'Capacidad Total',
+            value: totalCapacity.toLocaleString('es-AR'),
+            icon: Users,
+            color: 'text-purple-500',
+            bg: 'bg-purple-500/10',
+          },
+        ].map((stat, i) => (
           <motion.div
-            key={stat.title}
+            key={i}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
+            className="bg-white/5 rounded-3xl border border-white/10 p-5"
           >
-            <Card className="glass p-6 rounded-3xl border-white/5">
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-                  <stat.icon className="w-6 h-6" />
-                </div>
-                <Badge variant="outline" className={cn(
-                  "border-none font-bold",
-                  stat.isUp ? "text-green-500 bg-green-500/10" : "text-red-500 bg-red-500/10"
-                )}>
-                  {stat.trend}
-                  {stat.isUp ? <ArrowUpRight className="w-3 h-3 ml-1" /> : <ArrowDownRight className="w-3 h-3 ml-1" />}
-                </Badge>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">{stat.label}</span>
+              <div className={`${stat.bg} p-2 rounded-xl`}>
+                <stat.icon className={`w-4 h-4 ${stat.color}`} />
               </div>
-              <div className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">{stat.title}</div>
-              <div className="text-3xl font-heading font-black">{stat.value}</div>
-            </Card>
+            </div>
+            <p className="text-2xl font-black">{stat.value}</p>
           </motion.div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Chart */}
-        <Card className="lg:col-span-2 glass p-8 rounded-[2.5rem] border-white/5">
-          <div className="flex justify-between items-center mb-8">
-            <h3 className="text-xl font-heading font-bold">Ventas de la Semana</h3>
-            <select className="bg-white/5 border-white/10 rounded-lg text-xs font-bold px-3 py-2 outline-none">
-              <option>Últimos 7 días</option>
-              <option>Último mes</option>
-            </select>
-          </div>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ff5c00" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#ff5c00" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: '#71717a', fontSize: 12 }}
-                />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: '#71717a', fontSize: 12 }}
-                />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#18181b', border: '1px solid #ffffff10', borderRadius: '12px' }}
-                  itemStyle={{ color: '#ff5c00' }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="sales" 
-                  stroke="#ff5c00" 
-                  strokeWidth={3}
-                  fillOpacity={1} 
-                  fill="url(#colorSales)" 
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        {/* Recent Events */}
-        <Card className="glass p-8 rounded-[2.5rem] border-white/5">
-          <div className="flex justify-between items-center mb-8">
-            <h3 className="text-xl font-heading font-bold">Mis Eventos</h3>
-            <Button variant="ghost" size="sm" className="text-primary font-bold">Ver todos</Button>
-          </div>
-          <div className="space-y-6">
-            {loading ? (
-              <p className="text-center text-muted-foreground py-10 animate-pulse">Cargando...</p>
-            ) : events.length === 0 ? (
-              <p className="text-center text-muted-foreground py-10">No tenés eventos creados.</p>
-            ) : (
-              events.map((event) => (
-                <div key={event.id} className="flex items-center gap-4 group">
-                  <div className="w-14 h-14 rounded-2xl overflow-hidden flex-shrink-0 bg-white/5">
-                    <img 
-                      src={event.image || `https://picsum.photos/seed/${event.id}/200/200`} 
-                      alt={event.title} 
-                      className="w-full h-full object-cover" 
-                      referrerPolicy="no-referrer"
-                    />
-                  </div>
-                  <div className="flex-grow min-w-0">
-                    <div className="font-bold truncate group-hover:text-primary transition-colors">{event.title}</div>
-                    <div className="text-xs text-muted-foreground">{event.date?.toDate().toLocaleDateString()}</div>
-                  </div>
-                  <Button variant="ghost" size="icon" className="text-muted-foreground">
-                    <MoreVertical className="w-5 h-5" />
-                  </Button>
-                </div>
-              ))
-            )}
-          </div>
-        </Card>
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6">
+        <button
+          onClick={() => setActiveTab('eventos')}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm transition-all ${
+            activeTab === 'eventos'
+              ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+              : 'bg-white/5 text-zinc-400 hover:bg-white/10 border border-white/10'
+          }`}
+        >
+          <Calendar className="w-4 h-4" />
+          Mis Eventos
+        </button>
+        <button
+          onClick={() => setActiveTab('ventas')}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm transition-all ${
+            activeTab === 'ventas'
+              ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+              : 'bg-white/5 text-zinc-400 hover:bg-white/10 border border-white/10'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4" />
+          Ultimas Ventas
+        </button>
       </div>
+
+      {/* ==================== EVENTS TAB ==================== */}
+      {activeTab === 'eventos' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+          {events.length === 0 ? (
+            <div className="text-center py-20 space-y-4">
+              <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto">
+                <Calendar className="w-10 h-10 text-zinc-600" />
+              </div>
+              <h3 className="text-xl font-bold text-zinc-400">No tenes eventos todavia</h3>
+              <p className="text-zinc-500 text-sm">Crea tu primer evento y empeza a vender entradas.</p>
+              <Link to="/crear-evento">
+                <button className="mt-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold px-6 py-3 rounded-2xl">
+                  Crear mi primer evento
+                </button>
+              </Link>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {events.map((event, index) => {
+                const totalCap = (event.tickets || []).reduce((s: number, t: any) => s + (t.available || 0), 0) + (event.ticketsSold || 0);
+                const soldPercent = totalCap > 0 ? Math.round(((event.ticketsSold || 0) / totalCap) * 100) : 0;
+
+                return (
+                  <motion.div
+                    key={event.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <div className="bg-white/5 rounded-3xl border border-white/10 overflow-hidden hover:border-orange-500/30 transition-all">
+                      {/* Event image */}
+                      <div className="h-32 overflow-hidden relative">
+                        {event.image ? (
+                          <img src={event.image} alt={event.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-orange-500/20 to-orange-600/20 flex items-center justify-center">
+                            <Calendar className="w-10 h-10 text-orange-500/50" />
+                          </div>
+                        )}
+                        <span className={`absolute top-3 right-3 text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full backdrop-blur-sm ${
+                          event.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-zinc-500/20 text-zinc-400'
+                        }`}>
+                          {event.status === 'active' ? 'Activo' : event.status}
+                        </span>
+                      </div>
+
+                      <div className="p-5 space-y-4">
+                        <div>
+                          <h3 className="font-bold text-sm truncate">{event.title}</h3>
+                          <div className="flex items-center gap-2 mt-1 text-xs text-zinc-400">
+                            <Calendar className="w-3 h-3" />
+                            <span>{formatDate(event.date)}</span>
+                          </div>
+                          {event.venue && (
+                            <div className="flex items-center gap-2 mt-0.5 text-xs text-zinc-400">
+                              <MapPin className="w-3 h-3" />
+                              <span>{event.venue}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Progress bar */}
+                        <div>
+                          <div className="flex justify-between text-xs mb-1.5">
+                            <span className="text-zinc-400">Vendidos: {event.ticketsSold || 0}/{totalCap}</span>
+                            <span className="font-bold text-orange-500">{soldPercent}%</span>
+                          </div>
+                          <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-orange-500 to-orange-600 rounded-full transition-all"
+                              style={{ width: `${soldPercent}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Revenue */}
+                        <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                          <div>
+                            <p className="text-xs text-zinc-500">Ingresos</p>
+                            <p className="font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">
+                              ${(event.totalRevenue || 0).toLocaleString('es-AR')}
+                            </p>
+                          </div>
+                          <Link to={`/evento/${event.id}`}>
+                            <button className="flex items-center gap-1 text-xs text-orange-500 font-bold hover:underline">
+                              <Eye className="w-3.5 h-3.5" /> Ver
+                            </button>
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {/* ==================== SALES TAB ==================== */}
+      {activeTab === 'ventas' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+          {recentOrders.length === 0 ? (
+            <div className="text-center py-20 space-y-4">
+              <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto">
+                <BarChart3 className="w-10 h-10 text-zinc-600" />
+              </div>
+              <h3 className="text-xl font-bold text-zinc-400">No hay ventas todavia</h3>
+              <p className="text-zinc-500 text-sm">Las ventas de tus eventos van a aparecer aca.</p>
+            </div>
+          ) : (
+            recentOrders.map((order, index) => (
+              <motion.div
+                key={order.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.03 }}
+              >
+                <div className="bg-white/5 rounded-2xl border border-white/10 p-4 flex items-center gap-4">
+                  {/* Avatar */}
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500/20 to-orange-600/20 flex items-center justify-center text-orange-500 font-bold text-sm flex-shrink-0">
+                    {order.buyerName?.charAt(0)?.toUpperCase() || '?'}
+                  </div>
+
+                  <div className="flex-grow min-w-0">
+                    <p className="font-bold text-sm truncate">{order.buyerName}</p>
+                    <p className="text-xs text-zinc-400 truncate">{order.eventTitle}</p>
+                  </div>
+
+                  <div className="flex-shrink-0 text-right">
+                    <p className="font-black text-sm">${order.total?.toLocaleString('es-AR')}</p>
+                    <p className="text-[10px] text-zinc-500">{formatShortDate(order.createdAt)}</p>
+                  </div>
+
+                  <span className={`flex-shrink-0 text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full ${
+                    order.status === 'confirmed' ? 'bg-green-500/10 text-green-500' : 'bg-zinc-500/10 text-zinc-500'
+                  }`}>
+                    {order.status === 'confirmed' ? 'OK' : order.status}
+                  </span>
+                </div>
+              </motion.div>
+            ))
+          )}
+        </motion.div>
+      )}
     </div>
   );
 }

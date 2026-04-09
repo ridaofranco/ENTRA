@@ -1,6 +1,6 @@
 import { collection, getDocs, addDoc, deleteDoc, doc, Timestamp, query, limit, where } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
- 
+
 export const demoEvents = [
   {
     title: 'Bresh — La Fiesta Más Linda del Mundo',
@@ -85,7 +85,7 @@ export const demoEvents = [
     totalRevenue: 0,
   },
 ];
- 
+
 /**
  * Removes duplicate events (same title appearing more than once).
  * Keeps the first occurrence, deletes the rest.
@@ -95,7 +95,7 @@ export async function cleanupDuplicateEvents(): Promise<number> {
     const snapshot = await getDocs(collection(db, 'events'));
     const seen = new Map<string, string>(); // title -> first doc ID
     const toDelete: string[] = [];
- 
+
     snapshot.docs.forEach((d) => {
       const title = d.data().title;
       if (seen.has(title)) {
@@ -104,11 +104,11 @@ export async function cleanupDuplicateEvents(): Promise<number> {
         seen.set(title, d.id);
       }
     });
- 
+
     for (const id of toDelete) {
       await deleteDoc(doc(db, 'events', id));
     }
- 
+
     if (toDelete.length > 0) {
       console.log(`[eventService] Cleaned up ${toDelete.length} duplicate event(s).`);
     }
@@ -118,7 +118,7 @@ export async function cleanupDuplicateEvents(): Promise<number> {
     return 0;
   }
 }
- 
+
 /**
  * Seeds demo events ONLY if the events collection is completely empty.
  * Also cleans up any duplicates that may exist from previous bad seeds.
@@ -127,16 +127,16 @@ export async function seedEventsIfMissing(): Promise<void> {
   try {
     // First, clean up any duplicates
     await cleanupDuplicateEvents();
- 
+
     // Then check if we need to seed
     const checkQuery = query(collection(db, 'events'), limit(1));
     const snapshot = await getDocs(checkQuery);
- 
+
     if (!snapshot.empty) {
       console.log('[eventService] Events exist, skipping seed.');
       return;
     }
- 
+
     console.log('[eventService] No events — seeding demo data...');
     for (const event of demoEvents) {
       await addDoc(collection(db, 'events'), {
