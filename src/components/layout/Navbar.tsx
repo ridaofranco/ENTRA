@@ -61,7 +61,13 @@ export function Navbar() {
         {user ? (
           <div className="flex items-center gap-4">
             <Link to="/perfil" className="flex items-center gap-2 hover:text-primary transition-colors">
-              <img src={user.photoURL || ''} alt="Avatar" className="w-8 h-8 rounded-full border border-primary/20" />
+              {user.photoURL ? (
+                <img src={user.photoURL} alt="Avatar" className="w-8 h-8 rounded-full border border-primary/20" referrerPolicy="no-referrer" />
+              ) : (
+                <div className="w-8 h-8 rounded-full border border-primary/20 flex items-center justify-center bg-white/5">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                </div>
+              )}
               <span className="text-sm font-bold hidden lg:inline-block">{user.displayName}</span>
             </Link>
             <Button variant="ghost" size="icon" onClick={logout} className="text-muted-foreground hover:text-red-500">

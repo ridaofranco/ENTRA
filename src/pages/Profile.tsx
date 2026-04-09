@@ -44,11 +44,18 @@ export default function Profile() {
         <div className="space-y-6">
           <Card className="glass p-8 rounded-[2.5rem] border-white/5 text-center">
             <div className="relative w-32 h-32 mx-auto mb-6">
-              <img 
-                src={user.photoURL || ''} 
-                alt={user.displayName || ''} 
-                className="w-full h-full rounded-full border-4 border-primary/20 object-cover"
-              />
+              {user.photoURL ? (
+                <img 
+                  src={user.photoURL} 
+                  alt={user.displayName || ''} 
+                  className="w-full h-full rounded-full border-4 border-primary/20 object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="w-full h-full rounded-full border-4 border-primary/20 flex items-center justify-center bg-white/5">
+                  <User className="w-12 h-12 text-muted-foreground" />
+                </div>
+              )}
               <div className="absolute bottom-0 right-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white border-4 border-background">
                 <Settings className="w-4 h-4" />
               </div>

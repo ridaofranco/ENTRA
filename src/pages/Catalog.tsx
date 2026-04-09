@@ -36,7 +36,7 @@ export default function Catalog() {
         const eventsCol = collection(db, 'events');
         const q = query(eventsCol, orderBy('date', 'asc'));
         const snapshot = await getDocs(q);
-        setEvents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Event)));
+        setEvents(snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as Event)));
       } catch (error) {
         handleFirestoreError(error, OperationType.LIST, 'events');
       } finally {
@@ -110,7 +110,7 @@ export default function Catalog() {
                 <Card className="glass rounded-[2rem] border-white/5 overflow-hidden group hover:border-primary/30 transition-all">
                   <div className="relative h-64 overflow-hidden">
                     <img 
-                      src={event.image} 
+                      src={event.image || `https://picsum.photos/seed/${event.id}/800/600`} 
                       alt={event.title} 
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       referrerPolicy="no-referrer"

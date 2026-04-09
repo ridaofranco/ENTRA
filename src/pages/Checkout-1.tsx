@@ -567,4 +567,3 @@ ${successState.tickets.map((ticket) => `
     </div>
   );
 }
-

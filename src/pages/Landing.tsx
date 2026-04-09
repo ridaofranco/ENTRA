@@ -19,7 +19,7 @@ export default function Landing() {
         const eventsCol = collection(db, 'events');
         const q = query(eventsCol, orderBy('date', 'asc'), limit(3));
         const snapshot = await getDocs(q);
-        setFeaturedEvents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        setFeaturedEvents(snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) })));
       } catch (error) {
         console.error("Error fetching featured events", error);
       }
@@ -191,7 +191,7 @@ export default function Landing() {
                     <Card className="glass rounded-[2rem] border-white/5 overflow-hidden group hover:border-primary/30 transition-all">
                       <div className="relative h-64 overflow-hidden">
                         <img 
-                          src={event.image} 
+                          src={event.image || `https://picsum.photos/seed/${event.id}/800/600`} 
                           alt={event.title} 
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                           referrerPolicy="no-referrer"

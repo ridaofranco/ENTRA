@@ -73,9 +73,9 @@ export default function EventDetail() {
   return (
     <div className="pb-20">
       {/* Banner */}
-      <div className="relative h-[60vh] overflow-hidden">
+      <div className="relative h-[60vh] overflow-hidden bg-white/5">
         <img 
-          src={event.image} 
+          src={event.image || `https://picsum.photos/seed/${event.id}/1920/1080`} 
           alt={event.title} 
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
@@ -201,7 +201,8 @@ export default function EventDetail() {
                     title: event.title,
                     venue: event.venue,
                     location: event.location,
-                    image: event.image
+                    image: event.image,
+                    date: event.date
                   },
                   selectedTickets: event.tickets
                     .filter(t => (quantities[t.type] || 0) > 0)

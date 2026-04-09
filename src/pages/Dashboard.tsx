@@ -46,7 +46,7 @@ export default function Dashboard() {
         const eventsCol = collection(db, 'events');
         const q = query(eventsCol, where('organizerId', '==', user.uid));
         const snapshot = await getDocs(q);
-        const eventsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const eventsData = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
         
         // Sort client-side to avoid index requirement for composite query
         const sortedEvents = eventsData.sort((a: any, b: any) => {
@@ -223,8 +223,13 @@ export default function Dashboard() {
             ) : (
               events.map((event) => (
                 <div key={event.id} className="flex items-center gap-4 group">
-                  <div className="w-14 h-14 rounded-2xl overflow-hidden flex-shrink-0">
-                    <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
+                  <div className="w-14 h-14 rounded-2xl overflow-hidden flex-shrink-0 bg-white/5">
+                    <img 
+                      src={event.image || `https://picsum.photos/seed/${event.id}/200/200`} 
+                      alt={event.title} 
+                      className="w-full h-full object-cover" 
+                      referrerPolicy="no-referrer"
+                    />
                   </div>
                   <div className="flex-grow min-w-0">
                     <div className="font-bold truncate group-hover:text-primary transition-colors">{event.title}</div>
