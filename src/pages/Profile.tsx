@@ -362,11 +362,12 @@ export default function Profile() {
                     >
                       {/* Event image */}
                       <div className="w-14 h-14 rounded-2xl overflow-hidden flex-shrink-0 bg-white/5">
-                        {ev?.image ? (
-                          <img src={ev.image} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center"><Ticket className="w-6 h-6 text-zinc-600" /></div>
-                        )}
+                        <img 
+                          src={ev?.image || `https://picsum.photos/seed/${ticket.eventId}/200/200`} 
+                          alt="" 
+                          className={`w-full h-full object-cover ${!ev?.image ? 'opacity-50' : ''}`} 
+                          referrerPolicy="no-referrer" 
+                        />
                       </div>
 
                       <div className="flex-grow min-w-0">
@@ -492,11 +493,12 @@ export default function Profile() {
                     <div className="flex items-center gap-4">
                       {/* Event image */}
                       <div className="w-14 h-14 rounded-2xl overflow-hidden flex-shrink-0 bg-white/5">
-                        {ev?.image ? (
-                          <img src={ev.image} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center"><Ticket className="w-6 h-6 text-zinc-600" /></div>
-                        )}
+                        <img 
+                          src={ev?.image || `https://picsum.photos/seed/${order.eventId}/200/200`} 
+                          alt="" 
+                          className={`w-full h-full object-cover ${!ev?.image ? 'opacity-50' : ''}`} 
+                          referrerPolicy="no-referrer" 
+                        />
                       </div>
 
                       <div className="flex-grow min-w-0">

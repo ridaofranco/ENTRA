@@ -267,13 +267,12 @@ export default function Dashboard() {
                     <div className="bg-white/5 rounded-3xl border border-white/10 overflow-hidden hover:border-orange-500/30 transition-all">
                       {/* Event image */}
                       <div className="h-32 overflow-hidden relative">
-                        {event.image ? (
-                          <img src={event.image} alt={event.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-orange-500/20 to-orange-600/20 flex items-center justify-center">
-                            <Calendar className="w-10 h-10 text-orange-500/50" />
-                          </div>
-                        )}
+                        <img 
+                          src={event.image || `https://picsum.photos/seed/${event.id}/800/600`} 
+                          alt={event.title} 
+                          className={`w-full h-full object-cover ${!event.image ? 'opacity-50' : ''}`} 
+                          referrerPolicy="no-referrer" 
+                        />
                         <span className={`absolute top-3 right-3 text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full backdrop-blur-sm ${
                           event.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-zinc-500/20 text-zinc-400'
                         }`}>
