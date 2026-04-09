@@ -2,13 +2,19 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User as FirebaseUser, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '@/src/lib/firebase';
+import { logAction } from '@/src/services/auditService';
 
 interface UserProfile {
   uid: string;
   email: string;
   displayName: string;
   photoURL: string;
-  role: 'buyer' | 'organizer' | 'admin';
+  role: 'buyer' | 'organizer' | 'admin' | 'superadmin';
+  phone?: string;
+  dni?: string;
+  suspended?: boolean;
+  createdAt?: any;
+  updatedAt?: any;
 }
 
 interface AuthContextType {
@@ -17,7 +23,7 @@ interface AuthContextType {
   loading: boolean;
   login: () => Promise<void>;
   logout: () => Promise<void>;
-  updateRole: (role: 'buyer' | 'organizer' | 'admin') => Promise<void>;
+  updateRole: (role: 'buyer' | 'organizer' | 'admin' | 'superadmin') => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,15 +40,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (firebaseUser) {
         // Fetch or create profile
         const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        
+        // Hardcoded fallback for SuperAdmin
+        const isSuperAdminEmail = firebaseUser.email === 'ridaofrancorg@gmail.com';
+
         if (userDoc.exists()) {
-          setProfile(userDoc.data() as UserProfile);
+          const data = userDoc.data() as UserProfile;
+          // If it's the superadmin email but role isn't superadmin, update it
+          if (isSuperAdminEmail && data.role !== 'superadmin') {
+            const updatedProfile = { ...data, role: 'superadmin' as const };
+            await setDoc(doc(db, 'users', firebaseUser.uid), updatedProfile);
+            setProfile(updatedProfile);
+          } else {
+            setProfile(data);
+          }
         } else {
           const newProfile: UserProfile = {
             uid: firebaseUser.uid,
             email: firebaseUser.email || '',
             displayName: firebaseUser.displayName || '',
             photoURL: firebaseUser.photoURL || '',
-            role: 'buyer' // Default role
+            role: isSuperAdminEmail ? 'superadmin' : 'buyer',
+            suspended: false,
+            createdAt: new Date(),
+            updatedAt: new Date()
           };
           await setDoc(doc(db, 'users', firebaseUser.uid), newProfile);
           setProfile(newProfile);
@@ -72,12 +93,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const updateRole = async (newRole: 'buyer' | 'organizer' | 'admin') => {
+  const updateRole = async (newRole: 'buyer' | 'organizer' | 'admin' | 'superadmin') => {
     if (!user || !profile) return;
     try {
-      const updatedProfile = { ...profile, role: newRole };
+      const updatedProfile = { ...profile, role: newRole, updatedAt: new Date() };
       await setDoc(doc(db, 'users', user.uid), updatedProfile);
       setProfile(updatedProfile);
+      
+      // Log the action
+      await logAction('UPDATE_ROLE', 'users', user.uid, { oldRole: profile.role, newRole });
     } catch (error) {
       console.error("Failed to update role", error);
     }

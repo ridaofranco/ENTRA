@@ -13,7 +13,10 @@ service cloud.firestore {
     //   - email: string (required, email format)
     //   - displayName: string (optional)
     //   - photoURL: string (optional, uri format)
-    //   - role: string (required, enum: ['buyer', 'organizer', 'admin'])
+    //   - role: string (required, enum: ['buyer', 'organizer', 'admin', 'superadmin'])
+    //   - phone: string
+    //   - dni: string
+    //   - suspended: boolean
     //
     // Collection: events
     // Document ID: {eventId}
@@ -22,35 +25,10 @@ service cloud.firestore {
     //   - title: string (required, size < 100)
     //   - description: string (size < 2000)
     //   - date: timestamp (required)
-    //   - location: string (size < 100)
     //   - venue: string (required, size < 100)
     //   - price: number (positive)
-    //   - image: string (uri format)
-    //   - category: string (size < 50)
     //   - organizerId: string (required, immutable)
-    //   - tickets: list (validated contents)
-    //
-    // Collection: tickets
-    // Document ID: {ticketId}
-    // Fields:
-    //   - eventId: string (required)
-    //   - buyerId: string (required, immutable)
-    //   - buyerName: string
-    //   - buyerEmail: string
-    //   - type: string
-    //   - price: number
-    //   - qrCode: string (required, size < 100)
-    //   - status: string (enum: ['valid', 'used', 'cancelled'])
-    //   - purchasedAt: timestamp
-    //
-    // Collection: events/{eventId}/checkins
-    // Document ID: {checkinId}
-    // Fields:
-    //   - ticketId: string
-    //   - eventId: string
-    //   - gateId: string
-    //   - timestamp: timestamp
-    //   - attendeeName: string
+    //   - status: string (enum: ['draft', 'pending', 'published', 'paused', 'cancelled'])
     //
     // ===============================================================
 
@@ -66,14 +44,19 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    function isAdmin() {
+    function isSuperAdmin() {
       return isAuthenticated() && 
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' ||
          (request.auth.token.email == "ridaofrancorg@gmail.com" && request.auth.token.email_verified == true));
     }
 
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin'] || isSuperAdmin());
+    }
+
     function isOrganizer() {
-      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'organizer';
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['organizer', 'admin', 'superadmin'];
     }
 
     function isValidEmail(email) {
@@ -93,14 +76,14 @@ service cloud.firestore {
     // ===============================================================
 
     function isValidUser(data) {
-      return hasOnlyAllowedFields(['uid', 'email', 'displayName', 'photoURL', 'role']) &&
+      return hasOnlyAllowedFields(['uid', 'email', 'displayName', 'photoURL', 'role', 'phone', 'dni', 'suspended', 'createdAt', 'updatedAt']) &&
              data.uid == request.auth.uid &&
              isValidEmail(data.email) &&
-             data.role in ['buyer', 'organizer', 'admin'];
+             data.role in ['buyer', 'organizer', 'admin', 'superadmin'];
     }
 
     function isValidEvent(data) {
-      return hasOnlyAllowedFields(['id', 'title', 'description', 'date', 'location', 'venue', 'price', 'image', 'category', 'organizerId', 'tickets', 'status', 'createdAt', 'updatedAt']) &&
+      return hasOnlyAllowedFields(['id', 'title', 'description', 'date', 'endDate', 'location', 'venue', 'latitude', 'longitude', 'price', 'image', 'category', 'organizerId', 'tickets', 'status', 'featured', 'minAge', 'refundPolicy', 'maxPerPurchase', 'createdAt', 'updatedAt']) &&
              data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
              data.venue is string && data.venue.size() > 0 && data.venue.size() < 100 &&
              (data.organizerId == request.auth.uid || isAdmin()) &&
@@ -109,8 +92,8 @@ service cloud.firestore {
     }
 
     function isValidTicket(data) {
-      return hasOnlyAllowedFields(['id', 'eventId', 'buyerId', 'buyerName', 'buyerEmail', 'buyerDni', 'type', 'price', 'qrCode', 'status', 'purchasedAt']) &&
-             (data.buyerId == 'guest' || (isAuthenticated() && data.buyerId == request.auth.uid)) &&
+      return hasOnlyAllowedFields(['id', 'eventId', 'buyerId', 'buyerName', 'buyerEmail', 'buyerDni', 'type', 'price', 'qrCode', 'status', 'purchasedAt', 'transferredTo', 'transferredAt']) &&
+             (data.buyerId == 'guest' || (isAuthenticated() && data.buyerId == request.auth.uid) || isAdmin()) &&
              data.status in ['valid', 'used', 'cancelled'] &&
              data.qrCode is string && data.qrCode.size() < 100 &&
              data.buyerEmail is string && isValidEmail(data.buyerEmail);
@@ -122,15 +105,15 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (request.resource.data.role == 'buyer' || isAdmin());
-      allow update: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role;
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (request.resource.data.role == 'buyer' || isSuperAdmin());
+      allow update: if (isOwner(userId) || isSuperAdmin()) && isValidUser(request.resource.data) && (request.resource.data.role == resource.data.role || isSuperAdmin());
     }
 
     match /events/{eventId} {
       allow read: if true; // Public catalog
-      allow create: if isAuthenticated() && isValidEvent(request.resource.data);
+      allow create: if isOrganizer();
       allow update: if (isOwner(resource.data.organizerId) || isAdmin()) && isValidEvent(request.resource.data);
-      allow delete: if (isOwner(resource.data.organizerId) || isAdmin());
+      allow delete: if isSuperAdmin();
 
       match /checkins/{checkinId} {
         allow read: if isOwner(get(/databases/$(database)/documents/events/$(eventId)).data.organizerId) || isAdmin();
@@ -142,8 +125,40 @@ service cloud.firestore {
       allow read: if (isAuthenticated() && (isOwner(resource.data.buyerId) || 
                    isOwner(get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organizerId))) || 
                    isAdmin();
-      allow create: if isValidTicket(request.resource.data);
-      allow update: if isAdmin() || (isAuthenticated() && isOwner(get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organizerId) && hasOnlyAllowedFields(['status']));
+      allow create: if true; // Allow guest purchase
+      allow update: if isAdmin() || (isAuthenticated() && isOwner(resource.data.buyerId)) || (isAuthenticated() && isOwner(get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organizerId));
+    }
+
+    match /orders/{orderId} {
+      allow read: if isOwner(resource.data.buyerId) || isAdmin();
+      allow create: if true; // Allow guest purchase
+    }
+
+    match /coupons/{couponId} {
+      allow read: if true;
+      allow create, update, delete: if isOrganizer();
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    match /support_tickets/{ticketId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+    }
+
+    match /audit_log/{logId} {
+      allow read: if isSuperAdmin();
+      allow create: if isAdmin();
+    }
+
+    match /platform_config/{configId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
     }
 
     match /test/connection {

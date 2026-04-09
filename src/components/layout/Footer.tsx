@@ -3,7 +3,8 @@ import { useAuth } from '@/src/context/AuthContext';
 
 export function Footer() {
   const { profile } = useAuth();
-  const isOrganizer = profile?.role === 'organizer' || profile?.role === 'admin';
+  const isOrganizer = profile?.role === 'organizer' || profile?.role === 'admin' || profile?.role === 'superadmin';
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin';
 
   return (
     <footer className="bg-background border-t border-white/5 pt-20 pb-10 px-6">
@@ -31,10 +32,12 @@ export function Footer() {
           <ul className="space-y-4 text-sm text-muted-foreground">
             <li><Link to="/eventos" className="hover:text-primary transition-colors">Explorar Eventos</Link></li>
             <li><Link to="/crear-evento" className="hover:text-primary transition-colors">Vender Entradas</Link></li>
-            <li><Link to="/dashboard" className="hover:text-primary transition-colors">Dashboard</Link></li>
-            <li><Link to="/perfil" className="hover:text-primary transition-colors">Mi Perfil</Link></li>
             {isOrganizer && (
-              <li><Link to="/control-acceso" className="hover:text-primary transition-colors">Control de Accesos</Link></li>
+              <li><Link to="/dashboard" className="hover:text-primary transition-colors">Dashboard</Link></li>
+            )}
+            <li><Link to="/perfil" className="hover:text-primary transition-colors">Mi Perfil</Link></li>
+            {isAdmin && (
+              <li><Link to="/admin/dashboard" className="hover:text-primary transition-colors">Panel Admin</Link></li>
             )}
             <li><a href="#" className="hover:text-primary transition-colors">White Label</a></li>
           </ul>

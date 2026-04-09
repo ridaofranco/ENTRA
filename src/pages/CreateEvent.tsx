@@ -21,6 +21,7 @@ import {
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { useAuth } from '@/src/context/AuthContext';
+import { logAction } from '@/src/services/auditService';
 
 export default function CreateEvent() {
   const navigate = useNavigate();
@@ -87,7 +88,10 @@ export default function CreateEvent() {
         createdAt: Timestamp.now()
       };
       
-      await addDoc(collection(db, 'events'), eventData);
+      const docRef = await addDoc(collection(db, 'events'), eventData);
+      
+      // Log the action
+      await logAction('CREATE_EVENT', 'events', docRef.id, { title: eventData.title });
       
       // If user is still a buyer, upgrade them to organizer automatically
       if (profile?.role === 'buyer') {

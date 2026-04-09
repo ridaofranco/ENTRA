@@ -8,6 +8,9 @@ import { useAuth } from '@/src/context/AuthContext';
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const { user, profile, login, logout } = useAuth();
+  const isOrganizer = profile?.role === 'organizer' || profile?.role === 'admin' || profile?.role === 'superadmin';
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin';
+  const isSuperAdmin = profile?.role === 'superadmin';
 
   useEffect(() => {
     const handleScroll = () => {
@@ -31,15 +34,23 @@ export function Navbar() {
         </span>
       </Link>
 
-      <div className="hidden md:flex items-center gap-8">
-        <Link to="/eventos" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest">Eventos</Link>
-        <Link to="/crear-evento" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest">Vender</Link>
-        <Link to="/contacto" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest">Contacto</Link>
-        <a href="#" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest">Nosotros</a>
-        <a href="#" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest">Ayuda</a>
-        {user && (
-          <Link to="/dashboard" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest">Dashboard</Link>
+      <div className="hidden md:flex items-center gap-6">
+        <Link to="/eventos" className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-[0.2em]">Eventos</Link>
+        <Link to="/crear-evento" className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-[0.2em]">Vender</Link>
+        
+        {isOrganizer && (
+          <Link to="/dashboard" className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-[0.2em]">Dashboard</Link>
         )}
+        
+        {isAdmin && (
+          <Link to="/admin/dashboard" className="text-[10px] font-bold text-primary hover:text-primary/80 transition-colors uppercase tracking-[0.2em]">Admin</Link>
+        )}
+
+        {isSuperAdmin && (
+          <Link to="/admin/config" className="text-[10px] font-bold text-red-500 hover:text-red-400 transition-colors uppercase tracking-[0.2em]">Config</Link>
+        )}
+
+        <Link to="/contacto" className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-[0.2em]">Contacto</Link>
       </div>
 
       <div className="flex items-center gap-4">

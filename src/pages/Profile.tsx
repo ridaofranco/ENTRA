@@ -6,15 +6,31 @@ import { User, Mail, Shield, Calendar, Ticket, Settings, LogOut } from 'lucide-r
 import { useAuth } from '@/src/context/AuthContext';
 
 export default function Profile() {
-  const { user, profile, logout } = useAuth();
+  const { user, profile, logout, updateRole } = useAuth();
 
   if (!user) return <div className="pt-40 text-center">Iniciá sesión para ver tu perfil</div>;
 
+  const getRoleBadge = (role: string | undefined) => {
+    switch (role) {
+      case 'superadmin': return 'SuperAdmin';
+      case 'admin': return 'Administrador';
+      case 'organizer': return 'Organizador';
+      default: return 'Comprador';
+    }
+  };
+
   const stats = [
-    { label: 'Eventos Asistidos', value: '12', icon: Calendar },
-    { label: 'Tickets Activos', value: '3', icon: Ticket },
-    { label: 'Miembro desde', value: 'Abril 2024', icon: Shield },
+    { label: 'Eventos Asistidos', value: '0', icon: Calendar },
+    { label: 'Tickets Activos', value: '0', icon: Ticket },
+    { label: 'Miembro desde', value: profile?.createdAt ? new Date(profile.createdAt.seconds * 1000).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }) : 'Reciente', icon: Shield },
   ];
+
+  const handleUpgrade = async () => {
+    if (window.confirm('¿Estás seguro que querés solicitar el perfil de Organizador?')) {
+      await updateRole('organizer');
+      alert('¡Ahora sos Organizador! Ya podés crear tus eventos.');
+    }
+  };
 
   return (
     <div className="pt-32 pb-20 px-6 max-w-4xl mx-auto">
@@ -39,7 +55,7 @@ export default function Profile() {
             </div>
             <h2 className="text-xl font-heading font-bold mb-1">{user.displayName}</h2>
             <Badge variant="outline" className="orange-text-gradient border-primary/20 font-bold uppercase tracking-widest text-[10px]">
-              {profile?.role === 'admin' ? 'Administrador' : profile?.role === 'organizer' ? 'Organizador' : 'Comprador'}
+              {getRoleBadge(profile?.role)}
             </Badge>
             
             <div className="mt-8 space-y-2">
@@ -51,6 +67,16 @@ export default function Profile() {
                 <Settings className="w-4 h-4 mr-3" />
                 Ajustes
               </Button>
+              {profile?.role === 'buyer' && (
+                <Button 
+                  variant="outline" 
+                  onClick={handleUpgrade}
+                  className="w-full justify-start font-bold border-primary/20 text-primary hover:bg-primary/10"
+                >
+                  <Shield className="w-4 h-4 mr-3" />
+                  Ser Organizador
+                </Button>
+              )}
               <Button 
                 variant="ghost" 
                 onClick={logout}

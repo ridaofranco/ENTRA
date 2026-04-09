@@ -6,6 +6,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Navbar } from '@/src/components/layout/Navbar';
 import { Footer } from '@/src/components/layout/Footer';
+import { ProtectedRoute } from '@/src/components/auth/ProtectedRoute';
 import Landing from '@/src/pages/Landing';
 import Catalog from '@/src/pages/Catalog';
 import EventDetail from '@/src/pages/EventDetail';
@@ -28,12 +29,47 @@ export default function App() {
             <Route path="/eventos" element={<Catalog />} />
             <Route path="/evento/:id" element={<EventDetail />} />
             <Route path="/checkout" element={<Checkout />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/control-acceso" element={<AccessControl />} />
             <Route path="/auth/login" element={<Auth />} />
-            <Route path="/crear-evento" element={<CreateEvent />} />
             <Route path="/contacto" element={<Contact />} />
-            <Route path="/perfil" element={<Profile />} />
+            
+            {/* Protected Routes */}
+            <Route path="/perfil" element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/dashboard" element={
+              <ProtectedRoute allowedRoles={['organizer', 'admin', 'superadmin']}>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/crear-evento" element={
+              <ProtectedRoute allowedRoles={['organizer', 'admin', 'superadmin']}>
+                <CreateEvent />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/control-acceso" element={
+              <ProtectedRoute allowedRoles={['organizer', 'admin', 'superadmin']}>
+                <AccessControl />
+              </ProtectedRoute>
+            } />
+
+            {/* Admin Routes */}
+            <Route path="/admin/dashboard" element={
+              <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
+                <div className="pt-32 px-6 text-center">Admin Dashboard Placeholder</div>
+              </ProtectedRoute>
+            } />
+
+            {/* SuperAdmin Routes */}
+            <Route path="/admin/config" element={
+              <ProtectedRoute allowedRoles={['superadmin']}>
+                <div className="pt-32 px-6 text-center">Platform Config Placeholder</div>
+              </ProtectedRoute>
+            } />
           </Routes>
         </main>
         <Footer />
