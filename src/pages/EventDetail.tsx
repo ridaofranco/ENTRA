@@ -123,11 +123,11 @@ export default function EventDetail() {
   return (
     <div className="pb-20">
       {/* Banner */}
-      <div className="relative h-[60vh] overflow-hidden bg-white/5">
+      <div className="relative h-[60vh] overflow-hidden">
         <img
-          src={event.image || `https://picsum.photos/seed/${event.id}/1920/1080`}
+          src={event.image}
           alt={event.title}
-          className={`w-full h-full object-cover ${!event.image ? 'opacity-50' : ''}`}
+          className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#09090B] via-[#09090B]/40 to-transparent" />
