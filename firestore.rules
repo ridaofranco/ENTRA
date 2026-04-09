@@ -46,17 +46,18 @@ service cloud.firestore {
 
     function isSuperAdmin() {
       return isAuthenticated() && 
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' ||
-         (request.auth.token.email == "ridaofrancorg@gmail.com" && request.auth.token.email_verified == true));
+        ((request.auth.token.email == "ridaofrancorg@gmail.com" && request.auth.token.email_verified == true) ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'));
     }
 
     function isAdmin() {
       return isAuthenticated() && 
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin'] || isSuperAdmin());
+        (isSuperAdmin() || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin']);
     }
 
     function isOrganizer() {
-      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['organizer', 'admin', 'superadmin'];
+      return isAuthenticated() && 
+        (isAdmin() || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['organizer', 'admin', 'superadmin']);
     }
 
     function isValidEmail(email) {
@@ -111,7 +112,7 @@ service cloud.firestore {
 
     match /events/{eventId} {
       allow read: if true; // Public catalog
-      allow create: if isOrganizer();
+      allow create: if isOrganizer() && isValidEvent(request.resource.data);
       allow update: if (isOwner(resource.data.organizerId) || isAdmin()) && isValidEvent(request.resource.data);
       allow delete: if isSuperAdmin();
 

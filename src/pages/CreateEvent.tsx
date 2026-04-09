@@ -84,7 +84,7 @@ export default function CreateEvent() {
         date: Timestamp.fromDate(eventDate),
         tickets,
         organizerId: user.uid,
-        status: 'active',
+        status: 'published',
         createdAt: Timestamp.now()
       };
       
