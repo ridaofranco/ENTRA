@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Ticket, Menu, User, Search, LogOut } from 'lucide-react';
+import { Menu, User, Search, LogOut } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/src/context/AuthContext';
@@ -10,7 +10,6 @@ export function Navbar() {
   const { user, profile, login, logout } = useAuth();
   const isOrganizer = profile?.role === 'organizer' || profile?.role === 'admin' || profile?.role === 'superadmin';
   const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin';
-  const isSuperAdmin = profile?.role === 'superadmin';
 
   useEffect(() => {
     const handleScroll = () => {
@@ -36,18 +35,19 @@ export function Navbar() {
 
       <div className="hidden md:flex items-center gap-6">
         <Link to="/eventos" className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-[0.2em]">Eventos</Link>
-        <Link to="/crear-evento" className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-[0.2em]">Vender</Link>
-        
-        {isOrganizer && (
+
+        {isOrganizer ? (
           <Link to="/dashboard" className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-[0.2em]">Dashboard</Link>
-        )}
-        
-        {isAdmin && (
-          <Link to="/admin/dashboard" className="text-[10px] font-bold text-primary hover:text-primary/80 transition-colors uppercase tracking-[0.2em]">Admin</Link>
+        ) : (
+          <Link to="/contacto" className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-[0.2em]">Vender</Link>
         )}
 
-        {isSuperAdmin && (
-          <Link to="/admin/config" className="text-[10px] font-bold text-red-500 hover:text-red-400 transition-colors uppercase tracking-[0.2em]">Config</Link>
+        {isOrganizer && (
+          <Link to="/crear-evento" className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-[0.2em]">Crear Evento</Link>
+        )}
+
+        {isAdmin && (
+          <Link to="/admin/dashboard" className="text-[10px] font-bold text-primary hover:text-primary/80 transition-colors uppercase tracking-[0.2em]">Admin</Link>
         )}
 
         <Link to="/contacto" className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-[0.2em]">Contacto</Link>
@@ -57,12 +57,12 @@ export function Navbar() {
         <Button variant="ghost" size="icon" className="hidden sm:flex text-muted-foreground hover:text-primary">
           <Search className="w-5 h-5" />
         </Button>
-        
+
         {user ? (
           <div className="flex items-center gap-4">
             <Link to="/perfil" className="flex items-center gap-2 hover:text-primary transition-colors">
               {user.photoURL ? (
-                <img src={user.photoURL} alt="Avatar" className="w-8 h-8 rounded-full border border-primary/20" referrerPolicy="no-referrer" />
+                <img src={user.photoURL || null} alt="Avatar" className="w-8 h-8 rounded-full border border-primary/20" referrerPolicy="no-referrer" />
               ) : (
                 <div className="w-8 h-8 rounded-full border border-primary/20 flex items-center justify-center bg-white/5">
                   <User className="w-4 h-4 text-muted-foreground" />
@@ -92,3 +92,4 @@ export function Navbar() {
     </nav>
   );
 }
+

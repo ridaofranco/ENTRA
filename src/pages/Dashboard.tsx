@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Plus, DollarSign, Ticket, Calendar, Users, TrendingUp,
-  MapPin, BarChart3, Loader2, Eye, ChevronRight
+  MapPin, BarChart3, Loader2, Eye, Settings, ChevronRight
 } from 'lucide-react';
 import { collection, query, where, getDocs, doc, getDoc, orderBy } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -41,6 +41,7 @@ export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
   const [events, setEvents] = useState<EventData[]>([]);
   const [recentOrders, setRecentOrders] = useState<OrderData[]>([]);
+  const [allOrders, setAllOrders] = useState<OrderData[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'eventos' | 'ventas'>('eventos');
 
@@ -65,7 +66,6 @@ export default function Dashboard() {
     if (!user) return;
     setLoading(true);
     try {
-      // Load all events (for organizer: their events; for admin: all events)
       let eventsQuery;
       const isSuperAdmin = user.email === 'ridaofrancorg@gmail.com';
 
@@ -79,10 +79,9 @@ export default function Dashboard() {
       const eventsList: EventData[] = eventsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as EventData));
       setEvents(eventsList);
 
-      // Load recent orders for these events
       const eventIds = eventsList.map(e => e.id);
       if (eventIds.length > 0) {
-        // Firestore 'in' queries support max 30 items
+        // Firestore 'in' supports max 30 values
         const batchIds = eventIds.slice(0, 30);
         const ordersQuery = query(
           collection(db, 'orders'),
@@ -91,13 +90,13 @@ export default function Dashboard() {
         const ordersSnap = await getDocs(ordersQuery);
         const ordersList: OrderData[] = ordersSnap.docs.map(d => ({ id: d.id, ...d.data() } as OrderData));
 
-        // Sort newest first
         ordersList.sort((a, b) => {
           const aTime = a.createdAt?.seconds || 0;
           const bTime = b.createdAt?.seconds || 0;
           return bTime - aTime;
         });
 
+        setAllOrders(ordersList);
         setRecentOrders(ordersList.slice(0, 20));
       }
     } catch (error) {
@@ -107,14 +106,17 @@ export default function Dashboard() {
     }
   };
 
-  // ==================== COMPUTED STATS ====================
-  const totalRevenue = events.reduce((sum, e) => sum + (e.totalRevenue || 0), 0);
-  const totalTicketsSold = events.reduce((sum, e) => sum + (e.ticketsSold || 0), 0);
+  // ==================== COMPUTED STATS (from real orders) ====================
+  const confirmedOrders = allOrders.filter(o => o.status === 'confirmed');
+  const totalRevenue = confirmedOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+  const totalTicketsSold = confirmedOrders.reduce((sum, o) => {
+    return sum + (o.items || []).reduce((s: number, item: any) => s + (item.quantity || 0), 0);
+  }, 0);
   const activeEvents = events.filter(e => e.status === 'active').length;
   const totalCapacity = events.reduce((sum, e) => {
     const cap = (e.tickets || []).reduce((s: number, t: any) => s + (t.available || 0), 0);
-    return sum + cap + (e.ticketsSold || 0);
-  }, 0);
+    return sum + cap;
+  }, 0) + totalTicketsSold;
 
   const formatDate = (date: any) => {
     try {
@@ -254,8 +256,11 @@ export default function Dashboard() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {events.map((event, index) => {
-                const totalCap = (event.tickets || []).reduce((s: number, t: any) => s + (t.available || 0), 0) + (event.ticketsSold || 0);
-                const soldPercent = totalCap > 0 ? Math.round(((event.ticketsSold || 0) / totalCap) * 100) : 0;
+                const eventOrders = confirmedOrders.filter(o => o.eventId === event.id);
+                const eventTicketsSold = eventOrders.reduce((sum, o) => sum + (o.items || []).reduce((s: number, item: any) => s + (item.quantity || 0), 0), 0);
+                const eventRevenue = eventOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+                const totalCap = (event.tickets || []).reduce((s: number, t: any) => s + (t.available || 0), 0) + eventTicketsSold;
+                const soldPercent = totalCap > 0 ? Math.round((eventTicketsSold / totalCap) * 100) : 0;
 
                 return (
                   <motion.div
@@ -268,7 +273,7 @@ export default function Dashboard() {
                       {/* Event image */}
                       <div className="h-32 overflow-hidden relative">
                         {event.image ? (
-                          <img src={event.image} alt={event.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          <img src={event.image || null} alt={event.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         ) : (
                           <div className="w-full h-full bg-gradient-to-br from-orange-500/20 to-orange-600/20 flex items-center justify-center">
                             <Calendar className="w-10 h-10 text-orange-500/50" />
@@ -299,7 +304,7 @@ export default function Dashboard() {
                         {/* Progress bar */}
                         <div>
                           <div className="flex justify-between text-xs mb-1.5">
-                            <span className="text-zinc-400">Vendidos: {event.ticketsSold || 0}/{totalCap}</span>
+                            <span className="text-zinc-400">Vendidos: {eventTicketsSold}/{totalCap}</span>
                             <span className="font-bold text-orange-500">{soldPercent}%</span>
                           </div>
                           <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
@@ -310,19 +315,21 @@ export default function Dashboard() {
                           </div>
                         </div>
 
-                        {/* Revenue */}
+                        {/* Revenue + Action buttons */}
                         <div className="flex items-center justify-between pt-2 border-t border-white/5">
                           <div>
                             <p className="text-xs text-zinc-500">Ingresos</p>
                             <p className="font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">
-                              ${(event.totalRevenue || 0).toLocaleString('es-AR')}
+                              ${eventRevenue.toLocaleString('es-AR')}
                             </p>
                           </div>
-                          <Link to={`/evento/${event.id}`}>
-                            <button className="flex items-center gap-1 text-xs text-orange-500 font-bold hover:underline">
-                              <Eye className="w-3.5 h-3.5" /> Ver
-                            </button>
-                          </Link>
+                          <div className="flex items-center gap-2">
+                            <Link to={`/dashboard/evento/${event.id}`}>
+                              <button className="flex items-center gap-1 text-xs text-orange-500 font-bold hover:underline">
+                                <Settings className="w-3.5 h-3.5" /> Gestionar
+                              </button>
+                            </Link>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -354,7 +361,6 @@ export default function Dashboard() {
                 transition={{ delay: index * 0.03 }}
               >
                 <div className="bg-white/5 rounded-2xl border border-white/10 p-4 flex items-center gap-4">
-                  {/* Avatar */}
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500/20 to-orange-600/20 flex items-center justify-center text-orange-500 font-bold text-sm flex-shrink-0">
                     {order.buyerName?.charAt(0)?.toUpperCase() || '?'}
                   </div>
@@ -383,3 +389,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

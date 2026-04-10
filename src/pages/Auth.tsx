@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { MessageCircle, Mail } from 'lucide-react';
 
 export default function Auth() {
   const { user, login } = useAuth();
@@ -67,6 +68,30 @@ export default function Auth() {
               <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/5"></div></div>
             </div>
 
+            {/* Organizer contact notice */}
+            <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+              <p className="text-xs font-bold text-center mb-3 text-zinc-300">¿Querés vender eventos con ENTRÁ?</p>
+              <div className="flex gap-2">
+                <a
+                  href="https://wa.me/5491112345678?text=Hola!%20Quiero%20vender%20mis%20eventos%20con%20ENTRÁ"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2.5 rounded-xl transition-all"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  WhatsApp
+                </a>
+                <a
+                  href="mailto:organizadores@entra.com.ar"
+                  className="flex-1 flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-xs font-bold py-2.5 rounded-xl hover:border-orange-500/30 transition-all"
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  Email
+                </a>
+              </div>
+              <p className="text-[10px] text-zinc-500 text-center mt-2">Te creamos tu cuenta de organizador personalizada</p>
+            </div>
+
             <p className="text-center text-xs text-muted-foreground">
               Al iniciar sesión, aceptás nuestros{' '}
               <a href="#" className="text-primary hover:underline">Términos de Servicio</a> y{' '}
@@ -83,3 +108,4 @@ export default function Auth() {
     </div>
   );
 }
+

@@ -19,8 +19,9 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     );
   }
 
+  // Not logged in → redirect to login page
   if (!user) {
-    return <Navigate to="/" state={{ from: location }} replace />;
+    return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 
   if (allowedRoles && profile) {
@@ -36,3 +37,4 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
 
   return <>{children}</>;
 }
+

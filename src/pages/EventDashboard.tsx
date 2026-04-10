@@ -1,0 +1,617 @@
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import {
+  ArrowLeft, BarChart3, Calendar, Clock, DollarSign, Download,
+  Edit, Gift, Loader2, MapPin, Minus, Plus, Save, Send, Ticket,
+  Trash, Users, Eye, Copy, Check
+} from 'lucide-react';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { db, auth } from '@/src/lib/firebase';
+
+interface TicketType {
+  type: string;
+  price: number;
+  available: number;
+  description?: string;
+}
+
+interface EventData {
+  id: string;
+  title: string;
+  date: any;
+  venue: string;
+  location: string;
+  image: string;
+  category: string;
+  status: string;
+  tickets: TicketType[];
+  ticketsSold: number;
+  totalRevenue: number;
+  organizerEmail: string;
+}
+
+interface OrderData {
+  id: string;
+  buyerName: string;
+  buyerEmail: string;
+  eventTitle: string;
+  eventId: string;
+  items: Array<{ type: string; quantity: number; price: number }>;
+  total: number;
+  status: string;
+  createdAt: any;
+}
+
+interface CourtesyData {
+  name: string;
+  email: string;
+  ticketType: string;
+  quantity: number;
+  reason: string;
+  date: string;
+  status: string;
+}
+
+export default function EventDashboard() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [user, setUser] = useState<any>(null);
+  const [event, setEvent] = useState<EventData | null>(null);
+  const [orders, setOrders] = useState<OrderData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'resumen' | 'tickets' | 'cortesias' | 'ventas' | 'asistentes'>('resumen');
+
+  // Courtesy form state
+  const [courtesyName, setCourtesyName] = useState('');
+  const [courtesyEmail, setCourtesyEmail] = useState('');
+  const [courtesyDni, setCourtesyDni] = useState('');
+  const [courtesyType, setCourtesyType] = useState('');
+  const [courtesyQty, setCourtesyQty] = useState(1);
+  const [courtesyReason, setCourtesyReason] = useState('');
+  const [courtesySendEmail, setCourtesySendEmail] = useState(true);
+
+  // Mock courtesy data (would come from Firestore)
+  const [courtesies] = useState<CourtesyData[]>([
+    { name: 'Juan Pérez', email: 'juan@prensa.com', ticketType: 'VIP', quantity: 2, reason: 'Prensa', date: '08/04/2026', status: 'Enviado' },
+    { name: 'Laura Gómez', email: 'laura@sponsor.com', ticketType: 'Premium', quantity: 2, reason: 'Sponsor', date: '07/04/2026', status: 'Enviado' },
+    { name: 'Diego Fernández', email: 'diego@gmail.com', ticketType: 'General', quantity: 4, reason: 'Staff', date: '06/04/2026', status: 'Enviado' },
+  ]);
+
+  const totalCourtesies = courtesies.reduce((sum, c) => sum + c.quantity, 0);
+
+  // Auth
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) setUser(firebaseUser);
+      else navigate('/auth/login');
+    });
+    return () => unsubscribe();
+  }, [navigate]);
+
+  // Load event data
+  useEffect(() => {
+    if (user && id) loadEventData();
+  }, [user, id]);
+
+  const loadEventData = async () => {
+    if (!id) return;
+    setLoading(true);
+    try {
+      const eventDoc = await getDoc(doc(db, 'events', id));
+      if (eventDoc.exists()) {
+        setEvent({ id: eventDoc.id, ...eventDoc.data() } as EventData);
+      }
+
+      const ordersQuery = query(collection(db, 'orders'), where('eventId', '==', id));
+      const ordersSnap = await getDocs(ordersQuery);
+      const ordersList: OrderData[] = ordersSnap.docs.map(d => ({ id: d.id, ...d.data() } as OrderData));
+      ordersList.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      setOrders(ordersList);
+    } catch (error) {
+      console.error('Error loading event:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (date: any) => {
+    try {
+      if (date?.toDate) return date.toDate().toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
+      if (date?.seconds) return new Date(date.seconds * 1000).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch {}
+    return '';
+  };
+
+  const formatShortDate = (date: any) => {
+    try {
+      if (date?.toDate) return date.toDate().toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+      if (date?.seconds) return new Date(date.seconds * 1000).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+    } catch {}
+    return '';
+  };
+
+  if (loading) {
+    return (
+      <div className="pt-32 pb-20 px-6 max-w-6xl mx-auto flex flex-col items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-10 h-10 text-orange-500 animate-spin mb-4" />
+        <p className="text-zinc-400">Cargando evento...</p>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="pt-32 pb-20 px-6 max-w-6xl mx-auto text-center">
+        <p className="text-zinc-400">Evento no encontrado</p>
+        <Link to="/dashboard" className="text-orange-500 hover:underline mt-4 inline-block">Volver al dashboard</Link>
+      </div>
+    );
+  }
+
+  const totalCap = (event.tickets || []).reduce((s, t) => s + (t.available || 0), 0) + (event.ticketsSold || 0);
+  const soldPercent = totalCap > 0 ? Math.round(((event.ticketsSold || 0) / totalCap) * 100) : 0;
+
+  const tabs = [
+    { key: 'resumen', label: 'Resumen', icon: BarChart3 },
+    { key: 'tickets', label: 'Tickets y Capacidad', icon: Ticket },
+    { key: 'cortesias', label: 'Cortesías', icon: Gift },
+    { key: 'ventas', label: 'Ventas', icon: DollarSign },
+    { key: 'asistentes', label: 'Asistentes', icon: Users },
+  ] as const;
+
+  return (
+    <div className="pt-32 pb-20 px-6 max-w-6xl mx-auto">
+      {/* Back link + Header */}
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
+        <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-orange-500 font-bold hover:underline mb-6">
+          <ArrowLeft className="w-4 h-4" /> Volver al dashboard
+        </Link>
+
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-2xl md:text-3xl font-black tracking-tight">{event.title}</h1>
+              <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full ${
+                event.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-zinc-500/20 text-zinc-400'
+              }`}>
+                {event.status === 'active' ? 'Publicado' : event.status}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-4 text-zinc-400 text-sm">
+              <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {formatDate(event.date)}</span>
+              {event.venue && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {event.venue}</span>}
+            </div>
+          </div>
+          <Link to={`/evento/${event.id}`}>
+            <button className="flex items-center gap-2 bg-white/5 border border-white/10 text-sm font-bold px-4 py-2.5 rounded-xl hover:border-orange-500/30 transition-all">
+              <Eye className="w-4 h-4" /> Ver página pública
+            </button>
+          </Link>
+        </div>
+      </motion.div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {[
+          { label: 'Tickets Vendidos', value: `${event.ticketsSold || 0} / ${totalCap}`, sub: `${soldPercent}% vendido`, icon: Ticket, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+          { label: 'Ingresos', value: `$${(event.totalRevenue || 0).toLocaleString('es-AR')}`, sub: `${orders.length} transacciones`, icon: DollarSign, color: 'text-green-500', bg: 'bg-green-500/10' },
+          { label: 'Cortesías', value: totalCourtesies.toString(), sub: `${courtesies.length} invitados`, icon: Gift, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+          { label: 'Check-ins', value: '0', sub: 'Evento aún no comenzó', icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+        ].map((stat, i) => (
+          <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
+            className="bg-white/5 rounded-3xl border border-white/10 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">{stat.label}</span>
+              <div className={`${stat.bg} p-2 rounded-xl`}><stat.icon className={`w-4 h-4 ${stat.color}`} /></div>
+            </div>
+            <p className="text-xl font-black">{stat.value}</p>
+            <p className="text-xs text-zinc-500 mt-1">{stat.sub}</p>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+        {tabs.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs whitespace-nowrap transition-all ${
+              activeTab === tab.key
+                ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                : 'bg-white/5 text-zinc-400 hover:bg-white/10 border border-white/10'
+            }`}
+          >
+            <tab.icon className="w-3.5 h-3.5" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ==================== RESUMEN ==================== */}
+      {activeTab === 'resumen' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid gap-6 md:grid-cols-2">
+          {/* Ticket breakdown */}
+          <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
+            <h3 className="font-bold mb-4">Desglose por tipo de ticket</h3>
+            <div className="space-y-4">
+              {(event.tickets || []).map((ticket, i) => {
+                const ticketTotal = (ticket.available || 0) + Math.round((event.ticketsSold || 0) * (ticket.available / totalCap || 0));
+                const ticketSold = ticketTotal - (ticket.available || 0);
+                const pct = ticketTotal > 0 ? Math.round((ticketSold / ticketTotal) * 100) : 0;
+                return (
+                  <div key={i} className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="font-bold text-sm">{ticket.type}</span>
+                        <span className="text-xs text-zinc-500 ml-2">(${ticket.price.toLocaleString('es-AR')} c/u)</span>
+                      </div>
+                      <span className="text-xs font-bold">{ticketSold}/{ticketTotal}</span>
+                    </div>
+                    <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-orange-500 to-orange-600 rounded-full" style={{ width: `${pct}%` }} />
+                    </div>
+                    <p className="text-[10px] text-zinc-500">{pct}% vendido</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Recent activity */}
+          <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
+            <h3 className="font-bold mb-4">Actividad reciente</h3>
+            <div className="space-y-3">
+              {orders.slice(0, 6).map((order, i) => (
+                <div key={i} className="flex justify-between items-start py-2 border-b border-white/5 last:border-0">
+                  <div>
+                    <p className="text-sm font-bold">{order.buyerName}</p>
+                    <p className="text-xs text-zinc-500">
+                      {order.items?.map(it => `${it.type} x${it.quantity}`).join(', ')}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold">${order.total?.toLocaleString('es-AR')}</p>
+                    <p className="text-[10px] text-zinc-500">{formatShortDate(order.createdAt)}</p>
+                  </div>
+                </div>
+              ))}
+              {orders.length === 0 && <p className="text-sm text-zinc-500 text-center py-4">Sin actividad todavía</p>}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ==================== TICKETS Y CAPACIDAD ==================== */}
+      {activeTab === 'tickets' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+          <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="font-bold text-lg">Gestión de Tickets y Capacidad</h3>
+                <p className="text-xs text-zinc-500 mt-1">Editá precios, cantidades y agregá nuevos sectores en cualquier momento</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {(event.tickets || []).map((ticket, i) => {
+                const ticketTotal = (ticket.available || 0) + Math.round((event.ticketsSold || 0) * ((ticket.available || 0) / (totalCap || 1)));
+                const ticketSold = ticketTotal - (ticket.available || 0);
+                return (
+                  <div key={i} className="bg-white/5 rounded-2xl border border-white/10 p-5 space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h4 className="font-bold">{ticket.type}</h4>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full ${
+                          ticket.available <= 0 ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
+                        }`}>
+                          {ticket.available <= 0 ? 'Agotado' : 'En venta'}
+                        </span>
+                        <button className="text-red-400 hover:text-red-300 p-1"><Trash className="w-4 h-4" /></button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-xs text-zinc-500 block mb-1">Precio ($)</label>
+                        <input type="number" defaultValue={ticket.price} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-zinc-500 block mb-1">Capacidad total</label>
+                        <input type="number" defaultValue={ticketTotal} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" />
+                        <p className="text-[10px] text-zinc-500 mt-1">{ticketSold} vendidos</p>
+                      </div>
+                      <div>
+                        <label className="text-xs text-zinc-500 block mb-1">Disponibles</label>
+                        <div className="flex items-center gap-2 h-10">
+                          <span className="text-2xl font-black">{ticket.available}</span>
+                          <span className="text-xs text-zinc-500">restantes</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-orange-500 to-orange-600 rounded-full" style={{ width: `${ticketTotal > 0 ? (ticketSold / ticketTotal) * 100 : 0}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Add new ticket type */}
+            <div className="mt-6 border-2 border-dashed border-white/10 rounded-2xl p-6">
+              <h4 className="font-bold mb-4 flex items-center gap-2"><Plus className="w-5 h-5" /> Agregar nuevo sector / tipo de ticket</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs text-zinc-500 block mb-1">Nombre del sector</label>
+                  <input type="text" placeholder="Ej: Campo VIP, Platea Alta..." className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" />
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 block mb-1">Precio ($)</label>
+                  <input type="number" placeholder="Ej: 5000" className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" />
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 block mb-1">Cantidad disponible</label>
+                  <input type="number" placeholder="Ej: 100" className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" />
+                </div>
+              </div>
+              <button className="mt-4 flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm">
+                <Plus className="w-4 h-4" /> Agregar sector
+              </button>
+            </div>
+
+            {/* Save button */}
+            <div className="flex justify-between items-center mt-6 pt-4 border-t border-white/10">
+              <p className="text-xs text-zinc-500">Capacidad total: <strong className="text-white">{totalCap} tickets</strong> ({event.ticketsSold || 0} vendidos + {totalCourtesies} cortesías)</p>
+              <button className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm shadow-lg shadow-orange-500/20">
+                <Save className="w-4 h-4" /> Guardar cambios
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ==================== CORTESÍAS ==================== */}
+      {activeTab === 'cortesias' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-3">
+            {/* Courtesy form */}
+            <div className="md:col-span-2 bg-white/5 rounded-3xl border border-white/10 p-6">
+              <h3 className="font-bold text-lg mb-1">Generar Tickets de Cortesía</h3>
+              <p className="text-xs text-zinc-500 mb-6">Emití invitaciones gratuitas. No descuentan del stock de venta pero sí cuentan para la capacidad.</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-zinc-500 block mb-1">Nombre del invitado</label>
+                  <input type="text" placeholder="Nombre completo" value={courtesyName} onChange={e => setCourtesyName(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" />
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 block mb-1">Email del invitado</label>
+                  <input type="email" placeholder="email@ejemplo.com" value={courtesyEmail} onChange={e => setCourtesyEmail(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" />
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 block mb-1">DNI / Documento</label>
+                  <input type="text" placeholder="Ej: 35.123.456" value={courtesyDni} onChange={e => setCourtesyDni(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" />
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 block mb-1">Tipo de ticket</label>
+                  <select value={courtesyType} onChange={e => setCourtesyType(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50 appearance-none">
+                    <option value="">Seleccioná el tipo</option>
+                    {(event.tickets || []).map((t, i) => <option key={i} value={t.type}>{t.type}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 block mb-1">Cantidad</label>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setCourtesyQty(Math.max(1, courtesyQty - 1))} className="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center hover:border-orange-500/30">
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <span className="text-lg font-bold w-8 text-center">{courtesyQty}</span>
+                    <button onClick={() => setCourtesyQty(courtesyQty + 1)} className="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center hover:border-orange-500/30">
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 block mb-1">Motivo (opcional)</label>
+                  <input type="text" placeholder="Ej: Prensa, Sponsor, Artista..." value={courtesyReason} onChange={e => setCourtesyReason(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 mt-4 text-sm text-zinc-400 cursor-pointer">
+                <input type="checkbox" checked={courtesySendEmail} onChange={e => setCourtesySendEmail(e.target.checked)} className="rounded" />
+                Enviar ticket por email al invitado
+              </label>
+
+              <div className="flex gap-3 mt-6">
+                <button className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm shadow-lg shadow-orange-500/20">
+                  <Gift className="w-4 h-4" /> Generar cortesía
+                </button>
+                <button className="flex items-center gap-2 bg-white/5 border border-white/10 font-bold px-5 py-2.5 rounded-xl text-sm hover:border-green-500/30 text-green-400">
+                  <Send className="w-4 h-4" /> Enviar por WhatsApp
+                </button>
+              </div>
+            </div>
+
+            {/* Courtesy summary */}
+            <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
+              <h3 className="font-bold mb-4">Resumen de cortesías</h3>
+              <div className="text-center py-4">
+                <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">{totalCourtesies}</div>
+                <p className="text-xs text-zinc-500">cortesías emitidas</p>
+              </div>
+              <div className="border-t border-white/10 pt-4 space-y-2">
+                {(event.tickets || []).map((t, i) => {
+                  const count = courtesies.filter(c => c.ticketType === t.type).reduce((s, c) => s + c.quantity, 0);
+                  return (
+                    <div key={i} className="flex justify-between text-sm">
+                      <span className="text-zinc-400">{t.type}</span>
+                      <span className="font-bold">{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Courtesy table */}
+          <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
+            <h3 className="font-bold mb-4">Cortesías emitidas</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-left">
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Invitado</th>
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Email</th>
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Tipo</th>
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Cant.</th>
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Motivo</th>
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Fecha</th>
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Estado</th>
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {courtesies.map((c, i) => (
+                    <tr key={i} className="border-b border-white/5">
+                      <td className="p-2 font-bold">{c.name}</td>
+                      <td className="p-2 text-zinc-400">{c.email}</td>
+                      <td className="p-2">{c.ticketType}</td>
+                      <td className="p-2">{c.quantity}</td>
+                      <td className="p-2"><span className="bg-white/5 px-2 py-0.5 rounded text-xs">{c.reason}</span></td>
+                      <td className="p-2 text-zinc-400">{c.date}</td>
+                      <td className="p-2">
+                        <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
+                          c.status === 'Enviado' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                        }`}>{c.status}</span>
+                      </td>
+                      <td className="p-2">
+                        <div className="flex gap-1">
+                          <button className="p-1.5 hover:bg-white/5 rounded-lg"><Send className="w-3.5 h-3.5 text-zinc-400" /></button>
+                          <button className="p-1.5 hover:bg-white/5 rounded-lg"><Download className="w-3.5 h-3.5 text-zinc-400" /></button>
+                          <button className="p-1.5 hover:bg-white/5 rounded-lg"><Trash className="w-3.5 h-3.5 text-red-400" /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ==================== VENTAS ==================== */}
+      {activeTab === 'ventas' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-lg">Historial de ventas</h3>
+              <button className="flex items-center gap-2 bg-white/5 border border-white/10 font-bold px-4 py-2 rounded-xl text-xs hover:border-orange-500/30">
+                <Download className="w-3.5 h-3.5" /> Exportar CSV
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-left">
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">ID</th>
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Comprador</th>
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Detalle</th>
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Total</th>
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Fecha</th>
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map((order, i) => (
+                    <tr key={i} className="border-b border-white/5">
+                      <td className="p-2 font-mono text-xs text-zinc-400">{order.id.slice(0, 8)}</td>
+                      <td className="p-2 font-bold">{order.buyerName}</td>
+                      <td className="p-2 text-zinc-400">{order.items?.map(it => `${it.type} x${it.quantity}`).join(', ')}</td>
+                      <td className="p-2 font-bold">${order.total?.toLocaleString('es-AR')}</td>
+                      <td className="p-2 text-zinc-400">{formatShortDate(order.createdAt)}</td>
+                      <td className="p-2">
+                        <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
+                          order.status === 'confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                        }`}>{order.status === 'confirmed' ? 'Completado' : order.status}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {orders.length === 0 && <p className="text-center text-zinc-500 py-8">Sin ventas todavía</p>}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ==================== ASISTENTES ==================== */}
+      {activeTab === 'asistentes' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h3 className="font-bold text-lg">Lista de asistentes</h3>
+                <p className="text-xs text-zinc-500">Todos los tickets emitidos (vendidos + cortesías)</p>
+              </div>
+              <button className="flex items-center gap-2 bg-white/5 border border-white/10 font-bold px-4 py-2 rounded-xl text-xs hover:border-orange-500/30">
+                <Download className="w-3.5 h-3.5" /> Exportar lista
+              </button>
+            </div>
+
+            <input type="text" placeholder="Buscar por nombre, email o ID de ticket..." className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm mb-4 focus:outline-none focus:border-orange-500/50" />
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-left">
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Asistente</th>
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Email</th>
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Tipo</th>
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Origen</th>
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Check-in</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.flatMap(order =>
+                    (order.items || []).flatMap(item =>
+                      Array.from({ length: item.quantity }, (_, idx) => (
+                        <tr key={`${order.id}-${item.type}-${idx}`} className="border-b border-white/5">
+                          <td className="p-2 font-bold">{order.buyerName}</td>
+                          <td className="p-2 text-zinc-400">{order.buyerEmail}</td>
+                          <td className="p-2">{item.type}</td>
+                          <td className="p-2"><span className="bg-blue-500/10 text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded-full">Compra</span></td>
+                          <td className="p-2"><span className="bg-yellow-500/10 text-yellow-400 text-[10px] font-bold px-2 py-0.5 rounded-full">Pendiente</span></td>
+                        </tr>
+                      ))
+                    )
+                  )}
+                  {courtesies.flatMap((c, ci) =>
+                    Array.from({ length: c.quantity }, (_, idx) => (
+                      <tr key={`c-${ci}-${idx}`} className="border-b border-white/5">
+                        <td className="p-2 font-bold">{c.name}</td>
+                        <td className="p-2 text-zinc-400">{c.email}</td>
+                        <td className="p-2">{c.ticketType}</td>
+                        <td className="p-2"><span className="bg-purple-500/10 text-purple-400 text-[10px] font-bold px-2 py-0.5 rounded-full">Cortesía</span></td>
+                        <td className="p-2"><span className="bg-yellow-500/10 text-yellow-400 text-[10px] font-bold px-2 py-0.5 rounded-full">Pendiente</span></td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+

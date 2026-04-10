@@ -363,7 +363,7 @@ export default function Profile() {
                       {/* Event image */}
                       <div className="w-14 h-14 rounded-2xl overflow-hidden flex-shrink-0 bg-white/5">
                         {ev?.image ? (
-                          <img src={ev.image} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          <img src={ev.image || null} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center"><Ticket className="w-6 h-6 text-zinc-600" /></div>
                         )}
@@ -493,7 +493,7 @@ export default function Profile() {
                       {/* Event image */}
                       <div className="w-14 h-14 rounded-2xl overflow-hidden flex-shrink-0 bg-white/5">
                         {ev?.image ? (
-                          <img src={ev.image} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          <img src={ev.image || null} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center"><Ticket className="w-6 h-6 text-zinc-600" /></div>
                         )}

@@ -7,59 +7,54 @@ import { collection, getDocs, doc, updateDoc, deleteDoc, query, where } from 'fi
 import { Card } from '@/src/components/ui/card';
 import { Button } from '@/src/components/ui/button';
 import { Badge } from '@/src/components/ui/badge';
+import { handleFirestoreError, OperationType } from '@/src/lib/firebase';
 
-interface User {
+interface UserData {
   id: string;
   email: string;
-  name: string;
-  role: 'buyer' | 'organizer' | 'admin';
+  displayName: string;
+  role: 'buyer' | 'organizer' | 'admin' | 'superadmin';
   createdAt: any;
+  suspended?: boolean;
 }
 
-interface Event {
+interface EventData {
   id: string;
   title: string;
-  organizer: string;
-  date: string;
-  status: 'active' | 'paused' | 'completed';
-  ticketsSold: number;
-}
-
-interface Stats {
-  totalUsers: number;
-  totalEvents: number;
-  totalTicketsSold: number;
-  revenue: number;
+  organizerEmail: string;
+  date: any;
+  status: string;
+  tickets: Array<{ type: string; price: number; available: number }>;
 }
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
-  const [stats, setStats] = useState<Stats>({
-    totalUsers: 0,
-    totalEvents: 0,
-    totalTicketsSold: 0,
-    revenue: 0,
-  });
-  const [users, setUsers] = useState<User[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
+  const { user, profile } = useAuth();
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [events, setEvents] = useState<EventData[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [roleDropdown, setRoleDropdown] = useState<string | null>(null);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ type: 'user' | 'event', id: string } | null>(null);
 
-  // Check authorization
-  if (!user || (user.role !== 'admin' && user.role !== 'superadmin')) {
+  // Check authorization using profile.role (NOT user.role — user is FirebaseUser)
+  const isAuthorized = profile?.role === 'admin' || profile?.role === 'superadmin';
+
+  useEffect(() => {
+    if (isAuthorized) {
+      fetchData();
+    }
+  }, [isAuthorized]);
+
+  if (!user || !profile || !isAuthorized) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
         <Card className="glass border-orange-500/20 p-8">
-          <p className="text-red-400 text-center">Unauthorized. Admin access required.</p>
+          <p className="text-red-400 text-center">No autorizado. Se requiere acceso de administrador.</p>
         </Card>
       </div>
     );
   }
-
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   const fetchData = async () => {
     try {
@@ -67,41 +62,24 @@ export default function AdminDashboard() {
 
       // Fetch users
       const usersSnapshot = await getDocs(collection(db, 'users'));
-      const usersData: User[] = [];
-      usersSnapshot.forEach((doc) => {
-        usersData.push({
-          id: doc.id,
-          ...doc.data(),
-        } as User);
-      });
+      const usersData: UserData[] = usersSnapshot.docs.map(d => ({
+        id: d.id,
+        ...d.data(),
+      } as UserData));
       setUsers(usersData);
 
       // Fetch events
       const eventsSnapshot = await getDocs(collection(db, 'events'));
-      const eventsData: Event[] = [];
-      eventsSnapshot.forEach((doc) => {
-        eventsData.push({
-          id: doc.id,
-          ...doc.data(),
-        } as Event);
-      });
+      const eventsData: EventData[] = eventsSnapshot.docs.map(d => ({
+        id: d.id,
+        ...d.data(),
+      } as EventData));
       setEvents(eventsData);
 
-      // Fetch tickets for stats
-      const ticketsSnapshot = await getDocs(collection(db, 'tickets'));
-      let totalTicketsSold = 0;
-      let revenue = 0;
-      ticketsSnapshot.forEach((doc) => {
-        totalTicketsSold += 1;
-        revenue += doc.data().price || 0;
-      });
-
-      setStats({
-        totalUsers: usersData.length,
-        totalEvents: eventsData.length,
-        totalTicketsSold,
-        revenue,
-      });
+      // Fetch orders for real stats
+      const ordersSnapshot = await getDocs(collection(db, 'orders'));
+      const ordersData = ordersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setOrders(ordersData);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -109,10 +87,48 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleRoleChange = async (userId: string, newRole: 'buyer' | 'organizer' | 'admin') => {
+  // Compute stats from real orders
+  const confirmedOrders = orders.filter((o: any) => o.status === 'confirmed');
+  const totalTicketsSold = confirmedOrders.reduce((sum: number, o: any) => {
+    return sum + (o.items || []).reduce((s: number, item: any) => s + (item.quantity || 0), 0);
+  }, 0);
+  const totalRevenue = confirmedOrders.reduce((sum: number, o: any) => sum + (o.total || 0), 0);
+
+  const statCards = [
+    {
+      label: 'Usuarios',
+      value: users.length,
+      icon: Users,
+      color: 'from-blue-500/20 to-blue-600/20',
+      textColor: 'text-blue-400',
+    },
+    {
+      label: 'Eventos',
+      value: events.length,
+      icon: Calendar,
+      color: 'from-purple-500/20 to-purple-600/20',
+      textColor: 'text-purple-400',
+    },
+    {
+      label: 'Tickets Vendidos',
+      value: totalTicketsSold,
+      icon: Ticket,
+      color: 'from-orange-500/20 to-orange-600/20',
+      textColor: 'text-orange-400',
+    },
+    {
+      label: 'Ingresos (ARS)',
+      value: `$${totalRevenue.toLocaleString('es-AR')}`,
+      icon: TrendingUp,
+      color: 'from-green-500/20 to-green-600/20',
+      textColor: 'text-green-400',
+    },
+  ];
+
+  const handleRoleChange = async (userId: string, newRole: 'buyer' | 'organizer' | 'admin' | 'superadmin') => {
     try {
       setUpdatingUserId(userId);
-      await updateDoc(doc(db, 'users', userId), { role: newRole });
+      await updateDoc(doc(db, 'users', userId), { role: newRole, updatedAt: new Date() });
       setUsers((prev) =>
         prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
       );
@@ -136,45 +152,43 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteEvent = async (eventId: string) => {
-    if (!window.confirm('Are you sure you want to delete this event?')) return;
     try {
       await deleteDoc(doc(db, 'events', eventId));
       setEvents((prev) => prev.filter((e) => e.id !== eventId));
+      setConfirmDelete(null);
     } catch (error) {
-      console.error('Error deleting event:', error);
+      handleFirestoreError(error, OperationType.DELETE, `events/${eventId}`);
     }
   };
 
-  const statCards = [
-    {
-      label: 'Total Users',
-      value: stats.totalUsers,
-      icon: Users,
-      color: 'from-blue-500/20 to-blue-600/20',
-      textColor: 'text-blue-400',
-    },
-    {
-      label: 'Total Events',
-      value: stats.totalEvents,
-      icon: Calendar,
-      color: 'from-purple-500/20 to-purple-600/20',
-      textColor: 'text-purple-400',
-    },
-    {
-      label: 'Tickets Sold',
-      value: stats.totalTicketsSold,
-      icon: Ticket,
-      color: 'from-orange-500/20 to-orange-600/20',
-      textColor: 'text-orange-400',
-    },
-    {
-      label: 'Revenue (ARS)',
-      value: `$${stats.revenue.toLocaleString()}`,
-      icon: TrendingUp,
-      color: 'from-green-500/20 to-green-600/20',
-      textColor: 'text-green-400',
-    },
-  ];
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      await deleteDoc(doc(db, 'users', userId));
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+      setConfirmDelete(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `users/${userId}`);
+    }
+  };
+
+  const handleSuspendUser = async (userId: string, suspended: boolean) => {
+    try {
+      await updateDoc(doc(db, 'users', userId), { suspended, updatedAt: new Date() });
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, suspended } : u))
+      );
+    } catch (error) {
+      console.error('Error suspending user:', error);
+    }
+  };
+
+  const formatDate = (date: any) => {
+    try {
+      if (date?.toDate) return date.toDate().toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
+      if (date?.seconds) return new Date(date.seconds * 1000).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch { }
+    return '-';
+  };
 
   if (loading) {
     return (
@@ -184,24 +198,30 @@ export default function AdminDashboard() {
     );
   }
 
+  const roleColor = (role: string) => {
+    switch (role) {
+      case 'superadmin': return 'bg-red-500/30 text-red-300 border-red-500/50';
+      case 'admin': return 'bg-orange-500/30 text-orange-300 border-orange-500/50';
+      case 'organizer': return 'bg-purple-500/30 text-purple-300 border-purple-500/50';
+      default: return 'bg-blue-500/30 text-blue-300 border-blue-500/50';
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6 md:p-8">
+    <div className="pt-28 pb-20 px-6 max-w-7xl mx-auto">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <h1 className="font-heading text-4xl orange-text-gradient mb-2">Admin Dashboard</h1>
-        <p className="text-slate-400">Platform overview and management</p>
+        <h1 className="text-3xl font-black tracking-tight">
+          Panel de <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">Administración</span>
+        </h1>
+        <p className="text-zinc-400 mt-1">Gestión de usuarios, eventos y métricas de la plataforma</p>
       </motion.div>
 
       {/* Stats Grid */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.1 }}
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-      >
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
         {statCards.map((stat, idx) => {
           const Icon = stat.icon;
           return (
@@ -209,93 +229,105 @@ export default function AdminDashboard() {
               key={idx}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + idx * 0.05 }}
+              transition={{ delay: idx * 0.05 }}
+              className="bg-white/5 rounded-3xl border border-white/10 p-5"
             >
-              <Card className={`glass border-orange-500/20 p-6 bg-gradient-to-br ${stat.color}`}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-slate-400 text-sm mb-1">{stat.label}</p>
-                    <p className={`font-heading text-2xl md:text-3xl ${stat.textColor}`}>
-                      {stat.value}
-                    </p>
-                  </div>
-                  <Icon className={`w-8 h-8 ${stat.textColor}`} />
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">{stat.label}</span>
+                <div className={`bg-gradient-to-br ${stat.color} p-2 rounded-xl`}>
+                  <Icon className={`w-4 h-4 ${stat.textColor}`} />
                 </div>
-              </Card>
+              </div>
+              <p className={`text-2xl font-black ${stat.textColor}`}>{stat.value}</p>
             </motion.div>
           );
         })}
-      </motion.div>
+      </div>
 
       {/* Users Table */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
+        transition={{ delay: 0.2 }}
         className="mb-8"
       >
-        <Card className="glass border-orange-500/20 p-6">
-          <h2 className="font-heading text-2xl orange-text-gradient mb-4">Recent Users</h2>
+        <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
+          <h2 className="text-xl font-black mb-4">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">Usuarios</span>
+            <span className="text-zinc-500 text-sm font-normal ml-3">{users.length} total</span>
+          </h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-orange-500/20">
-                  <th className="text-left py-3 px-4 text-slate-400 font-semibold">Name</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-semibold">Email</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-semibold">Role</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-semibold">Joined Date</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-semibold">Action</th>
+                <tr className="border-b border-white/10">
+                  <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Nombre</th>
+                  <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Email</th>
+                  <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Rol</th>
+                  <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Registro</th>
+                  <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {users.slice(0, 10).map((u) => (
+                {users.map((u) => (
                   <tr
                     key={u.id}
-                    className="border-b border-slate-800/50 hover:bg-slate-800/20 transition"
+                    className="border-b border-white/5 hover:bg-white/5 transition"
                   >
-                    <td className="py-3 px-4 text-slate-200">{u.name || 'N/A'}</td>
-                    <td className="py-3 px-4 text-slate-300">{u.email}</td>
+                    <td className="py-3 px-4 text-zinc-200 font-medium">{u.displayName || 'Sin nombre'}</td>
+                    <td className="py-3 px-4 text-zinc-400">{u.email}</td>
                     <td className="py-3 px-4">
-                      <Badge
-                        className={
-                          u.role === 'admin'
-                            ? 'bg-orange-500/30 text-orange-300 border-orange-500/50'
-                            : u.role === 'organizer'
-                              ? 'bg-purple-500/30 text-purple-300 border-purple-500/50'
-                              : 'bg-blue-500/30 text-blue-300 border-blue-500/50'
-                        }
-                      >
+                      <span className={`inline-block text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full border ${roleColor(u.role)}`}>
                         {u.role}
-                      </Badge>
+                      </span>
                     </td>
-                    <td className="py-3 px-4 text-slate-400">
-                      {u.createdAt?.toDate?.()?.toLocaleDateString() || 'N/A'}
-                    </td>
+                    <td className="py-3 px-4 text-zinc-500 text-xs">{formatDate(u.createdAt)}</td>
                     <td className="py-3 px-4">
-                      <div className="relative">
+                      <div className="flex items-center gap-2">
+                        {/* Role dropdown */}
+                        <div className="relative">
+                          <button
+                            onClick={() => setRoleDropdown(roleDropdown === u.id ? null : u.id)}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 text-orange-400 transition text-xs font-bold"
+                            disabled={updatingUserId === u.id}
+                          >
+                            {updatingUserId === u.id ? 'Guardando...' : 'Cambiar rol'}
+                            <ChevronDown className="w-3 h-3" />
+                          </button>
+                          {roleDropdown === u.id && (
+                            <div className="absolute top-full mt-1 right-0 bg-zinc-900 border border-white/10 rounded-xl overflow-hidden z-10 shadow-xl min-w-max">
+                              {(['buyer', 'organizer', 'admin', 'superadmin'] as const).map((role) => (
+                                <button
+                                  key={role}
+                                  onClick={() => handleRoleChange(u.id, role)}
+                                  className={`w-full text-left px-4 py-2 hover:bg-orange-500/20 transition text-xs font-bold ${
+                                    u.role === role ? 'text-orange-400 bg-orange-500/10' : 'text-zinc-300'
+                                  }`}
+                                >
+                                  {role}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {/* Suspend/unsuspend */}
                         <button
-                          onClick={() =>
-                            setRoleDropdown(roleDropdown === u.id ? null : u.id)
-                          }
-                          className="flex items-center gap-2 px-3 py-1 rounded-lg bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/50 text-orange-300 transition text-xs"
-                          disabled={updatingUserId === u.id}
+                          onClick={() => handleSuspendUser(u.id, !u.suspended)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
+                            u.suspended
+                              ? 'bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20'
+                              : 'bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20'
+                          }`}
                         >
-                          Change
-                          <ChevronDown className="w-3 h-3" />
+                          {u.suspended ? 'Activar' : 'Suspender'}
                         </button>
-                        {roleDropdown === u.id && (
-                          <div className="absolute top-full mt-2 right-0 glass border border-orange-500/30 rounded-lg overflow-hidden z-10 min-w-max">
-                            {(['buyer', 'organizer', 'admin'] as const).map((role) => (
-                              <button
-                                key={role}
-                                onClick={() => handleRoleChange(u.id, role)}
-                                className="w-full text-left px-4 py-2 hover:bg-orange-500/20 transition text-slate-300 text-xs"
-                                disabled={updatingUserId === u.id}
-                              >
-                                {role}
-                              </button>
-                            ))}
-                          </div>
+                        {/* Delete user (SuperAdmin only) */}
+                        {profile?.role === 'superadmin' && (
+                          <button
+                            onClick={() => setConfirmDelete({ type: 'user', id: u.id })}
+                            className="px-3 py-1.5 rounded-xl bg-red-600/10 hover:bg-red-600/20 border border-red-600/30 text-red-500 text-xs font-bold transition"
+                          >
+                            Eliminar
+                          </button>
                         )}
                       </div>
                     </td>
@@ -304,78 +336,72 @@ export default function AdminDashboard() {
               </tbody>
             </table>
           </div>
-        </Card>
+        </div>
       </motion.div>
 
       {/* Events Table */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
+        transition={{ delay: 0.3 }}
       >
-        <Card className="glass border-orange-500/20 p-6">
-          <h2 className="font-heading text-2xl orange-text-gradient mb-4">All Events</h2>
+        <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
+          <h2 className="text-xl font-black mb-4">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">Eventos</span>
+            <span className="text-zinc-500 text-sm font-normal ml-3">{events.length} total</span>
+          </h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-orange-500/20">
-                  <th className="text-left py-3 px-4 text-slate-400 font-semibold">Title</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-semibold">Organizer</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-semibold">Date</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-semibold">Status</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-semibold">Tickets Sold</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-semibold">Actions</th>
+                <tr className="border-b border-white/10">
+                  <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Título</th>
+                  <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Organizador</th>
+                  <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Fecha</th>
+                  <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Estado</th>
+                  <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {events.map((e) => (
                   <tr
                     key={e.id}
-                    className="border-b border-slate-800/50 hover:bg-slate-800/20 transition"
+                    className="border-b border-white/5 hover:bg-white/5 transition"
                   >
-                    <td className="py-3 px-4 text-slate-200 font-medium">{e.title}</td>
-                    <td className="py-3 px-4 text-slate-300">{e.organizer}</td>
-                    <td className="py-3 px-4 text-slate-400">{e.date}</td>
+                    <td className="py-3 px-4 text-zinc-200 font-medium">{e.title}</td>
+                    <td className="py-3 px-4 text-zinc-400">{e.organizerEmail || '-'}</td>
+                    <td className="py-3 px-4 text-zinc-500 text-xs">{formatDate(e.date)}</td>
                     <td className="py-3 px-4">
-                      <Badge
-                        className={
-                          e.status === 'active'
-                            ? 'bg-green-500/30 text-green-300 border-green-500/50'
-                            : e.status === 'paused'
-                              ? 'bg-yellow-500/30 text-yellow-300 border-yellow-500/50'
-                              : 'bg-slate-500/30 text-slate-300 border-slate-500/50'
-                        }
-                      >
-                        {e.status}
-                      </Badge>
+                      <span className={`inline-block text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full border ${
+                        e.status === 'active' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                        e.status === 'paused' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                        'bg-zinc-500/20 text-zinc-400 border-zinc-500/30'
+                      }`}>
+                        {e.status === 'active' ? 'Activo' : e.status === 'paused' ? 'Pausado' : e.status}
+                      </span>
                     </td>
-                    <td className="py-3 px-4 text-slate-300 font-medium">{e.ticketsSold}</td>
                     <td className="py-3 px-4">
                       <div className="flex gap-2">
                         {e.status === 'active' ? (
-                          <Button
+                          <button
                             onClick={() => handleEventStatusChange(e.id, 'paused')}
-                            size="sm"
-                            className="bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-500/50 text-xs"
+                            className="px-3 py-1.5 rounded-xl bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 text-xs font-bold transition"
                           >
-                            Pause
-                          </Button>
+                            Pausar
+                          </button>
                         ) : (
-                          <Button
+                          <button
                             onClick={() => handleEventStatusChange(e.id, 'active')}
-                            size="sm"
-                            className="bg-green-500/20 hover:bg-green-500/30 text-green-300 border border-green-500/50 text-xs"
+                            className="px-3 py-1.5 rounded-xl bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-400 text-xs font-bold transition"
                           >
-                            Unpause
-                          </Button>
+                            Activar
+                          </button>
                         )}
-                        <Button
-                          onClick={() => handleDeleteEvent(e.id)}
-                          size="sm"
-                          className="bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 text-xs"
+                        <button
+                          onClick={() => setConfirmDelete({ type: 'event', id: e.id })}
+                          className="px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-bold transition"
                         >
-                          Delete
-                        </Button>
+                          Eliminar
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -383,8 +409,44 @@ export default function AdminDashboard() {
               </tbody>
             </table>
           </div>
-        </Card>
+        </div>
       </motion.div>
+
+      {/* Confirmation Modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-zinc-900 border border-white/10 p-8 rounded-[2.5rem] max-w-md w-full text-center space-y-6"
+          >
+            <div className="w-20 h-20 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto">
+              <TrendingUp className="w-10 h-10 rotate-45" /> {/* Using TrendingUp as a placeholder for alert */}
+            </div>
+            <div>
+              <h3 className="text-2xl font-black mb-2">¿Estás seguro?</h3>
+              <p className="text-zinc-400">
+                Esta acción es irreversible y eliminará permanentemente el {confirmDelete.type === 'user' ? 'usuario' : 'evento'}.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="flex-1 px-6 py-4 rounded-2xl bg-white/5 hover:bg-white/10 font-bold transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => confirmDelete.type === 'user' ? handleDeleteUser(confirmDelete.id) : handleDeleteEvent(confirmDelete.id)}
+                className="flex-1 px-6 py-4 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold transition"
+              >
+                Eliminar
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
+
