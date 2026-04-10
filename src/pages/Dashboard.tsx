@@ -108,13 +108,13 @@ export default function Dashboard() {
 
   // ==================== COMPUTED STATS (from real orders) ====================
   const confirmedOrders = allOrders.filter(o => o.status === 'confirmed');
-  const totalRevenue = confirmedOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+  const totalRevenue = confirmedOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
   const totalTicketsSold = confirmedOrders.reduce((sum, o) => {
-    return sum + (o.items || []).reduce((s: number, item: any) => s + (item.quantity || 0), 0);
+    return sum + (o.items || []).reduce((s: number, item: any) => s + (Number(item.quantity) || 0), 0);
   }, 0);
   const activeEvents = events.filter(e => e.status === 'active').length;
   const totalCapacity = events.reduce((sum, e) => {
-    const cap = (e.tickets || []).reduce((s: number, t: any) => s + (t.available || 0), 0);
+    const cap = (e.tickets || []).reduce((s: number, t: any) => s + (Number(t.available) || 0), 0);
     return sum + cap;
   }, 0) + totalTicketsSold;
 
@@ -166,28 +166,28 @@ export default function Dashboard() {
         {[
           {
             label: 'Ingresos Totales',
-            value: `$${totalRevenue.toLocaleString('es-AR')}`,
+            value: `$${(Number(totalRevenue) || 0).toLocaleString('es-AR')}`,
             icon: DollarSign,
             color: 'text-green-500',
             bg: 'bg-green-500/10',
           },
           {
             label: 'Tickets Vendidos',
-            value: totalTicketsSold.toLocaleString('es-AR'),
+            value: (Number(totalTicketsSold) || 0).toLocaleString('es-AR'),
             icon: Ticket,
             color: 'text-orange-500',
             bg: 'bg-orange-500/10',
           },
           {
             label: 'Eventos Activos',
-            value: activeEvents.toString(),
+            value: (activeEvents || 0).toString(),
             icon: Calendar,
             color: 'text-blue-500',
             bg: 'bg-blue-500/10',
           },
           {
             label: 'Capacidad Total',
-            value: totalCapacity.toLocaleString('es-AR'),
+            value: (Number(totalCapacity) || 0).toLocaleString('es-AR'),
             icon: Users,
             color: 'text-purple-500',
             bg: 'bg-purple-500/10',
@@ -257,10 +257,11 @@ export default function Dashboard() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {events.map((event, index) => {
                 const eventOrders = confirmedOrders.filter(o => o.eventId === event.id);
-                const eventTicketsSold = eventOrders.reduce((sum, o) => sum + (o.items || []).reduce((s: number, item: any) => s + (item.quantity || 0), 0), 0);
-                const eventRevenue = eventOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-                const totalCap = (event.tickets || []).reduce((s: number, t: any) => s + (t.available || 0), 0) + eventTicketsSold;
+                const eventTicketsSold = eventOrders.reduce((sum, o) => sum + (o.items || []).reduce((s: number, item: any) => s + (Number(item.quantity) || 0), 0), 0);
+                const eventRevenue = eventOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+                const totalCap = (event.tickets || []).reduce((s: number, t: any) => s + (Number(t.available) || 0), 0) + eventTicketsSold;
                 const soldPercent = totalCap > 0 ? Math.round((eventTicketsSold / totalCap) * 100) : 0;
+                const safeSoldPercent = isNaN(soldPercent) ? 0 : soldPercent;
 
                 return (
                   <motion.div
@@ -273,7 +274,7 @@ export default function Dashboard() {
                       {/* Event image */}
                       <div className="h-32 overflow-hidden relative">
                         {event.image ? (
-                          <img src={event.image || null} alt={event.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          <img src={event.image || undefined} alt={event.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         ) : (
                           <div className="w-full h-full bg-gradient-to-br from-orange-500/20 to-orange-600/20 flex items-center justify-center">
                             <Calendar className="w-10 h-10 text-orange-500/50" />
@@ -304,13 +305,13 @@ export default function Dashboard() {
                         {/* Progress bar */}
                         <div>
                           <div className="flex justify-between text-xs mb-1.5">
-                            <span className="text-zinc-400">Vendidos: {eventTicketsSold}/{totalCap}</span>
-                            <span className="font-bold text-orange-500">{soldPercent}%</span>
+                            <span className="text-zinc-400">Vendidos: {(Number(eventTicketsSold) || 0)}/{(Number(totalCap) || 0)}</span>
+                            <span className="font-bold text-orange-500">{safeSoldPercent}%</span>
                           </div>
                           <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
                             <div
                               className="h-full bg-gradient-to-r from-orange-500 to-orange-600 rounded-full transition-all"
-                              style={{ width: `${soldPercent}%` }}
+                              style={{ width: `${safeSoldPercent}%` }}
                             />
                           </div>
                         </div>
@@ -320,7 +321,7 @@ export default function Dashboard() {
                           <div>
                             <p className="text-xs text-zinc-500">Ingresos</p>
                             <p className="font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">
-                              ${eventRevenue.toLocaleString('es-AR')}
+                              ${(Number(eventRevenue) || 0).toLocaleString('es-AR')}
                             </p>
                           </div>
                           <div className="flex items-center gap-2">

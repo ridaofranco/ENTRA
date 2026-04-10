@@ -9,92 +9,10 @@ import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firesto
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '@/src/lib/firebase';
 
-// ============================================================
-// QR CODE GENERATOR (same as Checkout)
-// ============================================================
-function generateQRCodeSVG(text: string, size: number = 200): string {
-  const modules = 25;
-  const cellSize = size / modules;
-
-  function hashCode(str: string): number {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash);
-  }
-
-  function seededRandom(seed: number): () => number {
-    let s = seed;
-    return () => {
-      s = (s * 16807 + 0) % 2147483647;
-      return s / 2147483647;
-    };
-  }
-
-  const hash = hashCode(text);
-  const rand = seededRandom(hash);
-  const matrix: boolean[][] = Array(modules).fill(null).map(() => Array(modules).fill(false));
-
-  function addFinderPattern(row: number, col: number) {
-    for (let r = 0; r < 7; r++) {
-      for (let c = 0; c < 7; c++) {
-        if (r === 0 || r === 6 || c === 0 || c === 6 || (r >= 2 && r <= 4 && c >= 2 && c <= 4)) {
-          if (row + r < modules && col + c < modules) matrix[row + r][col + c] = true;
-        }
-      }
-    }
-  }
-
-  addFinderPattern(0, 0);
-  addFinderPattern(0, modules - 7);
-  addFinderPattern(modules - 7, 0);
-
-  for (let i = 8; i < modules - 8; i++) {
-    matrix[6][i] = i % 2 === 0;
-    matrix[i][6] = i % 2 === 0;
-  }
-
-  const ap = modules - 9;
-  for (let r = ap; r < ap + 5; r++) {
-    for (let c = ap; c < ap + 5; c++) {
-      if (r < modules && c < modules) {
-        if (r === ap || r === ap + 4 || c === ap || c === ap + 4 || (r === ap + 2 && c === ap + 2)) {
-          matrix[r][c] = true;
-        }
-      }
-    }
-  }
-
-  for (let r = 0; r < modules; r++) {
-    for (let c = 0; c < modules; c++) {
-      const inFinderTL = r < 8 && c < 8;
-      const inFinderTR = r < 8 && c >= modules - 8;
-      const inFinderBL = r >= modules - 8 && c < 8;
-      const inTiming = r === 6 || c === 6;
-      const inAlignment = r >= ap && r < ap + 5 && c >= ap && c < ap + 5;
-      if (!inFinderTL && !inFinderTR && !inFinderBL && !inTiming && !inAlignment) {
-        matrix[r][c] = rand() > 0.5;
-      }
-    }
-  }
-
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">`;
-  svg += `<rect width="${size}" height="${size}" fill="white"/>`;
-  for (let r = 0; r < modules; r++) {
-    for (let c = 0; c < modules; c++) {
-      if (matrix[r][c]) {
-        svg += `<rect x="${c * cellSize}" y="${r * cellSize}" width="${cellSize}" height="${cellSize}" fill="#09090B"/>`;
-      }
-    }
-  }
-  svg += '</svg>';
-  return `data:image/svg+xml;base64,${btoa(svg)}`;
+// QR image URL from a value (uses api.qrserver.com — no dependency needed)
+function qrImageUrl(value: string, size = 220): string {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=8&data=${encodeURIComponent(value)}`;
 }
-
-// ============================================================
 
 interface TicketData {
   id: string;
@@ -220,6 +138,216 @@ export default function Profile() {
     navigator.clipboard.writeText(text);
     setCopied(text);
     setTimeout(() => setCopied(null), 2000);
+  };
+
+  const handleDownloadQR = (ticket: TicketData, ev: any) => {
+    const eventDateStr = ev ? formatDate(ev.date) : '';
+    const orderShort = ticket.orderId.substring(0, 8).toUpperCase();
+
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Entrada ENTRA - ${ticket.eventTitle}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    background: #f5f5f5;
+    padding: 20px;
+    color: #1a1a1a;
+  }
+  .ticket {
+    background: white;
+    border-radius: 20px;
+    margin: 24px auto;
+    max-width: 640px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+    page-break-inside: avoid;
+  }
+  .ticket-header {
+    background: linear-gradient(135deg, #FF5C00 0%, #FF8C00 100%);
+    color: white;
+    padding: 28px 32px;
+    position: relative;
+  }
+  .ticket-header .brand {
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    opacity: 0.85;
+    font-weight: 700;
+  }
+  .ticket-header h1 {
+    font-size: 28px;
+    font-weight: 900;
+    margin-top: 8px;
+    line-height: 1.1;
+    letter-spacing: -0.5px;
+  }
+  .ticket-header .ticket-type {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.22);
+    backdrop-filter: blur(10px);
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+  .ticket-body {
+    padding: 32px;
+    display: flex;
+    gap: 32px;
+    align-items: center;
+  }
+  .qr-section {
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .qr-section .qr-wrap {
+    background: white;
+    border: 3px solid #FF5C00;
+    border-radius: 16px;
+    padding: 10px;
+    display: inline-block;
+  }
+  .qr-section img {
+    width: 160px;
+    height: 160px;
+    display: block;
+  }
+  .qr-section .code {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    margin-top: 10px;
+    color: #666;
+    background: #f0f0f0;
+    padding: 6px 10px;
+    border-radius: 6px;
+    word-break: break-all;
+    max-width: 180px;
+  }
+  .info-section { flex-grow: 1; min-width: 0; }
+  .info-row { margin-bottom: 14px; }
+  .info-row:last-child { margin-bottom: 0; }
+  .info-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #999;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .info-value {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1a1a1a;
+  }
+  .info-value.small { font-size: 13px; }
+  .ticket-footer {
+    border-top: 2px dashed #e5e5e5;
+    padding: 18px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .status {
+    color: #22c55e;
+    font-weight: 800;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .status::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: #22c55e;
+    border-radius: 50%;
+  }
+  .brand-footer {
+    color: #FF5C00;
+    font-weight: 900;
+    font-size: 14px;
+    letter-spacing: 1px;
+  }
+  .order-badge {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: #999;
+    background: #f5f5f5;
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+  @media print {
+    body { padding: 0; background: white; }
+    .ticket {
+      box-shadow: none;
+      border: 1px solid #ddd;
+      margin: 12px auto;
+    }
+  }
+  @media (max-width: 600px) {
+    .ticket-body { flex-direction: column; text-align: center; }
+    .info-section { text-align: center; }
+  }
+</style>
+</head>
+<body>
+<div class="ticket">
+  <div class="ticket-header">
+    <div class="brand">ENTRA by DER</div>
+    <h1>${ticket.eventTitle}</h1>
+    <div class="ticket-type">${ticket.ticketType}</div>
+  </div>
+  <div class="ticket-body">
+    <div class="qr-section">
+      <div class="qr-wrap">
+        <img src="${qrImageUrl(ticket.qrCode, 320)}" alt="QR Code" />
+      </div>
+      <div class="code">${ticket.qrCode}</div>
+    </div>
+    <div class="info-section">
+      <div class="info-row">
+        <div class="info-label">Titular</div>
+        <div class="info-value">${user?.displayName || user?.email || ''}</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Fecha</div>
+        <div class="info-value small">${eventDateStr}</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Lugar</div>
+        <div class="info-value small">${ev?.venue || ''}${ev?.location ? ', ' + ev.location : ''}</div>
+      </div>
+    </div>
+  </div>
+  <div class="ticket-footer">
+    <span class="status">${ticket.status === 'valid' ? 'VÁLIDO' : ticket.status.toUpperCase()}</span>
+    <span class="order-badge">Orden #${orderShort}</span>
+    <span class="brand-footer">ENTRA</span>
+  </div>
+</div>
+<script>
+  window.addEventListener('load', function() {
+    setTimeout(function() { window.print(); }, 500);
+  });
+</script>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
   };
 
   const handleLogout = async () => {
@@ -402,15 +530,22 @@ export default function Profile() {
                         <div className="p-6 flex flex-col sm:flex-row items-center gap-6">
                           {/* QR Code */}
                           <div className="bg-white rounded-2xl p-4 flex-shrink-0 shadow-lg">
-                            <img src={generateQRCodeSVG(ticket.qrCode, 160)} alt="QR" className="w-[140px] h-[140px]" />
+                            <img 
+                              src={qrImageUrl(ticket.qrCode, 140)} 
+                              alt="QR Code"
+                              className="w-[140px] h-[140px] block"
+                            />
                           </div>
                           <div className="flex-grow text-center sm:text-left space-y-3">
                             <div>
                               <p className="text-xs uppercase tracking-widest text-zinc-400 font-bold">Codigo</p>
                               <div className="flex items-center gap-2 justify-center sm:justify-start mt-1">
                                 <code className="text-sm font-mono bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">{ticket.qrCode}</code>
-                                <button onClick={() => handleCopy(ticket.qrCode)} className="hover:bg-white/10 p-2 rounded-lg transition-colors">
+                                <button onClick={() => handleCopy(ticket.qrCode)} className="hover:bg-white/10 p-2 rounded-lg transition-colors" title="Copiar código">
                                   {copied === ticket.qrCode ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-zinc-400" />}
+                                </button>
+                                <button onClick={() => handleDownloadQR(ticket, ev)} className="hover:bg-white/10 p-2 rounded-lg transition-colors" title="Descargar Entrada (PDF)">
+                                  <Download className="w-4 h-4 text-zinc-400" />
                                 </button>
                               </div>
                             </div>
@@ -421,7 +556,7 @@ export default function Profile() {
                               </div>
                               <div>
                                 <p className="text-xs uppercase tracking-widest text-zinc-500 font-bold">Precio</p>
-                                <p className="font-bold">${ticket.price?.toLocaleString('es-AR')}</p>
+                                <p className="font-bold">${(Number(ticket.price) || 0).toLocaleString('es-AR')}</p>
                               </div>
                             </div>
                             {ev?.date && (
@@ -510,7 +645,7 @@ export default function Profile() {
 
                       <div className="text-right flex-shrink-0">
                         <p className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">
-                          ${order.total?.toLocaleString('es-AR')}
+                          ${(Number(order.total) || 0).toLocaleString('es-AR')}
                         </p>
                         <span className={`text-[10px] font-bold uppercase tracking-widest ${
                           order.status === 'confirmed' ? 'text-green-500' : 'text-zinc-500'
@@ -526,7 +661,7 @@ export default function Profile() {
                         {order.items.map((item: any, i: number) => (
                           <div key={i} className="flex justify-between text-xs text-zinc-400">
                             <span>{item.quantity}x {item.type}</span>
-                            <span>${((item.quantity || 0) * (item.price || 0)).toLocaleString('es-AR')}</span>
+                            <span>${(Number(item.quantity || 0) * Number(item.price || 0)).toLocaleString('es-AR')}</span>
                           </div>
                         ))}
                       </div>

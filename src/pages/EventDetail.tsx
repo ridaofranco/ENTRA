@@ -212,7 +212,7 @@ export default function EventDetail() {
                     <div key={i} className="flex justify-between items-center group">
                       <div>
                         <div className="font-bold text-lg group-hover:text-primary transition-colors">{t.type}</div>
-                        <div className="text-primary font-black text-xl">${t.price.toLocaleString('es-AR')}</div>
+                        <div className="text-primary font-black text-xl">${(Number(t.price) || 0).toLocaleString('es-AR')}</div>
                         <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mt-1">
                           {t.available} disponibles
                         </div>
@@ -246,7 +246,7 @@ export default function EventDetail() {
                   <div className="flex justify-between items-end">
                     <div>
                       <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-1">Total ({totalQty} tickets)</div>
-                      <div className="text-4xl font-heading font-black text-primary">${total.toLocaleString('es-AR')}</div>
+                      <div className="text-4xl font-heading font-black text-primary">${(Number(total) || 0).toLocaleString('es-AR')}</div>
                     </div>
                     <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
                       <Share2 className="w-5 h-5" />

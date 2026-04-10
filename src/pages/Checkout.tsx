@@ -4,7 +4,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/src/components/ui/button';
 import { Card } from '@/src/components/ui/card';
 import { Input } from '@/src/components/ui/input';
-import { Badge } from '@/src/components/ui/badge';
 import { ArrowLeft, CheckCircle2, ShieldCheck, Ticket as TicketIcon, Calendar, MapPin, Copy, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { collection, addDoc, Timestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -16,16 +15,6 @@ interface SelectedTicket {
   type: string;
   price: number;
   quantity: number;
-}
-
-interface Event {
-  id: string;
-  title: string;
-  date: any;
-  venue: string;
-  location: string;
-  image: string;
-  [key: string]: any;
 }
 
 interface OrderData {
@@ -74,6 +63,11 @@ function generateUUID(): string {
   });
 }
 
+// QR image URL from a value (uses api.qrserver.com — no dependency needed)
+function qrImageUrl(value: string, size = 220): string {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=8&data=${encodeURIComponent(value)}`;
+}
+
 export default function Checkout() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -106,11 +100,10 @@ export default function Checkout() {
     (acc: number, ticket: SelectedTicket) => acc + ticket.price * ticket.quantity,
     0
   );
-  const platformFee = Math.round(subtotal * 0.035); // 3.5% fee
+  const platformFee = Math.round(subtotal * 0.035);
   const total = subtotal + platformFee;
 
   const handleConfirmPurchase = async () => {
-    // Validate buyer info
     if (!buyerInfo.name || !buyerInfo.email || !buyerInfo.dni) {
       alert('Por favor completa todos los campos');
       return;
@@ -141,7 +134,7 @@ export default function Checkout() {
       const orderId = orderDocRef.id;
 
       // Create ticket documents
-      const createdTickets = [];
+      const createdTickets: Array<{ id: string; qrCode: string; type: string }> = [];
       for (const selectedTicket of selectedTickets) {
         for (let i = 0; i < selectedTicket.quantity; i++) {
           const qrCode = generateUUID();
@@ -174,7 +167,6 @@ export default function Checkout() {
           const eventData = eventSnap.data();
           const currentTickets = eventData.tickets || [];
 
-          // For each purchased ticket type, subtract the quantity from available
           const updatedTickets = currentTickets.map((t: any) => {
             const purchased = selectedTickets.find((st: SelectedTicket) => st.type === t.type);
             if (purchased) {
@@ -186,8 +178,10 @@ export default function Checkout() {
             return t;
           });
 
-          // Also update ticketsSold and totalRevenue
-          const totalQtyPurchased = selectedTickets.reduce((sum: number, st: SelectedTicket) => sum + st.quantity, 0);
+          const totalQtyPurchased = selectedTickets.reduce(
+            (sum: number, st: SelectedTicket) => sum + st.quantity,
+            0
+          );
           await updateDoc(eventRef, {
             tickets: updatedTickets,
             ticketsSold: (eventData.ticketsSold || 0) + totalQtyPurchased,
@@ -197,7 +191,6 @@ export default function Checkout() {
           console.log('Ticket availability updated successfully');
         }
       } catch (stockError) {
-        // Don't fail the purchase if stock update fails — order is already confirmed
         console.error('Error updating ticket availability:', stockError);
       }
 
@@ -225,6 +218,228 @@ export default function Checkout() {
       });
     }
     return '';
+  };
+
+  // Generate downloadable HTML tickets (opens new tab + auto-print)
+  // Much nicer than a plain PNG: styled cards with header, QR, buyer info, footer
+  const handleDownloadTickets = () => {
+    if (!successState) return;
+
+    const eventDateStr = formatEventDate(event.date);
+    const orderShort = successState.orderId.substring(0, 8).toUpperCase();
+
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Entradas ENTRA - ${event.title}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    background: #f5f5f5;
+    padding: 20px;
+    color: #1a1a1a;
+  }
+  .ticket {
+    background: white;
+    border-radius: 20px;
+    margin: 24px auto;
+    max-width: 640px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+    page-break-inside: avoid;
+  }
+  .ticket-header {
+    background: linear-gradient(135deg, #FF5C00 0%, #FF8C00 100%);
+    color: white;
+    padding: 28px 32px;
+    position: relative;
+  }
+  .ticket-header .brand {
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    opacity: 0.85;
+    font-weight: 700;
+  }
+  .ticket-header h1 {
+    font-size: 28px;
+    font-weight: 900;
+    margin-top: 8px;
+    line-height: 1.1;
+    letter-spacing: -0.5px;
+  }
+  .ticket-header .ticket-type {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.22);
+    backdrop-filter: blur(10px);
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+  .ticket-body {
+    padding: 32px;
+    display: flex;
+    gap: 32px;
+    align-items: center;
+  }
+  .qr-section {
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .qr-section .qr-wrap {
+    background: white;
+    border: 3px solid #FF5C00;
+    border-radius: 16px;
+    padding: 10px;
+    display: inline-block;
+  }
+  .qr-section img {
+    width: 160px;
+    height: 160px;
+    display: block;
+  }
+  .qr-section .code {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    margin-top: 10px;
+    color: #666;
+    background: #f0f0f0;
+    padding: 6px 10px;
+    border-radius: 6px;
+    word-break: break-all;
+    max-width: 180px;
+  }
+  .info-section { flex-grow: 1; min-width: 0; }
+  .info-row { margin-bottom: 14px; }
+  .info-row:last-child { margin-bottom: 0; }
+  .info-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #999;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .info-value {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1a1a1a;
+  }
+  .info-value.small { font-size: 13px; }
+  .ticket-footer {
+    border-top: 2px dashed #e5e5e5;
+    padding: 18px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .status {
+    color: #22c55e;
+    font-weight: 800;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .status::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: #22c55e;
+    border-radius: 50%;
+  }
+  .brand-footer {
+    color: #FF5C00;
+    font-weight: 900;
+    font-size: 14px;
+    letter-spacing: 1px;
+  }
+  .order-badge {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: #999;
+    background: #f5f5f5;
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+  @media print {
+    body { padding: 0; background: white; }
+    .ticket {
+      box-shadow: none;
+      border: 1px solid #ddd;
+      margin: 12px auto;
+    }
+  }
+  @media (max-width: 600px) {
+    .ticket-body { flex-direction: column; text-align: center; }
+    .info-section { text-align: center; }
+  }
+</style>
+</head>
+<body>
+${successState.tickets.map((ticket, i) => `
+<div class="ticket">
+  <div class="ticket-header">
+    <div class="brand">ENTRA by DER</div>
+    <h1>${event.title}</h1>
+    <div class="ticket-type">${ticket.type}</div>
+  </div>
+  <div class="ticket-body">
+    <div class="qr-section">
+      <div class="qr-wrap">
+        <img src="${qrImageUrl(ticket.qrCode, 320)}" alt="QR Code" />
+      </div>
+      <div class="code">${ticket.qrCode}</div>
+    </div>
+    <div class="info-section">
+      <div class="info-row">
+        <div class="info-label">Titular</div>
+        <div class="info-value">${buyerInfo.name}</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">DNI</div>
+        <div class="info-value small">${buyerInfo.dni}</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Fecha</div>
+        <div class="info-value small">${eventDateStr}</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Lugar</div>
+        <div class="info-value small">${event.venue || ''}${event.location ? ', ' + event.location : ''}</div>
+      </div>
+    </div>
+  </div>
+  <div class="ticket-footer">
+    <span class="status">VÁLIDO</span>
+    <span class="order-badge">Orden #${orderShort} · ${i + 1}/${successState.tickets.length}</span>
+    <span class="brand-footer">ENTRA</span>
+  </div>
+</div>
+`).join('')}
+<script>
+  // Auto-print after images load
+  window.addEventListener('load', function() {
+    setTimeout(function() { window.print(); }, 500);
+  });
+</script>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    // Revoke after a delay so the new tab has time to load
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
   };
 
   // Step 1: Buyer Information
@@ -350,7 +565,7 @@ export default function Checkout() {
                   {ticket.quantity}x {ticket.type}
                 </span>
                 <span className="font-bold">
-                  ${(ticket.quantity * ticket.price).toLocaleString('es-AR')}
+                  ${(Number(ticket.quantity || 0) * Number(ticket.price || 0)).toLocaleString('es-AR')}
                 </span>
               </div>
             ))}
@@ -377,14 +592,15 @@ export default function Checkout() {
     </motion.div>
   );
 
-  // Step 3: Success
+  // Step 3: Success — muestra el QR visual, no solo el texto del UUID
   const step3Content = successState && (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       className="space-y-8"
     >
-      <div className="text-center space-y-6">
+      {/* Header de éxito */}
+      <div className="text-center space-y-4">
         <div className="w-20 h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto">
           <CheckCircle2 className="w-12 h-12" />
         </div>
@@ -395,31 +611,100 @@ export default function Checkout() {
           <p className="text-lg text-muted-foreground">
             Orden #{successState.orderId.substring(0, 8).toUpperCase()}
           </p>
+          <p className="text-sm text-muted-foreground">
+            {successState.tickets.length} {successState.tickets.length === 1 ? 'entrada generada' : 'entradas generadas'}
+          </p>
         </div>
       </div>
 
-      <div className="space-y-3">
+      {/* Botón prominente de descarga de todas las entradas */}
+      <Button
+        onClick={handleDownloadTickets}
+        className="w-full h-14 orange-gradient border-none font-bold text-base rounded-2xl flex items-center justify-center gap-3"
+      >
+        <Download className="w-5 h-5" />
+        Descargar {successState.tickets.length === 1 ? 'mi entrada' : `mis ${successState.tickets.length} entradas`} (PDF imprimible)
+      </Button>
+
+      {/* Tickets con QR visual grande */}
+      <div className="space-y-6">
         {successState.tickets.map((ticket, index) => (
           <Card
-            key={index}
-            className="glass p-4 rounded-2xl border-white/10 flex items-center justify-between"
+            key={ticket.id}
+            className="glass rounded-3xl border-white/10 overflow-hidden"
           >
-            <div className="flex items-center gap-3">
-              <TicketIcon className="w-5 h-5 text-primary" />
-              <div>
-                <p className="text-sm font-bold">{ticket.type}</p>
-                <p className="text-xs text-muted-foreground">{ticket.qrCode}</p>
+            {/* Header del ticket */}
+            <div className="orange-gradient p-5 flex items-center justify-between">
+              <div className="text-white">
+                <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">
+                  Entrada #{index + 1} de {successState.tickets.length}
+                </p>
+                <p className="text-lg font-heading font-black leading-tight">
+                  {event.title}
+                </p>
+                <p className="text-xs font-bold uppercase tracking-wider opacity-90 mt-1">
+                  {ticket.type}
+                </p>
+              </div>
+              <TicketIcon className="w-10 h-10 text-white opacity-90" />
+            </div>
+
+            {/* Info + QR */}
+            <div className="p-6 flex flex-col md:flex-row gap-6 items-center">
+              <div className="flex-grow space-y-3 w-full md:w-auto">
+                <div className="flex items-center gap-2 text-sm">
+                  <Calendar className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span className="font-bold">{formatEventDate(event.date)}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span className="font-bold">
+                    {event.venue}{event.location ? `, ${event.location}` : ''}
+                  </span>
+                </div>
+                <div className="pt-3 border-t border-white/10">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    Titular
+                  </p>
+                  <p className="text-sm font-bold">{buyerInfo.name}</p>
+                  <p className="text-xs text-muted-foreground">DNI {buyerInfo.dni}</p>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(ticket.qrCode);
+                    }}
+                    className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors px-3 py-1.5 rounded-lg bg-white/5 border border-white/10"
+                  >
+                    <Copy className="w-3 h-3" />
+                    Copiar código
+                  </button>
+                  <button
+                    onClick={handleDownloadTickets}
+                    className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors px-3 py-1.5 rounded-lg bg-white/5 border border-white/10"
+                  >
+                    <Download className="w-3 h-3" />
+                    Descargar PDF
+                  </button>
+                </div>
+              </div>
+
+              {/* QR Code visual */}
+              <div className="flex-shrink-0">
+                <div className="bg-white p-3 rounded-2xl">
+                  <img
+                    src={qrImageUrl(ticket.qrCode, 220)}
+                    alt={`QR ticket ${ticket.type}`}
+                    width={220}
+                    height={220}
+                    className="block"
+                  />
+                </div>
+                <p className="text-[9px] font-mono text-center text-muted-foreground mt-2 break-all max-w-[220px]">
+                  {ticket.qrCode}
+                </p>
               </div>
             </div>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(ticket.qrCode);
-              }}
-              className="hover:bg-white/10 p-2 rounded-lg transition-colors"
-              title="Copiar código QR"
-            >
-              <Copy className="w-4 h-4" />
-            </button>
           </Card>
         ))}
       </div>
@@ -429,21 +714,22 @@ export default function Checkout() {
           Confirmación enviada a {buyerInfo.email}
         </p>
         <p className="text-xs text-primary/80">
-          Tus códigos QR y detalles de entrada han sido enviados. Preséntalos en la entrada del evento.
+          Guardá o descargá tus entradas. Presentá el QR en la puerta del evento.
         </p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
-        <Button className="orange-gradient border-none font-bold h-12 rounded-2xl flex items-center justify-center gap-2">
-          <Download className="w-4 h-4" />
-          Descargar (PDF)
-        </Button>
+        <Link to="/perfil" className="flex-grow">
+          <Button className="w-full orange-gradient border-none font-bold h-12 rounded-2xl">
+            Ver Mis Entradas
+          </Button>
+        </Link>
         <Link to="/eventos" className="flex-grow">
           <Button
             variant="outline"
             className="w-full h-12 rounded-2xl border-white/10 font-bold"
           >
-            Volver al Inicio
+            Seguir Explorando
           </Button>
         </Link>
       </div>
@@ -518,7 +804,6 @@ export default function Checkout() {
         {step !== 3 && (
           <div className="lg:sticky lg:top-28 lg:h-fit">
             <Card className="glass p-6 rounded-[2.5rem] border-white/10 space-y-6">
-              {/* Event Info */}
               <div className="space-y-3">
                 <div className="relative w-full h-24 rounded-2xl overflow-hidden">
                   <img
@@ -603,4 +888,3 @@ export default function Checkout() {
     </div>
   );
 }
-

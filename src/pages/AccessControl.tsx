@@ -184,7 +184,7 @@ export default function AccessControl() {
               <Card key={i} className="glass p-6 rounded-3xl border-white/5 text-center">
                 <s.icon className={cn("w-6 h-6 mx-auto mb-2", s.color)} />
                 <div className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground mb-1">{s.label}</div>
-                <div className="text-2xl font-heading font-black">{s.value}</div>
+                <div className="text-2xl font-heading font-black">{(Number(s.value) || 0)}</div>
               </Card>
             ))}
           </div>

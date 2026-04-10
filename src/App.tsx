@@ -18,6 +18,7 @@ import CreateEvent from '@/src/pages/CreateEvent';
 import Contact from '@/src/pages/Contact';
 import Profile from '@/src/pages/Profile';
 import AdminDashboard from '@/src/pages/AdminDashboard';
+import EventDashboard from '@/src/pages/EventDashboard';
 import PlatformConfig from '@/src/pages/PlatformConfig';
 
 export default function App() {
@@ -44,6 +45,12 @@ export default function App() {
             <Route path="/dashboard" element={
               <ProtectedRoute allowedRoles={['organizer', 'admin', 'superadmin']}>
                 <Dashboard />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/dashboard/evento/:id" element={
+              <ProtectedRoute allowedRoles={['organizer', 'admin', 'superadmin']}>
+                <EventDashboard />
               </ProtectedRoute>
             } />
             

@@ -211,7 +211,7 @@ export default function Landing() {
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="text-2xl font-heading font-black text-primary">
-                              ${evt.price?.toLocaleString('es-AR')}
+                              ${(Number(evt.price) || 0).toLocaleString('es-AR')}
                             </span>
                             <Link to={`/evento/${evt.id}`}>
                               <Button className="orange-gradient border-none font-bold rounded-xl px-6">
@@ -318,7 +318,7 @@ export default function Landing() {
                       <div className="flex items-center justify-between pt-2 border-t border-white/5">
                         <span className="text-xs text-muted-foreground uppercase tracking-widest font-bold">Desde</span>
                         <span className="text-lg font-heading font-black text-primary">
-                          ${event.price?.toLocaleString('es-AR')}
+                          ${(Number(event.price) || 0).toLocaleString('es-AR')}
                         </span>
                       </div>
                     </div>

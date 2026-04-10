@@ -6,9 +6,22 @@ import {
   Edit, Gift, Loader2, MapPin, Minus, Plus, Save, Send, Ticket,
   Trash, Users, Eye, Copy, Check
 } from 'lucide-react';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { 
+  doc, 
+  getDoc, 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  onSnapshot, 
+  updateDoc, 
+  addDoc, 
+  Timestamp 
+} from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
-import { db, auth } from '@/src/lib/firebase';
+import { db, auth, handleFirestoreError, OperationType } from '@/src/lib/firebase';
+import { useAuth } from '@/src/context/AuthContext';
+import { logAction } from '@/src/services/auditService';
 
 interface TicketType {
   type: string;
@@ -57,29 +70,39 @@ interface CourtesyData {
 export default function EventDashboard() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user: authUser } = useAuth();
   const [user, setUser] = useState<any>(null);
   const [event, setEvent] = useState<EventData | null>(null);
   const [orders, setOrders] = useState<OrderData[]>([]);
+  const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'resumen' | 'tickets' | 'cortesias' | 'ventas' | 'asistentes'>('resumen');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isEditingEvent, setIsEditingEvent] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<EventData>>({});
+
+  // New sector form state
+  const [newSector, setNewSector] = useState({ type: '', price: 0, available: 0 });
 
   // Courtesy form state
   const [courtesyName, setCourtesyName] = useState('');
   const [courtesyEmail, setCourtesyEmail] = useState('');
+  const [courtesyPhone, setCourtesyPhone] = useState('');
   const [courtesyDni, setCourtesyDni] = useState('');
   const [courtesyType, setCourtesyType] = useState('');
   const [courtesyQty, setCourtesyQty] = useState(1);
   const [courtesyReason, setCourtesyReason] = useState('');
   const [courtesySendEmail, setCourtesySendEmail] = useState(true);
 
-  // Mock courtesy data (would come from Firestore)
-  const [courtesies] = useState<CourtesyData[]>([
-    { name: 'Juan Pérez', email: 'juan@prensa.com', ticketType: 'VIP', quantity: 2, reason: 'Prensa', date: '08/04/2026', status: 'Enviado' },
-    { name: 'Laura Gómez', email: 'laura@sponsor.com', ticketType: 'Premium', quantity: 2, reason: 'Sponsor', date: '07/04/2026', status: 'Enviado' },
-    { name: 'Diego Fernández', email: 'diego@gmail.com', ticketType: 'General', quantity: 4, reason: 'Staff', date: '06/04/2026', status: 'Enviado' },
-  ]);
+  // Courtesies list
+  const courtesies = tickets.filter(t => t.isCourtesy);
+  const totalCourtesies = courtesies.length;
 
-  const totalCourtesies = courtesies.reduce((sum, c) => sum + c.quantity, 0);
+  // Real-time stats calculation
+  const realTotalRevenue = orders.filter(o => o.status === 'confirmed').reduce((sum, o) => sum + (o.total || 0), 0);
+  const realTicketsSold = orders.filter(o => o.status === 'confirmed').reduce((sum, o) => {
+    return sum + (o.items || []).reduce((s, item) => s + (item.quantity || 0), 0);
+  }, 0);
 
   // Auth
   useEffect(() => {
@@ -90,30 +113,251 @@ export default function EventDashboard() {
     return () => unsubscribe();
   }, [navigate]);
 
-  // Load event data
+  // Load event data with real-time listeners
   useEffect(() => {
-    if (user && id) loadEventData();
-  }, [user, id]);
+    if (!id || !user) return;
 
-  const loadEventData = async () => {
-    if (!id) return;
     setLoading(true);
-    try {
-      const eventDoc = await getDoc(doc(db, 'events', id));
-      if (eventDoc.exists()) {
-        setEvent({ id: eventDoc.id, ...eventDoc.data() } as EventData);
-      }
 
-      const ordersQuery = query(collection(db, 'orders'), where('eventId', '==', id));
-      const ordersSnap = await getDocs(ordersQuery);
-      const ordersList: OrderData[] = ordersSnap.docs.map(d => ({ id: d.id, ...d.data() } as OrderData));
+    // 1. Event listener
+    const unsubEvent = onSnapshot(doc(db, 'events', id), (doc) => {
+      if (doc.exists()) {
+        setEvent({ id: doc.id, ...doc.data() } as EventData);
+      }
+      setLoading(false);
+    });
+
+    // 2. Orders listener
+    const qOrders = query(collection(db, 'orders'), where('eventId', '==', id));
+    const unsubOrders = onSnapshot(qOrders, (snap) => {
+      const ordersList = snap.docs.map(d => ({ id: d.id, ...d.data() } as OrderData));
       ordersList.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
       setOrders(ordersList);
-    } catch (error) {
-      console.error('Error loading event:', error);
-    } finally {
-      setLoading(false);
+    });
+
+    // 3. Tickets listener (for courtesies and check-ins)
+    const qTickets = query(collection(db, 'tickets'), where('eventId', '==', id));
+    const unsubTickets = onSnapshot(qTickets, (snap) => {
+      const ticketsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setTickets(ticketsList);
+    });
+
+    return () => {
+      unsubEvent();
+      unsubOrders();
+      unsubTickets();
+    };
+  }, [id, user]);
+
+  useEffect(() => {
+    if (event) {
+      setEditForm({
+        title: event.title,
+        description: event.description || '',
+        venue: event.venue,
+        location: event.location,
+        category: event.category,
+        status: event.status
+      });
     }
+  }, [event]);
+
+  const handleSaveEventDetails = async () => {
+    if (!event) return;
+    try {
+      setIsSaving(true);
+      await updateDoc(doc(db, 'events', event.id), {
+        ...editForm,
+        updatedAt: Timestamp.now()
+      });
+      setIsEditingEvent(false);
+      alert('Evento actualizado con éxito');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `events/${event.id}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleUpdateTicket = async (idx: number, field: string, value: any) => {
+    if (!event) return;
+    const newTickets = [...(event.tickets || [])];
+    newTickets[idx] = { ...newTickets[idx], [field]: value };
+    
+    try {
+      await updateDoc(doc(db, 'events', event.id), {
+        tickets: newTickets,
+        updatedAt: Timestamp.now()
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `events/${event.id}`);
+    }
+  };
+
+  const handleRemoveTicket = async (idx: number) => {
+    if (!event) return;
+    if (!confirm('¿Estás seguro de eliminar este sector?')) return;
+    
+    const newTickets = (event.tickets || []).filter((_, i) => i !== idx);
+    
+    try {
+      await updateDoc(doc(db, 'events', event.id), {
+        tickets: newTickets,
+        updatedAt: Timestamp.now()
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `events/${event.id}`);
+    }
+  };
+
+  const handleAddSector = async () => {
+    if (!event || !newSector.type || newSector.available <= 0) {
+      alert('Por favor completa el nombre y la cantidad del sector');
+      return;
+    }
+
+    const newTickets = [...(event.tickets || []), { ...newSector }];
+    
+    try {
+      setIsSaving(true);
+      await updateDoc(doc(db, 'events', event.id), {
+        tickets: newTickets,
+        updatedAt: Timestamp.now()
+      });
+      setNewSector({ type: '', price: 0, available: 0 });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `events/${event.id}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleGenerateCourtesy = async () => {
+    if (!event || !courtesyName || !courtesyEmail || !courtesyType) {
+      alert('Por favor completa los campos obligatorios');
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      
+      // Generate UUID for QR code
+      const generateUUID = () => {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+          const r = (Math.random() * 16) | 0;
+          const v = c === 'x' ? r : (r & 0x3) | 0x8;
+          return v.toString(16);
+        });
+      };
+
+      for (let i = 0; i < courtesyQty; i++) {
+        const qrCode = generateUUID();
+        const ticketData = {
+          eventId: event.id,
+          eventTitle: event.title,
+          buyerName: courtesyName,
+          buyerEmail: courtesyEmail,
+          buyerPhone: courtesyPhone,
+          buyerDni: courtesyDni,
+          ticketType: courtesyType,
+          price: 0,
+          isCourtesy: true,
+          courtesyReason: courtesyReason,
+          status: 'valid',
+          qrCode,
+          createdAt: Timestamp.now(),
+        };
+
+        await addDoc(collection(db, 'tickets'), ticketData);
+      }
+
+      // Log action
+      await logAction('GENERATE_COURTESY', 'events', event.id, { 
+        name: courtesyName, 
+        qty: courtesyQty, 
+        type: courtesyType 
+      });
+
+      if (courtesySendEmail) {
+        console.log(`Simulating email send to ${courtesyEmail}`);
+      }
+
+      alert('Cortesía(s) generada(s) con éxito');
+      setCourtesyName('');
+      setCourtesyEmail('');
+      setCourtesyPhone('');
+      setCourtesyDni('');
+      setCourtesyType('');
+      setCourtesyQty(1);
+      setCourtesyReason('');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'tickets');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleResendEmail = async (ticket: any) => {
+    try {
+      setIsSaving(true);
+      // Simulate email resend
+      console.log(`Resending email to ${ticket.buyerEmail}`);
+      await logAction('RESEND_COURTESY_EMAIL', 'tickets', ticket.id, { email: ticket.buyerEmail });
+      alert(`Email reenviado a ${ticket.buyerEmail}`);
+    } catch (error) {
+      console.error('Error resending email:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDownloadTicket = async (ticket: any) => {
+    try {
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${ticket.qrCode}`;
+      const response = await fetch(qrUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `ticket-${ticket.buyerName.replace(/\s+/g, '-').toLowerCase()}-${ticket.qrCode.slice(0, 8)}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading ticket:', error);
+      alert('Error al descargar el ticket');
+    }
+  };
+
+  const handleDeleteCourtesy = async (ticketId: string) => {
+    if (!confirm('¿Estás seguro de eliminar esta cortesía?')) return;
+    try {
+      setIsSaving(true);
+      const { deleteDoc } = await import('firebase/firestore');
+      await deleteDoc(doc(db, 'tickets', ticketId));
+      await logAction('DELETE_COURTESY', 'tickets', ticketId);
+      alert('Cortesía eliminada');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `tickets/${ticketId}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSendWhatsApp = (ticket?: any) => {
+    const phone = ticket ? ticket.buyerPhone : courtesyPhone;
+    const name = ticket ? ticket.buyerName : courtesyName;
+    const type = ticket ? ticket.ticketType : courtesyType;
+    
+    if (!phone) {
+      alert('Por favor declará un número de teléfono');
+      return;
+    }
+
+    const cleanPhone = phone.replace(/\D/g, '');
+    const message = encodeURIComponent(`¡Hola ${name}! Aquí tenés tu cortesía (${type}) para el evento ${event?.title}. ¡Te esperamos!`);
+    window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
   };
 
   const formatDate = (date: any) => {
@@ -150,8 +394,8 @@ export default function EventDashboard() {
     );
   }
 
-  const totalCap = (event.tickets || []).reduce((s, t) => s + (t.available || 0), 0) + (event.ticketsSold || 0);
-  const soldPercent = totalCap > 0 ? Math.round(((event.ticketsSold || 0) / totalCap) * 100) : 0;
+  const totalCap = (event.tickets || []).reduce((s, t) => s + (t.available || 0), 0) + (Number(event.ticketsSold) || 0);
+  const soldPercent = totalCap > 0 ? Math.round(((Number(event.ticketsSold) || 0) / totalCap) * 100) : 0;
 
   const tabs = [
     { key: 'resumen', label: 'Resumen', icon: BarChart3 },
@@ -184,21 +428,29 @@ export default function EventDashboard() {
               {event.venue && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {event.venue}</span>}
             </div>
           </div>
-          <Link to={`/evento/${event.id}`}>
-            <button className="flex items-center gap-2 bg-white/5 border border-white/10 text-sm font-bold px-4 py-2.5 rounded-xl hover:border-orange-500/30 transition-all">
-              <Eye className="w-4 h-4" /> Ver página pública
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setIsEditingEvent(true)}
+              className="flex items-center gap-2 bg-white/5 border border-white/10 text-sm font-bold px-4 py-2.5 rounded-xl hover:border-blue-500/30 transition-all text-blue-400"
+            >
+              <Edit className="w-4 h-4" /> Editar Info
             </button>
-          </Link>
+            <Link to={`/evento/${event.id}`}>
+              <button className="flex items-center gap-2 bg-white/5 border border-white/10 text-sm font-bold px-4 py-2.5 rounded-xl hover:border-orange-500/30 transition-all">
+                <Eye className="w-4 h-4" /> Ver página pública
+              </button>
+            </Link>
+          </div>
         </div>
       </motion.div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
-          { label: 'Tickets Vendidos', value: `${event.ticketsSold || 0} / ${totalCap}`, sub: `${soldPercent}% vendido`, icon: Ticket, color: 'text-orange-500', bg: 'bg-orange-500/10' },
-          { label: 'Ingresos', value: `$${(event.totalRevenue || 0).toLocaleString('es-AR')}`, sub: `${orders.length} transacciones`, icon: DollarSign, color: 'text-green-500', bg: 'bg-green-500/10' },
-          { label: 'Cortesías', value: totalCourtesies.toString(), sub: `${courtesies.length} invitados`, icon: Gift, color: 'text-purple-500', bg: 'bg-purple-500/10' },
-          { label: 'Check-ins', value: '0', sub: 'Evento aún no comenzó', icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+          { label: 'Tickets Vendidos', value: `${realTicketsSold} / ${totalCap}`, sub: `${totalCap > 0 ? Math.round((realTicketsSold / totalCap) * 100) : 0}% vendido`, icon: Ticket, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+          { label: 'Ingresos', value: `$${realTotalRevenue.toLocaleString('es-AR')}`, sub: `${orders.filter(o => o.status === 'confirmed').length} transacciones`, icon: DollarSign, color: 'text-green-500', bg: 'bg-green-500/10' },
+          { label: 'Cortesías', value: totalCourtesies.toString(), sub: `${totalCourtesies} tickets emitidos`, icon: Gift, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+          { label: 'Check-ins', value: tickets.filter(t => t.status === 'used').length.toString(), sub: 'Asistentes en el lugar', icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
         ].map((stat, i) => (
           <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
             className="bg-white/5 rounded-3xl border border-white/10 p-5">
@@ -206,8 +458,8 @@ export default function EventDashboard() {
               <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">{stat.label}</span>
               <div className={`${stat.bg} p-2 rounded-xl`}><stat.icon className={`w-4 h-4 ${stat.color}`} /></div>
             </div>
-            <p className="text-xl font-black">{stat.value}</p>
-            <p className="text-xs text-zinc-500 mt-1">{stat.sub}</p>
+            <p className="text-xl font-black">{stat.value || '0'}</p>
+            <p className="text-xs text-zinc-500 mt-1">{stat.sub || ''}</p>
           </motion.div>
         ))}
       </div>
@@ -238,22 +490,23 @@ export default function EventDashboard() {
             <h3 className="font-bold mb-4">Desglose por tipo de ticket</h3>
             <div className="space-y-4">
               {(event.tickets || []).map((ticket, i) => {
-                const ticketTotal = (ticket.available || 0) + Math.round((event.ticketsSold || 0) * (ticket.available / totalCap || 0));
-                const ticketSold = ticketTotal - (ticket.available || 0);
+                const ticketTotal = (Number(ticket.available) || 0) + Math.round((Number(event.ticketsSold) || 0) * (totalCap > 0 ? ((Number(ticket.available) || 0) / totalCap) : 0));
+                const ticketSold = Math.max(0, ticketTotal - (Number(ticket.available) || 0));
                 const pct = ticketTotal > 0 ? Math.round((ticketSold / ticketTotal) * 100) : 0;
+                const safePct = isNaN(pct) ? 0 : pct;
                 return (
                   <div key={i} className="space-y-2">
                     <div className="flex justify-between items-center">
                       <div>
                         <span className="font-bold text-sm">{ticket.type}</span>
-                        <span className="text-xs text-zinc-500 ml-2">(${ticket.price.toLocaleString('es-AR')} c/u)</span>
+                        <span className="text-xs text-zinc-500 ml-2">(${(Number(ticket.price) || 0).toLocaleString('es-AR')} c/u)</span>
                       </div>
-                      <span className="text-xs font-bold">{ticketSold}/{ticketTotal}</span>
+                      <span className="text-xs font-bold">{(Number(ticketSold) || 0)}/{(Number(ticketTotal) || 0)}</span>
                     </div>
                     <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-orange-500 to-orange-600 rounded-full" style={{ width: `${pct}%` }} />
+                      <div className="h-full bg-gradient-to-r from-orange-500 to-orange-600 rounded-full" style={{ width: `${safePct}%` }} />
                     </div>
-                    <p className="text-[10px] text-zinc-500">{pct}% vendido</p>
+                    <p className="text-[10px] text-zinc-500">{safePct}% vendido</p>
                   </div>
                 );
               })}
@@ -297,43 +550,60 @@ export default function EventDashboard() {
 
             <div className="space-y-4">
               {(event.tickets || []).map((ticket, i) => {
-                const ticketTotal = (ticket.available || 0) + Math.round((event.ticketsSold || 0) * ((ticket.available || 0) / (totalCap || 1)));
-                const ticketSold = ticketTotal - (ticket.available || 0);
+                const ticketTotal = (Number(ticket.available) || 0) + Math.round((Number(event.ticketsSold) || 0) * ((Number(ticket.available) || 0) / (totalCap || 1)));
+                const ticketSold = Math.max(0, ticketTotal - (Number(ticket.available) || 0));
+                const pct = ticketTotal > 0 ? Math.round((ticketSold / ticketTotal) * 100) : 0;
+                const safePct = isNaN(pct) ? 0 : pct;
                 return (
                   <div key={i} className="bg-white/5 rounded-2xl border border-white/10 p-5 space-y-4">
                     <div className="flex justify-between items-center">
                       <h4 className="font-bold">{ticket.type}</h4>
                       <div className="flex items-center gap-2">
                         <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full ${
-                          ticket.available <= 0 ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
+                          (Number(ticket.available) || 0) <= 0 ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
                         }`}>
-                          {ticket.available <= 0 ? 'Agotado' : 'En venta'}
+                          {(Number(ticket.available) || 0) <= 0 ? 'Agotado' : 'En venta'}
                         </span>
-                        <button className="text-red-400 hover:text-red-300 p-1"><Trash className="w-4 h-4" /></button>
+                        <button 
+                          onClick={() => handleRemoveTicket(i)}
+                          className="text-red-400 hover:text-red-300 p-1"
+                        >
+                          <Trash className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <label className="text-xs text-zinc-500 block mb-1">Precio ($)</label>
-                        <input type="number" defaultValue={ticket.price} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" />
+                        <input 
+                          type="number" 
+                          value={ticket.price || 0} 
+                          onChange={e => handleUpdateTicket(i, 'price', Number(e.target.value))}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" 
+                        />
                       </div>
                       <div>
                         <label className="text-xs text-zinc-500 block mb-1">Capacidad total</label>
-                        <input type="number" defaultValue={ticketTotal} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" />
-                        <p className="text-[10px] text-zinc-500 mt-1">{ticketSold} vendidos</p>
+                        <input 
+                          type="number" 
+                          value={ticketTotal || 0} 
+                          onChange={e => handleUpdateTicket(i, 'available', Number(e.target.value) - ticketSold)}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" 
+                        />
+                        <p className="text-[10px] text-zinc-500 mt-1">{(Number(ticketSold) || 0)} vendidos</p>
                       </div>
                       <div>
                         <label className="text-xs text-zinc-500 block mb-1">Disponibles</label>
                         <div className="flex items-center gap-2 h-10">
-                          <span className="text-2xl font-black">{ticket.available}</span>
+                          <span className="text-2xl font-black">{(Number(ticket.available) || 0)}</span>
                           <span className="text-xs text-zinc-500">restantes</span>
                         </div>
                       </div>
                     </div>
 
                     <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-orange-500 to-orange-600 rounded-full" style={{ width: `${ticketTotal > 0 ? (ticketSold / ticketTotal) * 100 : 0}%` }} />
+                      <div className="h-full bg-gradient-to-r from-orange-500 to-orange-600 rounded-full" style={{ width: `${safePct}%` }} />
                     </div>
                   </div>
                 );
@@ -346,19 +616,41 @@ export default function EventDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="text-xs text-zinc-500 block mb-1">Nombre del sector</label>
-                  <input type="text" placeholder="Ej: Campo VIP, Platea Alta..." className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" />
+                  <input 
+                    type="text" 
+                    placeholder="Ej: Campo VIP, Platea Alta..." 
+                    value={newSector.type}
+                    onChange={e => setNewSector({...newSector, type: e.target.value})}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" 
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-zinc-500 block mb-1">Precio ($)</label>
-                  <input type="number" placeholder="Ej: 5000" className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" />
+                  <input 
+                    type="number" 
+                    placeholder="Ej: 5000" 
+                    value={newSector.price}
+                    onChange={e => setNewSector({...newSector, price: Number(e.target.value)})}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" 
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-zinc-500 block mb-1">Cantidad disponible</label>
-                  <input type="number" placeholder="Ej: 100" className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" />
+                  <input 
+                    type="number" 
+                    placeholder="Ej: 100" 
+                    value={newSector.available}
+                    onChange={e => setNewSector({...newSector, available: Number(e.target.value)})}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" 
+                  />
                 </div>
               </div>
-              <button className="mt-4 flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm">
-                <Plus className="w-4 h-4" /> Agregar sector
+              <button 
+                onClick={handleAddSector}
+                disabled={isSaving}
+                className="mt-4 flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm disabled:opacity-50"
+              >
+                <Plus className="w-4 h-4" /> {isSaving ? 'Agregando...' : 'Agregar sector'}
               </button>
             </div>
 
@@ -391,6 +683,11 @@ export default function EventDashboard() {
                 <div>
                   <label className="text-xs text-zinc-500 block mb-1">Email del invitado</label>
                   <input type="email" placeholder="email@ejemplo.com" value={courtesyEmail} onChange={e => setCourtesyEmail(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" />
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 block mb-1">WhatsApp / Teléfono</label>
+                  <input type="tel" placeholder="Ej: 5491112345678" value={courtesyPhone} onChange={e => setCourtesyPhone(e.target.value)}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" />
                 </div>
                 <div>
@@ -431,10 +728,17 @@ export default function EventDashboard() {
               </label>
 
               <div className="flex gap-3 mt-6">
-                <button className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm shadow-lg shadow-orange-500/20">
-                  <Gift className="w-4 h-4" /> Generar cortesía
+                <button 
+                  onClick={handleGenerateCourtesy}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm shadow-lg shadow-orange-500/20 disabled:opacity-50"
+                >
+                  <Gift className="w-4 h-4" /> {isSaving ? 'Generando...' : 'Generar cortesía'}
                 </button>
-                <button className="flex items-center gap-2 bg-white/5 border border-white/10 font-bold px-5 py-2.5 rounded-xl text-sm hover:border-green-500/30 text-green-400">
+                <button 
+                  onClick={() => handleSendWhatsApp()}
+                  className="flex items-center gap-2 bg-white/5 border border-white/10 font-bold px-5 py-2.5 rounded-xl text-sm hover:border-green-500/30 text-green-400"
+                >
                   <Send className="w-4 h-4" /> Enviar por WhatsApp
                 </button>
               </div>
@@ -481,22 +785,47 @@ export default function EventDashboard() {
                 <tbody>
                   {courtesies.map((c, i) => (
                     <tr key={i} className="border-b border-white/5">
-                      <td className="p-2 font-bold">{c.name}</td>
-                      <td className="p-2 text-zinc-400">{c.email}</td>
+                      <td className="p-2 font-bold">{c.buyerName}</td>
+                      <td className="p-2 text-zinc-400">{c.buyerEmail}</td>
                       <td className="p-2">{c.ticketType}</td>
-                      <td className="p-2">{c.quantity}</td>
-                      <td className="p-2"><span className="bg-white/5 px-2 py-0.5 rounded text-xs">{c.reason}</span></td>
-                      <td className="p-2 text-zinc-400">{c.date}</td>
+                      <td className="p-2">1</td>
+                      <td className="p-2"><span className="bg-white/5 px-2 py-0.5 rounded text-xs">{c.courtesyReason || '—'}</span></td>
+                      <td className="p-2 text-zinc-400">{formatShortDate(c.createdAt)}</td>
                       <td className="p-2">
                         <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
-                          c.status === 'Enviado' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                        }`}>{c.status}</span>
+                          c.status === 'valid' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                        }`}>{c.status === 'valid' ? 'Válido' : c.status}</span>
                       </td>
                       <td className="p-2">
                         <div className="flex gap-1">
-                          <button className="p-1.5 hover:bg-white/5 rounded-lg"><Send className="w-3.5 h-3.5 text-zinc-400" /></button>
-                          <button className="p-1.5 hover:bg-white/5 rounded-lg"><Download className="w-3.5 h-3.5 text-zinc-400" /></button>
-                          <button className="p-1.5 hover:bg-white/5 rounded-lg"><Trash className="w-3.5 h-3.5 text-red-400" /></button>
+                          <button 
+                            onClick={() => handleResendEmail(c)}
+                            title="Reenviar Email"
+                            className="p-1.5 hover:bg-white/5 rounded-lg"
+                          >
+                            <Send className="w-3.5 h-3.5 text-zinc-400" />
+                          </button>
+                          <button 
+                            onClick={() => handleDownloadTicket(c)}
+                            title="Descargar Ticket"
+                            className="p-1.5 hover:bg-white/5 rounded-lg"
+                          >
+                            <Download className="w-3.5 h-3.5 text-zinc-400" />
+                          </button>
+                          <button 
+                            onClick={() => handleSendWhatsApp(c)}
+                            title="Enviar por WhatsApp"
+                            className="p-1.5 hover:bg-white/5 rounded-lg"
+                          >
+                            <Send className="w-3.5 h-3.5 text-green-400" />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteCourtesy(c.id)}
+                            title="Eliminar Cortesía"
+                            className="p-1.5 hover:bg-white/5 rounded-lg"
+                          >
+                            <Trash className="w-3.5 h-3.5 text-red-400" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -581,35 +910,76 @@ export default function EventDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.flatMap(order =>
-                    (order.items || []).flatMap(item =>
-                      Array.from({ length: item.quantity }, (_, idx) => (
-                        <tr key={`${order.id}-${item.type}-${idx}`} className="border-b border-white/5">
-                          <td className="p-2 font-bold">{order.buyerName}</td>
-                          <td className="p-2 text-zinc-400">{order.buyerEmail}</td>
-                          <td className="p-2">{item.type}</td>
-                          <td className="p-2"><span className="bg-blue-500/10 text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded-full">Compra</span></td>
-                          <td className="p-2"><span className="bg-yellow-500/10 text-yellow-400 text-[10px] font-bold px-2 py-0.5 rounded-full">Pendiente</span></td>
-                        </tr>
-                      ))
-                    )
-                  )}
-                  {courtesies.flatMap((c, ci) =>
-                    Array.from({ length: c.quantity }, (_, idx) => (
-                      <tr key={`c-${ci}-${idx}`} className="border-b border-white/5">
-                        <td className="p-2 font-bold">{c.name}</td>
-                        <td className="p-2 text-zinc-400">{c.email}</td>
-                        <td className="p-2">{c.ticketType}</td>
-                        <td className="p-2"><span className="bg-purple-500/10 text-purple-400 text-[10px] font-bold px-2 py-0.5 rounded-full">Cortesía</span></td>
-                        <td className="p-2"><span className="bg-yellow-500/10 text-yellow-400 text-[10px] font-bold px-2 py-0.5 rounded-full">Pendiente</span></td>
-                      </tr>
-                    ))
-                  )}
+                  {tickets.map((ticket, idx) => (
+                    <tr key={ticket.id || idx} className="border-b border-white/5">
+                      <td className="p-2 font-bold">{ticket.buyerName || '—'}</td>
+                      <td className="p-2 text-zinc-400">{ticket.buyerEmail || '—'}</td>
+                      <td className="p-2">{ticket.ticketType}</td>
+                      <td className="p-2">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          ticket.isCourtesy ? 'bg-purple-500/10 text-purple-400' : 'bg-blue-500/10 text-blue-400'
+                        }`}>
+                          {ticket.isCourtesy ? 'Cortesía' : 'Compra'}
+                        </span>
+                      </td>
+                      <td className="p-2">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          ticket.status === 'used' ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-400'
+                        }`}>
+                          {ticket.status === 'used' ? 'Ingresó' : 'Pendiente'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
+              {tickets.length === 0 && <p className="text-center text-zinc-500 py-8">Sin asistentes todavía</p>}
             </div>
           </div>
         </motion.div>
+      )}
+
+      {/* ==================== EDIT EVENT MODAL ==================== */}
+      {isEditingEvent && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+            className="bg-zinc-900 border border-white/10 p-8 rounded-[2.5rem] max-w-lg w-full space-y-6 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-2xl font-black">Editar Información del Evento</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-1">Título</label>
+                <input type="text" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500/50" />
+              </div>
+              <div>
+                <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-1">Lugar</label>
+                <input type="text" value={editForm.venue} onChange={e => setEditForm({...editForm, venue: e.target.value})}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500/50" />
+              </div>
+              <div>
+                <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-1">Ciudad</label>
+                <input type="text" value={editForm.location} onChange={e => setEditForm({...editForm, location: e.target.value})}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500/50" />
+              </div>
+              <div>
+                <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-1">Descripción</label>
+                <textarea rows={4} value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500/50 resize-none" />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <button onClick={() => setIsEditingEvent(false)} className="flex-1 px-6 py-3 rounded-2xl bg-white/5 hover:bg-white/10 font-bold transition">
+                Cancelar
+              </button>
+              <button onClick={handleSaveEventDetails} disabled={isSaving}
+                className="flex-1 px-6 py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold transition disabled:opacity-50">
+                {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
     </div>
   );
