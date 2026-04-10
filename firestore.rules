@@ -81,8 +81,6 @@ service cloud.firestore {
 
     function isValidUser(data) {
       return hasOnlyAllowedFields(['uid', 'email', 'displayName', 'photoURL', 'role', 'phone', 'dni', 'suspended', 'createdAt', 'updatedAt']) &&
-             data.uid == request.auth.uid &&
-             isValidEmail(data.email) &&
              data.role in ['buyer', 'organizer', 'admin', 'superadmin'];
     }
 
@@ -113,8 +111,14 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (request.resource.data.role == 'buyer' || isSuperAdmin());
-      allow update: if (isOwner(userId) || isSuperAdmin()) && isValidUser(request.resource.data) && (request.resource.data.role == resource.data.role || isSuperAdmin());
+      allow create: if isAuthenticated() && 
+                    isValidUser(request.resource.data) && 
+                    request.resource.data.uid == request.auth.uid &&
+                    isValidEmail(request.resource.data.email) &&
+                    (request.resource.data.role == 'buyer' || isSuperAdmin());
+      allow update: if (isOwner(userId) || isSuperAdmin()) && 
+                    isValidUser(request.resource.data) && 
+                    (isSuperAdmin() || (request.resource.data.role == resource.data.role && request.resource.data.uid == request.auth.uid));
       allow delete: if isSuperAdmin();
     }
 
@@ -136,6 +140,7 @@ service cloud.firestore {
                    isAdmin();
       allow create: if true; // Allow guest purchase
       allow update: if isAdmin() || (isAuthenticated() && isOwner(resource.data.buyerId)) || (isAuthenticated() && isOwner(get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organizerId));
+      allow delete: if isAdmin() || (isAuthenticated() && isOwner(get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organizerId));
     }
 
     match /orders/{orderId} {

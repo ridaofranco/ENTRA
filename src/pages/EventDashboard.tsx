@@ -16,6 +16,7 @@ import {
   onSnapshot, 
   updateDoc, 
   addDoc, 
+  deleteDoc,
   Timestamp 
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -80,6 +81,17 @@ export default function EventDashboard() {
   const [isSaving, setIsSaving] = useState(false);
   const [isEditingEvent, setIsEditingEvent] = useState(false);
   const [editForm, setEditForm] = useState<Partial<EventData>>({});
+  const [confirmDeleteSectorIdx, setConfirmDeleteSectorIdx] = useState<number | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Auto-hide toast
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   // New sector form state
   const [newSector, setNewSector] = useState({ type: '', price: 0, available: 0 });
@@ -171,7 +183,7 @@ export default function EventDashboard() {
         updatedAt: Timestamp.now()
       });
       setIsEditingEvent(false);
-      alert('Evento actualizado con éxito');
+      setToast({ message: 'Evento actualizado con éxito', type: 'success' });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `events/${event.id}`);
     } finally {
@@ -196,7 +208,6 @@ export default function EventDashboard() {
 
   const handleRemoveTicket = async (idx: number) => {
     if (!event) return;
-    if (!confirm('¿Estás seguro de eliminar este sector?')) return;
     
     const newTickets = (event.tickets || []).filter((_, i) => i !== idx);
     
@@ -205,6 +216,8 @@ export default function EventDashboard() {
         tickets: newTickets,
         updatedAt: Timestamp.now()
       });
+      setConfirmDeleteSectorIdx(null);
+      setToast({ message: 'Sector eliminado', type: 'success' });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `events/${event.id}`);
     }
@@ -212,7 +225,7 @@ export default function EventDashboard() {
 
   const handleAddSector = async () => {
     if (!event || !newSector.type || newSector.available <= 0) {
-      alert('Por favor completa el nombre y la cantidad del sector');
+      setToast({ message: 'Por favor completa el nombre y la cantidad del sector', type: 'error' });
       return;
     }
 
@@ -234,7 +247,7 @@ export default function EventDashboard() {
 
   const handleGenerateCourtesy = async () => {
     if (!event || !courtesyName || !courtesyEmail || !courtesyType) {
-      alert('Por favor completa los campos obligatorios');
+      setToast({ message: 'Por favor completa los campos obligatorios', type: 'error' });
       return;
     }
 
@@ -282,7 +295,7 @@ export default function EventDashboard() {
         console.log(`Simulating email send to ${courtesyEmail}`);
       }
 
-      alert('Cortesía(s) generada(s) con éxito');
+      setToast({ message: 'Cortesía(s) generada(s) con éxito', type: 'success' });
       setCourtesyName('');
       setCourtesyEmail('');
       setCourtesyPhone('');
@@ -303,7 +316,7 @@ export default function EventDashboard() {
       // Simulate email resend
       console.log(`Resending email to ${ticket.buyerEmail}`);
       await logAction('RESEND_COURTESY_EMAIL', 'tickets', ticket.id, { email: ticket.buyerEmail });
-      alert(`Email reenviado a ${ticket.buyerEmail}`);
+      setToast({ message: `Email reenviado a ${ticket.buyerEmail}`, type: 'success' });
     } catch (error) {
       console.error('Error resending email:', error);
     } finally {
@@ -312,32 +325,219 @@ export default function EventDashboard() {
   };
 
   const handleDownloadTicket = async (ticket: any) => {
-    try {
-      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${ticket.qrCode}`;
-      const response = await fetch(qrUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `ticket-${ticket.buyerName.replace(/\s+/g, '-').toLowerCase()}-${ticket.qrCode.slice(0, 8)}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading ticket:', error);
-      alert('Error al descargar el ticket');
+    if (!event) return;
+    
+    const eventDateStr = formatDate(event.date);
+    const qrImageUrl = (value: string) => `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=8&data=${encodeURIComponent(value)}`;
+    
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Ticket - ${event.title}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+  body { 
+    font-family: 'Inter', sans-serif; 
+    background: #f0f0f0; 
+    margin: 0; 
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .ticket {
+    background: white;
+    width: 100%;
+    max-width: 450px;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+  }
+  .ticket-header {
+    background: #000;
+    color: white;
+    padding: 30px;
+    text-align: center;
+  }
+  .brand {
+    font-weight: 900;
+    letter-spacing: -1px;
+    font-size: 14px;
+    color: #FF5C00;
+    margin-bottom: 10px;
+  }
+  .ticket-header h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 900;
+    line-height: 1.1;
+  }
+  .ticket-type {
+    display: inline-block;
+    background: #FF5C00;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+    margin-top: 15px;
+    letter-spacing: 1px;
+  }
+  .ticket-body {
+    padding: 30px;
+    display: flex;
+    gap: 25px;
+    align-items: center;
+  }
+  .qr-section {
+    flex-shrink: 0;
+    text-align: center;
+  }
+  .qr-wrap {
+    background: white;
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 16px;
+    line-height: 0;
+  }
+  .qr-wrap img {
+    width: 140px;
+    height: 140px;
+  }
+  .code {
+    font-family: monospace;
+    font-size: 10px;
+    color: #999;
+    margin-top: 8px;
+  }
+  .info-section {
+    flex-grow: 1;
+  }
+  .info-row {
+    margin-bottom: 15px;
+  }
+  .info-row:last-child { margin-bottom: 0; }
+  .info-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #999;
+    letter-spacing: 1px;
+    margin-bottom: 2px;
+  }
+  .info-value {
+    font-size: 15px;
+    font-weight: 700;
+    color: #000;
+  }
+  .info-value.small { font-size: 13px; }
+  .ticket-footer {
+    border-top: 2px dashed #eee;
+    padding: 20px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fafafa;
+  }
+  .status {
+    font-size: 11px;
+    font-weight: 900;
+    color: #22c55e;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .status::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: #22c55e;
+    border-radius: 50%;
+  }
+  .brand-footer {
+    color: #FF5C00;
+    font-weight: 900;
+    font-size: 14px;
+    letter-spacing: 1px;
+  }
+  .order-badge {
+    font-family: monospace;
+    font-size: 10px;
+    color: #999;
+  }
+  @media print {
+    body { padding: 0; background: white; }
+    .ticket {
+      box-shadow: none;
+      border: 1px solid #ddd;
+      margin: 0 auto;
     }
+  }
+</style>
+</head>
+<body>
+<div class="ticket">
+  <div class="ticket-header">
+    <div class="brand">ENTRA by DER</div>
+    <h1>${event.title}</h1>
+    <div class="ticket-type">${ticket.ticketType || ticket.type}</div>
+  </div>
+  <div class="ticket-body">
+    <div class="qr-section">
+      <div class="qr-wrap">
+        <img src="${qrImageUrl(ticket.qrCode)}" alt="QR Code" />
+      </div>
+      <div class="code">${ticket.qrCode.slice(0, 8)}...</div>
+    </div>
+    <div class="info-section">
+      <div class="info-row">
+        <div class="info-label">Titular</div>
+        <div class="info-value">${ticket.buyerName}</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">DNI</div>
+        <div class="info-value small">${ticket.buyerDni || '—'}</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Fecha</div>
+        <div class="info-value small">${eventDateStr}</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Lugar</div>
+        <div class="info-value small">${event.venue || ''}</div>
+      </div>
+    </div>
+  </div>
+  <div class="ticket-footer">
+    <span class="status">VÁLIDO</span>
+    <span class="brand-footer">ENTRA</span>
+  </div>
+</div>
+<script>
+  window.addEventListener('load', function() {
+    setTimeout(function() { window.print(); }, 500);
+  });
+</script>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
   };
 
   const handleDeleteCourtesy = async (ticketId: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta cortesía?')) return;
     try {
       setIsSaving(true);
-      const { deleteDoc } = await import('firebase/firestore');
       await deleteDoc(doc(db, 'tickets', ticketId));
       await logAction('DELETE_COURTESY', 'tickets', ticketId);
-      alert('Cortesía eliminada');
+      setConfirmDeleteId(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `tickets/${ticketId}`);
     } finally {
@@ -351,7 +551,7 @@ export default function EventDashboard() {
     const type = ticket ? ticket.ticketType : courtesyType;
     
     if (!phone) {
-      alert('Por favor declará un número de teléfono');
+      setToast({ message: 'Por favor declará un número de teléfono', type: 'error' });
       return;
     }
 
@@ -565,7 +765,7 @@ export default function EventDashboard() {
                           {(Number(ticket.available) || 0) <= 0 ? 'Agotado' : 'En venta'}
                         </span>
                         <button 
-                          onClick={() => handleRemoveTicket(i)}
+                          onClick={() => setConfirmDeleteSectorIdx(i)}
                           className="text-red-400 hover:text-red-300 p-1"
                         >
                           <Trash className="w-4 h-4" />
@@ -820,7 +1020,7 @@ export default function EventDashboard() {
                             <Send className="w-3.5 h-3.5 text-green-400" />
                           </button>
                           <button 
-                            onClick={() => handleDeleteCourtesy(c.id)}
+                            onClick={() => setConfirmDeleteId(c.id)}
                             title="Eliminar Cortesía"
                             className="p-1.5 hover:bg-white/5 rounded-lg"
                           >
@@ -976,6 +1176,71 @@ export default function EventDashboard() {
               <button onClick={handleSaveEventDetails} disabled={isSaving}
                 className="flex-1 px-6 py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold transition disabled:opacity-50">
                 {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100]">
+          <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className={`px-6 py-3 rounded-2xl font-bold text-sm shadow-2xl ${
+            toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+          }`}>
+            {toast.message}
+          </motion.div>
+        </div>
+      )}
+
+      {/* Confirm Delete Sector Modal */}
+      {confirmDeleteSectorIdx !== null && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-zinc-900 border border-white/10 p-8 rounded-[2.5rem] max-w-md w-full text-center">
+            <div className="w-20 h-20 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Trash className="w-10 h-10" />
+            </div>
+            <h3 className="text-2xl font-black mb-2">¿Eliminar sector?</h3>
+            <p className="text-zinc-400 mb-8">Se eliminará el sector "{event.tickets[confirmDeleteSectorIdx].type}". Esta acción no se puede deshacer.</p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => handleRemoveTicket(confirmDeleteSectorIdx)} 
+                className="flex-1 bg-red-600 text-white font-bold py-4 rounded-2xl hover:bg-red-700 transition-all"
+              >
+                Eliminar
+              </button>
+              <button 
+                onClick={() => setConfirmDeleteSectorIdx(null)} 
+                className="flex-1 bg-white/5 text-white font-bold py-4 rounded-2xl hover:bg-white/10 transition-all"
+              >
+                Cancelar
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Confirm Delete Courtesy Modal */}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-zinc-900 border border-white/10 p-8 rounded-[2.5rem] max-w-md w-full text-center">
+            <div className="w-20 h-20 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Trash className="w-10 h-10" />
+            </div>
+            <h3 className="text-2xl font-black mb-2">¿Eliminar cortesía?</h3>
+            <p className="text-zinc-400 mb-8">Esta acción no se puede deshacer. El ticket dejará de ser válido.</p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => handleDeleteCourtesy(confirmDeleteId)} 
+                disabled={isSaving}
+                className="flex-1 bg-red-600 text-white font-bold py-4 rounded-2xl hover:bg-red-700 transition-all disabled:opacity-50"
+              >
+                {isSaving ? 'Eliminando...' : 'Sí, eliminar'}
+              </button>
+              <button 
+                onClick={() => setConfirmDeleteId(null)} 
+                className="flex-1 bg-white/5 text-white font-bold py-4 rounded-2xl hover:bg-white/10 transition-all"
+              >
+                Cancelar
               </button>
             </div>
           </motion.div>

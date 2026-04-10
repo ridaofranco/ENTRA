@@ -58,6 +58,8 @@ export default function AdminDashboard() {
   const [editingEvent, setEditingEvent] = useState<EventData | null>(null);
   const [savingEvent, setSavingEvent] = useState(false);
   const [eventFilter, setEventFilter] = useState<'all' | 'active' | 'paused' | 'scheduled' | 'deleted'>('all');
+  const [eventTimeFilter, setEventTimeFilter] = useState<'all' | 'upcoming' | 'past'>('all');
+  const [eventSearch, setEventSearch] = useState('');
 
   // Authorization: superadmin by email fallback + profile role
   const isAuthorized =
@@ -328,8 +330,19 @@ export default function AdminDashboard() {
   // Apply event filter
   const filteredEvents = events.filter(e => {
     const s = e.status || 'active';
-    if (eventFilter === 'all') return true;
-    return s === eventFilter;
+    const matchesStatus = eventFilter === 'all' || s === eventFilter;
+    
+    const eventDate = e.date?.toDate ? e.date.toDate() : e.date?.seconds ? new Date(e.date.seconds * 1000) : null;
+    const now = new Date();
+    const matchesTime = eventTimeFilter === 'all' || 
+                       (eventTimeFilter === 'upcoming' && eventDate && eventDate >= now) ||
+                       (eventTimeFilter === 'past' && eventDate && eventDate < now);
+                       
+    const matchesSearch = e.title.toLowerCase().includes(eventSearch.toLowerCase()) ||
+                         e.organizerEmail?.toLowerCase().includes(eventSearch.toLowerCase()) ||
+                         e.venue?.toLowerCase().includes(eventSearch.toLowerCase());
+                         
+    return matchesStatus && matchesTime && matchesSearch;
   });
 
   // ==================== LOADING SCREEN ====================
@@ -492,15 +505,48 @@ export default function AdminDashboard() {
       {/* Events Table */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
         <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
             <h2 className="text-xl font-black">
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">Eventos</span>
               <span className="text-zinc-500 text-sm font-normal ml-3">
                 {filteredEvents.length} de {events.length}
               </span>
             </h2>
+            
+            <div className="flex flex-wrap gap-3 items-center">
+              {/* Search input */}
+              <div className="relative min-w-[240px]">
+                <Input
+                  placeholder="Buscar por título, lugar u organizador..."
+                  value={eventSearch}
+                  onChange={(e) => setEventSearch(e.target.value)}
+                  className="bg-white/5 border-white/10 h-10 rounded-xl pl-10 text-xs"
+                />
+                <BarChart3 className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2 rotate-90" />
+              </div>
+
+              {/* Time filter */}
+              <div className="flex bg-white/5 border border-white/10 rounded-xl p-1">
+                {(['all', 'upcoming', 'past'] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setEventTimeFilter(t)}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition ${
+                      eventTimeFilter === t
+                        ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                        : 'text-zinc-500 hover:text-white'
+                    }`}
+                  >
+                    {t === 'all' ? 'Todos' : t === 'upcoming' ? 'Próximos' : 'Pasados'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
             {/* Event filter chips */}
-            <div className="flex gap-1.5 flex-wrap">
+            <div className="flex gap-1.5">
               {([
                 { key: 'all', label: `Todos (${events.length})` },
                 { key: 'active', label: `Activos (${countsByStatus.active || 0})` },
@@ -511,7 +557,7 @@ export default function AdminDashboard() {
                 <button
                   key={f.key}
                   onClick={() => setEventFilter(f.key)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
                     eventFilter === f.key
                       ? 'orange-gradient text-white'
                       : 'bg-white/5 border border-white/10 text-muted-foreground hover:text-white'

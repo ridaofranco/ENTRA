@@ -44,6 +44,8 @@ export default function Dashboard() {
   const [allOrders, setAllOrders] = useState<OrderData[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'eventos' | 'ventas'>('eventos');
+  const [eventSearch, setEventSearch] = useState('');
+  const [eventTimeFilter, setEventTimeFilter] = useState<'all' | 'upcoming' | 'past'>('all');
 
   // Auth
   useEffect(() => {
@@ -134,6 +136,21 @@ export default function Dashboard() {
     return '';
   };
 
+  // ==================== FILTERED EVENTS ====================
+  const filteredEvents = events.filter(e => {
+    const eventDate = e.date?.toDate ? e.date.toDate() : e.date?.seconds ? new Date(e.date.seconds * 1000) : null;
+    const now = new Date();
+    
+    const matchesTime = eventTimeFilter === 'all' || 
+                       (eventTimeFilter === 'upcoming' && eventDate && eventDate >= now) ||
+                       (eventTimeFilter === 'past' && eventDate && eventDate < now);
+                       
+    const matchesSearch = e.title.toLowerCase().includes(eventSearch.toLowerCase()) ||
+                         e.venue?.toLowerCase().includes(eventSearch.toLowerCase());
+                         
+    return matchesTime && matchesSearch;
+  });
+
   // ==================== LOADING ====================
   if (loading) {
     return (
@@ -212,29 +229,64 @@ export default function Dashboard() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6">
-        <button
-          onClick={() => setActiveTab('eventos')}
-          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm transition-all ${
-            activeTab === 'eventos'
-              ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
-              : 'bg-white/5 text-zinc-400 hover:bg-white/10 border border-white/10'
-          }`}
-        >
-          <Calendar className="w-4 h-4" />
-          Mis Eventos
-        </button>
-        <button
-          onClick={() => setActiveTab('ventas')}
-          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm transition-all ${
-            activeTab === 'ventas'
-              ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
-              : 'bg-white/5 text-zinc-400 hover:bg-white/10 border border-white/10'
-          }`}
-        >
-          <BarChart3 className="w-4 h-4" />
-          Ultimas Ventas
-        </button>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveTab('eventos')}
+            className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm transition-all ${
+              activeTab === 'eventos'
+                ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                : 'bg-white/5 text-zinc-400 hover:bg-white/10 border border-white/10'
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            Mis Eventos
+          </button>
+          <button
+            onClick={() => setActiveTab('ventas')}
+            className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm transition-all ${
+              activeTab === 'ventas'
+                ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                : 'bg-white/5 text-zinc-400 hover:bg-white/10 border border-white/10'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            Ultimas Ventas
+          </button>
+        </div>
+
+        {activeTab === 'eventos' && events.length > 0 && (
+          <div className="flex flex-wrap gap-3 items-center">
+            {/* Search */}
+            <div className="relative min-w-[200px]">
+              <input
+                type="text"
+                placeholder="Buscar evento..."
+                value={eventSearch}
+                onChange={(e) => setEventSearch(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 pl-9 text-xs focus:outline-none focus:border-orange-500/50"
+              />
+              <Eye className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            </div>
+
+            {/* Time Filter */}
+            <div className="flex bg-white/5 border border-white/10 rounded-xl p-1">
+              {(['all', 'upcoming', 'past'] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setEventTimeFilter(t)}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition ${
+                    eventTimeFilter === t
+                      ? 'bg-orange-500 text-white'
+                      : 'text-zinc-500 hover:text-white'
+                  }`}
+                >
+                  {t === 'all' ? 'Todos' : t === 'upcoming' ? 'Próximos' : 'Pasados'}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ==================== EVENTS TAB ==================== */}
@@ -253,9 +305,19 @@ export default function Dashboard() {
                 </button>
               </Link>
             </div>
+          ) : filteredEvents.length === 0 ? (
+            <div className="text-center py-20 space-y-4">
+              <p className="text-zinc-500 text-sm">No se encontraron eventos con los filtros aplicados.</p>
+              <button 
+                onClick={() => { setEventSearch(''); setEventTimeFilter('all'); }}
+                className="text-orange-500 font-bold hover:underline text-sm"
+              >
+                Limpiar filtros
+              </button>
+            </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {events.map((event, index) => {
+              {filteredEvents.map((event, index) => {
                 const eventOrders = confirmedOrders.filter(o => o.eventId === event.id);
                 const eventTicketsSold = eventOrders.reduce((sum, o) => sum + (o.items || []).reduce((s: number, item: any) => s + (Number(item.quantity) || 0), 0), 0);
                 const eventRevenue = eventOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);

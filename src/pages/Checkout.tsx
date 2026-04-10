@@ -84,6 +84,8 @@ export default function Checkout() {
   });
   const [successState, setSuccessState] = useState<SuccessState | null>(null);
 
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
   // Redirect if no event data
   useEffect(() => {
     if (!event || !selectedTickets) {
@@ -91,13 +93,21 @@ export default function Checkout() {
     }
   }, [event, selectedTickets, navigate]);
 
+  // Toast auto-hide
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
   if (!event || !selectedTickets) {
     return null;
   }
 
   // Calculate totals
-  const subtotal = selectedTickets.reduce(
-    (acc: number, ticket: SelectedTicket) => acc + ticket.price * ticket.quantity,
+  const subtotal = (selectedTickets || []).reduce(
+    (acc: number, ticket: SelectedTicket) => acc + (Number(ticket.price) || 0) * (Number(ticket.quantity) || 0),
     0
   );
   const platformFee = Math.round(subtotal * 0.035);
@@ -105,7 +115,7 @@ export default function Checkout() {
 
   const handleConfirmPurchase = async () => {
     if (!buyerInfo.name || !buyerInfo.email || !buyerInfo.dni) {
-      alert('Por favor completa todos los campos');
+      setToast({ message: 'Por favor completa todos los campos', type: 'error' });
       return;
     }
 
@@ -202,7 +212,7 @@ export default function Checkout() {
       setStep(3);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'orders/tickets');
-      alert('Error al procesar la compra. Por favor intenta nuevamente.');
+      setToast({ message: 'Error al procesar la compra. Por favor intenta nuevamente.', type: 'error' });
     } finally {
       setIsProcessing(false);
     }
@@ -842,7 +852,7 @@ ${successState.tickets.map((ticket, i) => `
                         {ticket.quantity}x {ticket.type}
                       </span>
                       <span className="font-bold">
-                        ${(ticket.quantity * ticket.price).toLocaleString('es-AR')}
+                        ${((Number(ticket.quantity) || 0) * (Number(ticket.price) || 0)).toLocaleString('es-AR')}
                       </span>
                     </div>
                   ))}
@@ -885,6 +895,20 @@ ${successState.tickets.map((ticket, i) => `
           </div>
         )}
       </div>
+
+      {/* Toast Notification */}
+      {toast && (
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 50 }}
+          className={`fixed bottom-8 right-8 px-6 py-4 rounded-2xl shadow-2xl z-50 flex items-center gap-3 ${
+            toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
+          } text-white font-bold`}
+        >
+          {toast.message}
+        </motion.div>
+      )}
     </div>
   );
 }

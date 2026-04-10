@@ -84,8 +84,13 @@ export default function CreateEvent() {
         date: Timestamp.fromDate(eventDate),
         tickets,
         organizerId: user.uid,
-        status: 'published',
-        createdAt: Timestamp.now()
+        organizerEmail: user.email || '',
+        organizerName: user.displayName || profile?.displayName || '',
+        ticketsSold: 0,
+        totalRevenue: 0,
+        status: 'active',
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
       };
       
       const docRef = await addDoc(collection(db, 'events'), eventData);

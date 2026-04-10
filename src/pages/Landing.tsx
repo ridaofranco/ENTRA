@@ -9,7 +9,7 @@ import {
   MapPin, ChevronRight, Music, Star, TrendingUp, Ticket,
   MessageCircle, Check, Clock, Palette, Ban
 } from 'lucide-react';
-import { collection, getDocs, query, where, orderBy, limit, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
 import { seedEventsIfMissing } from '@/src/services/eventService';
 
@@ -57,34 +57,28 @@ export default function Landing() {
       // Seed demo events if collection is empty (only runs once)
       await seedEventsIfMissing();
 
-      // Fetch featured events
+      // Fetch ALL events (no where/orderBy — tolerates legacy events without status
+      // and avoids requiring a composite index)
       try {
-        const q = query(
-          collection(db, 'events'),
-          where('status', '==', 'active'),
-          orderBy('date', 'asc'),
-          limit(4)
-        );
-        const snapshot = await getDocs(q);
-        const events = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Event[];
-        setFeaturedEvents(events);
+        console.log('[Landing] Fetching events from Firestore...');
+        const snapshot = await getDocs(collection(db, 'events'));
+        console.log(`[Landing] Fetched ${snapshot.docs.length} raw event docs`);
+
+        const all = snapshot.docs
+          .map(d => ({ id: d.id, ...d.data() }) as Event & { status?: string })
+          // Only show active (or events without a status field, treated as active)
+          .filter(e => !e.status || e.status === 'active')
+          // Sort by date ascending
+          .sort((a, b) => {
+            const da = a.date?.toDate?.()?.getTime?.() || 0;
+            const db2 = b.date?.toDate?.()?.getTime?.() || 0;
+            return da - db2;
+          })
+          .slice(0, 4);
+
+        setFeaturedEvents(all);
       } catch (error) {
-        console.error('Error fetching events:', error);
-        // Fallback: fetch without ordering (in case index doesn't exist)
-        try {
-          const fallbackQuery = query(collection(db, 'events'), limit(10));
-          const snapshot = await getDocs(fallbackQuery);
-          const events = snapshot.docs
-            .map(d => ({ id: d.id, ...d.data() }) as Event & { status?: string })
-            .filter(e => !e.status || e.status === 'active')
-            .slice(0, 4);
-          setFeaturedEvents(events);
-        } catch (e) {
-          console.error('Fallback fetch also failed:', e);
-        }
+        console.error('[Landing] Error fetching events:', error);
       } finally {
         setLoading(false);
       }
@@ -511,4 +505,3 @@ export default function Landing() {
     </div>
   );
 }
-

@@ -34,18 +34,19 @@ interface Event {
 }
 
 export default function Catalog() {
-  const { user, userProfile } = useAuth();
+  const { user, profile } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
+  const [timeFilter, setTimeFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming');
   const [showHiddenAdmin, setShowHiddenAdmin] = useState(false);
 
   // Determine if current user is admin/superadmin
   const isAdmin =
-    userProfile?.role === 'admin' ||
-    userProfile?.role === 'superadmin' ||
+    profile?.role === 'admin' ||
+    profile?.role === 'superadmin' ||
     user?.email === 'ridaofrancorg@gmail.com';
 
   useEffect(() => {
@@ -124,14 +125,21 @@ export default function Catalog() {
   // Unique categories from visible events
   const categories = ['Todos', ...Array.from(new Set(visibleEvents.map(e => e.category).filter(Boolean)))];
 
-  // Apply search + category filters
+  // Apply search + category + time filters
   const filteredEvents = visibleEvents.filter(event => {
     const matchesSearch =
       event.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       event.venue?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       event.location?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'Todos' || event.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    
+    const eventDate = event.date?.toDate ? event.date.toDate() : event.date?.seconds ? new Date(event.date.seconds * 1000) : null;
+    const now = new Date();
+    const matchesTime = timeFilter === 'all' || 
+                       (timeFilter === 'upcoming' && eventDate && eventDate >= now) ||
+                       (timeFilter === 'past' && eventDate && eventDate < now);
+                       
+    return matchesSearch && matchesCategory && matchesTime;
   });
 
   // Count events by status for admin summary
@@ -203,32 +211,55 @@ export default function Catalog() {
 
       {/* Filters */}
       <section className="max-w-7xl mx-auto px-6 mb-10">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-grow">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Buscar eventos, lugares, artistas..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-12 pl-12 pr-4 bg-white/5 border border-white/10 rounded-2xl text-sm font-medium placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
-            />
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="flex-grow space-y-4">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Buscar eventos, lugares, artistas..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full h-12 pl-12 pr-4 bg-white/5 border border-white/10 rounded-2xl text-sm font-medium placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
+              />
+            </div>
+            
+            <div className="flex gap-2 flex-wrap">
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                    selectedCategory === cat
+                      ? 'orange-gradient text-white shadow-lg shadow-primary/20'
+                      : 'bg-white/5 border border-white/10 text-muted-foreground hover:border-primary/30 hover:text-white'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="flex gap-2 flex-wrap">
-            {categories.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-                  selectedCategory === cat
-                    ? 'orange-gradient text-white shadow-lg shadow-primary/20'
-                    : 'bg-white/5 border border-white/10 text-muted-foreground hover:border-primary/30 hover:text-white'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+          <div className="lg:w-64 flex-shrink-0">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-1 flex">
+              {(['upcoming', 'past', 'all'] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setTimeFilter(t)}
+                  className={`flex-1 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
+                    timeFilter === t
+                      ? 'orange-gradient text-white shadow-lg shadow-primary/20'
+                      : 'text-muted-foreground hover:text-white'
+                  }`}
+                >
+                  {t === 'upcoming' ? 'Próximos' : t === 'past' ? 'Pasados' : 'Todos'}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-center text-muted-foreground mt-2 uppercase tracking-widest font-bold">
+              Filtrar por fecha
+            </p>
           </div>
         </div>
       </section>
