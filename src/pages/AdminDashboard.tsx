@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Users, Calendar, Ticket, TrendingUp, Loader, ChevronDown,
-  Edit3, Trash2, RotateCcw, Eye, X, Plus, AlertTriangle, BarChart3
+  Edit3, Trash2, RotateCcw, Eye, X, Plus, AlertTriangle, BarChart3, Search
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/src/context/AuthContext';
@@ -513,25 +513,25 @@ export default function AdminDashboard() {
               </span>
             </h2>
             
-            <div className="flex flex-wrap gap-3 items-center">
+            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
               {/* Search input */}
-              <div className="relative min-w-[240px]">
+              <div className="relative w-full md:w-72">
                 <Input
                   placeholder="Buscar por título, lugar u organizador..."
                   value={eventSearch}
                   onChange={(e) => setEventSearch(e.target.value)}
-                  className="bg-white/5 border-white/10 h-10 rounded-xl pl-10 text-xs"
+                  className="bg-white/5 border-white/10 h-12 rounded-2xl pl-12 text-sm focus:border-orange-500/50 transition-all"
                 />
-                <BarChart3 className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2 rotate-90" />
+                <Search className="w-5 h-5 text-zinc-500 absolute left-4 top-1/2 -translate-y-1/2" />
               </div>
 
-              {/* Time filter */}
-              <div className="flex bg-white/5 border border-white/10 rounded-xl p-1">
+              {/* Time filter Tabs */}
+              <div className="flex bg-white/5 border border-white/10 rounded-2xl p-1 w-full md:w-auto">
                 {(['all', 'upcoming', 'past'] as const).map((t) => (
                   <button
                     key={t}
                     onClick={() => setEventTimeFilter(t)}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition ${
+                    className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
                       eventTimeFilter === t
                         ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
                         : 'text-zinc-500 hover:text-white'

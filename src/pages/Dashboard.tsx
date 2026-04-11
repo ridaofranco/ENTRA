@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Plus, DollarSign, Ticket, Calendar, Users, TrendingUp,
-  MapPin, BarChart3, Loader2, Eye, Settings, ChevronRight
+  MapPin, BarChart3, Loader2, Eye, Settings, ChevronRight, Search
 } from 'lucide-react';
 import { collection, query, where, getDocs, doc, getDoc, orderBy } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -256,28 +256,28 @@ export default function Dashboard() {
         </div>
 
         {activeTab === 'eventos' && events.length > 0 && (
-          <div className="flex flex-wrap gap-3 items-center">
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
             {/* Search */}
-            <div className="relative min-w-[200px]">
+            <div className="relative w-full md:w-64">
               <input
                 type="text"
                 placeholder="Buscar evento..."
                 value={eventSearch}
                 onChange={(e) => setEventSearch(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 pl-9 text-xs focus:outline-none focus:border-orange-500/50"
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 pl-10 text-sm focus:outline-none focus:border-orange-500/50 transition-all"
               />
-              <Eye className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
             </div>
 
-            {/* Time Filter */}
-            <div className="flex bg-white/5 border border-white/10 rounded-xl p-1">
+            {/* Time Filter Tabs */}
+            <div className="flex bg-white/5 border border-white/10 rounded-2xl p-1 w-full md:w-auto">
               {(['all', 'upcoming', 'past'] as const).map((t) => (
                 <button
                   key={t}
                   onClick={() => setEventTimeFilter(t)}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition ${
+                  className={`flex-1 md:flex-none px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
                     eventTimeFilter === t
-                      ? 'bg-orange-500 text-white'
+                      ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
                       : 'text-zinc-500 hover:text-white'
                   }`}
                 >
@@ -285,6 +285,15 @@ export default function Dashboard() {
                 </button>
               ))}
             </div>
+            
+            {(eventSearch || eventTimeFilter !== 'all') && (
+              <button 
+                onClick={() => { setEventSearch(''); setEventTimeFilter('all'); }}
+                className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 hover:text-orange-500 transition-colors px-2"
+              >
+                Limpiar filtros
+              </button>
+            )}
           </div>
         )}
       </div>
