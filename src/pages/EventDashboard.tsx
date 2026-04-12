@@ -4,7 +4,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, BarChart3, Calendar, Clock, DollarSign, Download,
   Edit, Gift, Loader2, MapPin, Minus, Plus, Save, Search, Send, Ticket,
-  Trash, Users, Eye, Copy, Check, RotateCcw, AlertTriangle
+  Trash, Users, Eye, Copy, Check, RotateCcw, AlertTriangle, Tag, Percent
 } from 'lucide-react';
 import { 
   doc, 
@@ -68,6 +68,58 @@ interface CourtesyData {
   status: string;
 }
 
+// =================== CSV EXPORT HELPERS ===================
+
+// Escapa un valor para CSV: envuelve en comillas si tiene coma, comillas o salto de línea
+const csvEscape = (val: any): string => {
+  if (val === null || val === undefined) return '';
+  const str = String(val);
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+};
+
+// Convierte un array de objetos a string CSV con headers
+const toCsv = (rows: Record<string, any>[], headers: { key: string; label: string }[]): string => {
+  const headerLine = headers.map(h => csvEscape(h.label)).join(',');
+  const lines = rows.map(row =>
+    headers.map(h => csvEscape(row[h.key])).join(',')
+  );
+  return [headerLine, ...lines].join('\n');
+};
+
+// Dispara la descarga del CSV con BOM para que Excel abra los acentos bien
+const downloadCsv = (csv: string, filename: string) => {
+  const bom = '\uFEFF'; // UTF-8 BOM para Excel
+  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+// Formatea un timestamp de Firestore o Date para CSV (dd/mm/yyyy hh:mm)
+const formatCsvDate = (val: any): string => {
+  if (!val) return '';
+  try {
+    const d = val?.toDate ? val.toDate() : new Date(val);
+    if (isNaN(d.getTime())) return '';
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
+  } catch {
+    return '';
+  }
+};
+
 export default function EventDashboard() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -76,12 +128,24 @@ export default function EventDashboard() {
   const [event, setEvent] = useState<EventData | null>(null);
   const [orders, setOrders] = useState<OrderData[]>([]);
   const [tickets, setTickets] = useState<any[]>([]);
+  const [discountCodes, setDiscountCodes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'resumen' | 'tickets' | 'cortesias' | 'ventas' | 'asistentes'>('resumen');
+  const [activeTab, setActiveTab] = useState<'resumen' | 'tickets' | 'cortesias' | 'ventas' | 'asistentes' | 'descuentos'>('resumen');
   const [isSaving, setIsSaving] = useState(false);
   const [showSavedFeedback, setShowSavedFeedback] = useState(false);
   const [isEditingEvent, setIsEditingEvent] = useState(false);
   const [editForm, setEditForm] = useState<Partial<EventData>>({});
+
+  // Discount form state
+  const [discountForm, setDiscountForm] = useState({
+    code: '',
+    type: 'percentage' as 'percentage' | 'fixed',
+    value: 0,
+    maxUses: '',
+    validUntil: ''
+  });
+  const [creatingDiscount, setCreatingDiscount] = useState(false);
+  const [discountFormError, setDiscountFormError] = useState<string | null>(null);
 
   // Filters for attendees
   const [attendeeSearch, setAttendeeSearch] = useState('');
@@ -220,10 +284,23 @@ export default function EventDashboard() {
       setTickets(ticketsList);
     });
 
+    // 4. Discount codes listener
+    const qDiscounts = query(collection(db, 'discount_codes'), where('eventId', '==', id));
+    const unsubDiscounts = onSnapshot(qDiscounts, (snap) => {
+      const discountsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Ordenar por activos primero, luego por fecha de creación
+      discountsList.sort((a: any, b: any) => {
+        if (a.active !== b.active) return a.active ? -1 : 1;
+        return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+      });
+      setDiscountCodes(discountsList);
+    });
+
     return () => {
       unsubEvent();
       unsubOrders();
       unsubTickets();
+      unsubDiscounts();
     };
   }, [id, user]);
 
@@ -435,6 +512,108 @@ export default function EventDashboard() {
     }
   };
 
+  // =================== EXPORT HANDLERS ===================
+
+  const handleExportAttendees = () => {
+    if (!event) return;
+    if (!tickets || tickets.length === 0) {
+      alert('No hay asistentes para exportar todavía.');
+      return;
+    }
+
+    // Ordenamos por fecha de compra descendente (más recientes primero)
+    const sorted = [...tickets].sort((a, b) => {
+      const at = a.createdAt?.seconds || 0;
+      const bt = b.createdAt?.seconds || 0;
+      return bt - at;
+    });
+
+    const rows = sorted.map((t: any) => ({
+      nombre: t.buyerName || '',
+      email: t.buyerEmail || '',
+      dni: t.buyerDni || t.buyerDNI || '',
+      telefono: t.buyerPhone || '',
+      tipo: t.ticketType || '',
+      origen: t.isCourtesy ? 'Cortesía' : 'Compra',
+      precio: typeof t.price === 'number' ? t.price : '',
+      codigoTicket: t.qrCode || t.id || '',
+      fechaCompra: formatCsvDate(t.createdAt),
+      estadoCheckIn: t.status === 'used' ? 'Ingresó' : (t.status === 'valid' ? 'Pendiente' : (t.status || '')),
+      transferido: t.transferredFrom ? `Sí (de ${t.transferredFrom})` : 'No',
+    }));
+
+    const headers = [
+      { key: 'nombre', label: 'Nombre' },
+      { key: 'email', label: 'Email' },
+      { key: 'dni', label: 'DNI' },
+      { key: 'telefono', label: 'Teléfono' },
+      { key: 'tipo', label: 'Tipo de ticket' },
+      { key: 'origen', label: 'Origen' },
+      { key: 'precio', label: 'Precio' },
+      { key: 'codigoTicket', label: 'Código de ticket' },
+      { key: 'fechaCompra', label: 'Fecha de compra' },
+      { key: 'estadoCheckIn', label: 'Check-in' },
+      { key: 'transferido', label: 'Transferido' },
+    ];
+
+    const csv = toCsv(rows, headers);
+    const safeTitle = (event.title || 'evento').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
+    const today = new Date().toISOString().slice(0, 10);
+    downloadCsv(csv, `asistentes-${safeTitle}-${today}.csv`);
+
+    // Audit trail
+    logAction('EXPORT_ATTENDEES_CSV', 'events', event.id, { count: rows.length });
+  };
+
+  const handleExportSales = () => {
+    if (!event) return;
+    if (!orders || orders.length === 0) {
+      alert('No hay ventas para exportar todavía.');
+      return;
+    }
+
+    const sorted = [...orders].sort((a, b) => {
+      const at = a.createdAt?.seconds || 0;
+      const bt = b.createdAt?.seconds || 0;
+      return bt - at;
+    });
+
+    const rows = sorted.map((o: any) => ({
+      idOrden: (o.id || '').slice(0, 12),
+      comprador: o.buyerName || '',
+      email: o.buyerEmail || '',
+      detalle: (o.items || []).map((it: any) => `${it.type} x${it.quantity}`).join(' | '),
+      cantidad: (o.items || []).reduce((s: number, it: any) => s + (Number(it.quantity) || 0), 0),
+      subtotal: typeof o.subtotal === 'number' ? o.subtotal : '',
+      comision: typeof o.commission === 'number' ? o.commission : '',
+      total: typeof o.total === 'number' ? o.total : '',
+      fecha: formatCsvDate(o.createdAt),
+      estado: o.status === 'confirmed' ? 'Completado' : (o.status || ''),
+      metodoPago: o.paymentMethod || '',
+    }));
+
+    const headers = [
+      { key: 'idOrden', label: 'ID Orden' },
+      { key: 'comprador', label: 'Comprador' },
+      { key: 'email', label: 'Email' },
+      { key: 'detalle', label: 'Detalle' },
+      { key: 'cantidad', label: 'Cantidad' },
+      { key: 'subtotal', label: 'Subtotal' },
+      { key: 'comision', label: 'Comisión' },
+      { key: 'total', label: 'Total' },
+      { key: 'fecha', label: 'Fecha' },
+      { key: 'estado', label: 'Estado' },
+      { key: 'metodoPago', label: 'Método de pago' },
+    ];
+
+    const csv = toCsv(rows, headers);
+    const safeTitle = (event.title || 'evento').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
+    const today = new Date().toISOString().slice(0, 10);
+    downloadCsv(csv, `ventas-${safeTitle}-${today}.csv`);
+
+    logAction('EXPORT_SALES_CSV', 'events', event.id, { count: rows.length });
+  };
+
   const handleDeleteCourtesy = (ticketId: string) => {
     setCourtesyToDelete(ticketId);
   };
@@ -626,6 +805,83 @@ El equipo de ENTRÁ`;
     window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
   };
 
+  // =================== DISCOUNT HANDLERS ===================
+
+  const handleCreateDiscount = async () => {
+    if (!event || !authUser) return;
+    if (!discountForm.code || discountForm.value <= 0) {
+      setDiscountFormError('El código y el valor son obligatorios');
+      return;
+    }
+
+    // Validar que el código no exista ya para este evento
+    const exists = discountCodes.some(d => d.code === discountForm.code.toUpperCase());
+    if (exists) {
+      setDiscountFormError('Este código ya existe para este evento');
+      return;
+    }
+
+    try {
+      setCreatingDiscount(true);
+      setDiscountFormError(null);
+
+      const newDiscount = {
+        eventId: event.id,
+        code: discountForm.code.toUpperCase().trim(),
+        type: discountForm.type,
+        value: Number(discountForm.value),
+        maxUses: discountForm.maxUses ? Number(discountForm.maxUses) : null,
+        usedCount: 0,
+        validUntil: discountForm.validUntil ? Timestamp.fromDate(new Date(discountForm.validUntil)) : null,
+        active: true,
+        createdBy: authUser.uid,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      };
+
+      await addDoc(collection(db, 'discount_codes'), newDiscount);
+      await logAction('CREATE_DISCOUNT_CODE', 'events', event.id, { code: newDiscount.code });
+      
+      setDiscountForm({
+        code: '',
+        type: 'percentage',
+        value: 0,
+        maxUses: '',
+        validUntil: ''
+      });
+    } catch (error) {
+      console.error('Error creating discount:', error);
+      handleFirestoreError(error, OperationType.CREATE, 'discount_codes');
+      setDiscountFormError('Error al crear el código de descuento');
+    } finally {
+      setCreatingDiscount(false);
+    }
+  };
+
+  const handleToggleDiscount = async (discountId: string, currentStatus: boolean) => {
+    try {
+      await updateDoc(doc(db, 'discount_codes', discountId), {
+        active: !currentStatus,
+        updatedAt: Timestamp.now()
+      });
+      await logAction('TOGGLE_DISCOUNT_CODE', 'discount_codes', discountId, { active: !currentStatus });
+    } catch (error) {
+      console.error('Error toggling discount:', error);
+      handleFirestoreError(error, OperationType.UPDATE, `discount_codes/${discountId}`);
+    }
+  };
+
+  const handleDeleteDiscount = async (discountId: string, code: string) => {
+    if (!confirm(`¿Estás seguro de eliminar el código ${code}?`)) return;
+    try {
+      await deleteDoc(doc(db, 'discount_codes', discountId));
+      await logAction('DELETE_DISCOUNT_CODE', 'discount_codes', discountId, { code });
+    } catch (error) {
+      console.error('Error deleting discount:', error);
+      handleFirestoreError(error, OperationType.DELETE, `discount_codes/${discountId}`);
+    }
+  };
+
   const formatDate = (date: any) => {
     try {
       if (date?.toDate) return date.toDate().toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -666,6 +922,7 @@ El equipo de ENTRÁ`;
   const tabs = [
     { key: 'resumen', label: 'Resumen', icon: BarChart3 },
     { key: 'tickets', label: 'Tickets y Capacidad', icon: Ticket },
+    { key: 'descuentos', label: 'Descuentos', icon: Tag },
     { key: 'cortesias', label: 'Cortesías', icon: Gift },
     { key: 'ventas', label: 'Ventas', icon: DollarSign },
     { key: 'asistentes', label: 'Asistentes', icon: Users },
@@ -1157,7 +1414,11 @@ El equipo de ENTRÁ`;
                   <option value="pending">Pendientes</option>
                   <option value="cancelled">Cancelados</option>
                 </select>
-                <button className="flex items-center gap-2 bg-white/5 border border-white/10 font-bold px-4 py-2 rounded-xl text-xs hover:border-orange-500/30">
+                <button
+                  onClick={handleExportSales}
+                  disabled={!orders || orders.length === 0}
+                  className="flex items-center gap-2 bg-white/5 border border-white/10 font-bold px-4 py-2 rounded-xl text-xs hover:border-orange-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >
                   <Download className="w-3.5 h-3.5" /> Exportar CSV
                 </button>
               </div>
@@ -1206,7 +1467,11 @@ El equipo de ENTRÁ`;
                 <h3 className="font-bold text-lg">Lista de asistentes</h3>
                 <p className="text-xs text-zinc-500">{filteredAttendees.length} asistentes encontrados</p>
               </div>
-              <button className="flex items-center gap-2 bg-white/5 border border-white/10 font-bold px-4 py-2 rounded-xl text-xs hover:border-orange-500/30">
+              <button
+                onClick={handleExportAttendees}
+                disabled={!tickets || tickets.length === 0}
+                className="flex items-center gap-2 bg-white/5 border border-white/10 font-bold px-4 py-2 rounded-xl text-xs hover:border-orange-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition"
+              >
                 <Download className="w-3.5 h-3.5" /> Exportar lista
               </button>
             </div>
@@ -1296,6 +1561,173 @@ El equipo de ENTRÁ`;
                 </tbody>
               </table>
               {filteredAttendees.length === 0 && <p className="text-center text-zinc-500 py-8">No se encontraron asistentes con los filtros aplicados</p>}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ==================== DESCUENTOS ==================== */}
+      {activeTab === 'descuentos' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-3">
+            {/* Create discount form */}
+            <div className="md:col-span-1 bg-white/5 rounded-3xl border border-white/10 p-6 h-fit">
+              <h3 className="font-bold text-lg mb-1">Nuevo Código</h3>
+              <p className="text-xs text-zinc-500 mb-6">Creá cupones de descuento para tus asistentes.</p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs text-zinc-500 block mb-1 uppercase font-bold tracking-widest">Código</label>
+                  <input 
+                    type="text" 
+                    placeholder="EJ: PROMO20" 
+                    value={discountForm.code}
+                    onChange={e => setDiscountForm({...discountForm, code: e.target.value.toUpperCase()})}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500/50 font-mono" 
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-zinc-500 block mb-1 uppercase font-bold tracking-widest">Tipo</label>
+                    <select 
+                      value={discountForm.type}
+                      onChange={e => setDiscountForm({...discountForm, type: e.target.value as any})}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500/50 appearance-none"
+                    >
+                      <option value="percentage">Porcentaje (%)</option>
+                      <option value="fixed">Monto Fijo ($)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-zinc-500 block mb-1 uppercase font-bold tracking-widest">Valor</label>
+                    <input 
+                      type="number" 
+                      placeholder="Ej: 20" 
+                      value={discountForm.value || ''}
+                      onChange={e => setDiscountForm({...discountForm, value: Number(e.target.value)})}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500/50" 
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs text-zinc-500 block mb-1 uppercase font-bold tracking-widest">Límite de usos (opcional)</label>
+                  <input 
+                    type="number" 
+                    placeholder="Sin límite" 
+                    value={discountForm.maxUses}
+                    onChange={e => setDiscountForm({...discountForm, maxUses: e.target.value})}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500/50" 
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-zinc-500 block mb-1 uppercase font-bold tracking-widest">Válido hasta (opcional)</label>
+                  <input 
+                    type="date" 
+                    value={discountForm.validUntil}
+                    onChange={e => setDiscountForm({...discountForm, validUntil: e.target.value})}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500/50 appearance-none" 
+                  />
+                </div>
+
+                {discountFormError && (
+                  <p className="text-xs font-bold text-red-500">{discountFormError}</p>
+                )}
+
+                <button 
+                  onClick={handleCreateDiscount}
+                  disabled={creatingDiscount || !discountForm.code || discountForm.value <= 0}
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold h-12 rounded-2xl shadow-lg shadow-orange-500/20 disabled:opacity-50"
+                >
+                  {creatingDiscount ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
+                  Crear Código
+                </button>
+              </div>
+            </div>
+
+            {/* Discount codes list */}
+            <div className="md:col-span-2 bg-white/5 rounded-3xl border border-white/10 p-6">
+              <h3 className="font-bold text-lg mb-4">Códigos Activos</h3>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/10 text-left">
+                      <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Código</th>
+                      <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Descuento</th>
+                      <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Usos</th>
+                      <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Validez</th>
+                      <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Estado</th>
+                      <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {discountCodes.map((d) => {
+                      const isExpired = d.validUntil && d.validUntil.toDate() < new Date();
+                      const isExhausted = d.maxUses && d.usedCount >= d.maxUses;
+                      const status = !d.active ? 'Pausado' : (isExpired ? 'Expirado' : (isExhausted ? 'Agotado' : 'Activo'));
+                      
+                      return (
+                        <tr key={d.id} className="border-b border-white/5 group">
+                          <td className="p-2">
+                            <span className="font-mono font-black text-orange-500">{d.code}</span>
+                          </td>
+                          <td className="p-2">
+                            <span className="font-bold">
+                              {d.type === 'percentage' ? `${d.value}%` : `$${d.value.toLocaleString('es-AR')}`}
+                            </span>
+                          </td>
+                          <td className="p-2">
+                            <span className="text-zinc-400">
+                              {d.usedCount} / {d.maxUses || '∞'}
+                            </span>
+                          </td>
+                          <td className="p-2 text-xs text-zinc-500">
+                            {d.validUntil ? formatDate(d.validUntil) : 'Permanente'}
+                          </td>
+                          <td className="p-2">
+                            <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
+                              status === 'Activo' ? 'bg-green-500/20 text-green-400' : 
+                              status === 'Pausado' ? 'bg-yellow-500/20 text-yellow-400' : 
+                              'bg-red-500/20 text-red-400'
+                            }`}>
+                              {status}
+                            </span>
+                          </td>
+                          <td className="p-2 text-right">
+                            <div className="flex justify-end gap-1">
+                              <button 
+                                onClick={() => handleToggleDiscount(d.id, d.active)}
+                                title={d.active ? "Pausar" : "Activar"}
+                                className="p-2 hover:bg-white/5 rounded-xl transition-colors"
+                              >
+                                {d.active ? <Clock className="w-4 h-4 text-yellow-500" /> : <Check className="w-4 h-4 text-green-500" />}
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteDiscount(d.id, d.code)}
+                                className="p-2 hover:bg-red-500/10 rounded-xl transition-colors"
+                              >
+                                <Trash className="w-4 h-4 text-red-400" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {discountCodes.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="p-12 text-center">
+                          <Tag className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
+                          <p className="text-zinc-500 font-bold">No hay códigos de descuento creados</p>
+                          <p className="text-xs text-zinc-600 mt-1">Creá el primero usando el formulario de la izquierda</p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </motion.div>

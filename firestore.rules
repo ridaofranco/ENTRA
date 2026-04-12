@@ -112,6 +112,18 @@ service cloud.firestore {
              data.status in ['pending', 'claimed', 'cancelled'];
     }
 
+    function isValidDiscount(data) {
+      return hasOnlyAllowedFields(['eventId', 'code', 'type', 'value', 'maxUses', 'usedCount', 'validUntil', 'active', 'createdBy', 'createdAt', 'updatedAt']) &&
+             data.eventId is string &&
+             data.code is string && data.code.size() > 0 && data.code.size() < 50 &&
+             data.type in ['percentage', 'fixed'] &&
+             data.value is number && data.value > 0 &&
+             (data.maxUses == null || data.maxUses is number) &&
+             data.usedCount is number &&
+             (data.validUntil == null || data.validUntil is timestamp) &&
+             data.active is bool;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -172,6 +184,38 @@ service cloud.firestore {
     match /orders/{orderId} {
       allow read: if isOwner(resource.data.buyerId) || isAdmin();
       allow create: if true; // Allow guest purchase
+    }
+
+    match /discount_codes/{codeId} {
+      // Cualquier usuario autenticado puede LEER un código (necesario para validar en Checkout)
+      allow read: if request.auth != null;
+
+      // Solo el organizador del evento o un admin puede CREAR códigos para ese evento
+      allow create: if request.auth != null
+        && isValidDiscount(request.resource.data)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.usedCount == 0
+        && exists(/databases/$(database)/documents/events/$(request.resource.data.eventId))
+        && (get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.organizerId == request.auth.uid || isAdmin());
+
+      // UPDATE: el organizador del evento o un admin puede actualizar cualquier campo.
+      // Además, cualquier usuario autenticado puede incrementar SOLO usedCount (al aplicar el código en Checkout).
+      allow update: if request.auth != null
+        && isValidDiscount(request.resource.data)
+        && (
+          // Caso 1: el organizador del evento o un admin está editando el código
+          (get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organizerId == request.auth.uid || isAdmin())
+          ||
+          // Caso 2: un comprador está incrementando usedCount exactamente en 1 (aplicando el código)
+          (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['usedCount', 'updatedAt'])
+            && request.resource.data.usedCount == resource.data.usedCount + 1
+          )
+        );
+
+      // DELETE: solo el organizador del evento o un admin
+      allow delete: if request.auth != null
+        && (get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organizerId == request.auth.uid || isAdmin());
     }
 
     match /coupons/{couponId} {

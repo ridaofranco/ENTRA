@@ -4,9 +4,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/src/components/ui/button';
 import { Card } from '@/src/components/ui/card';
 import { Input } from '@/src/components/ui/input';
-import { ArrowLeft, CheckCircle2, ShieldCheck, Ticket as TicketIcon, Calendar, MapPin, Copy, Download } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ShieldCheck, Ticket as TicketIcon, Calendar, MapPin, Copy, Download, Tag, Percent, Trash, X, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { collection, addDoc, Timestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, Timestamp, doc, getDoc, updateDoc, query, where, getDocs, increment } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/src/context/AuthContext';
@@ -86,6 +86,18 @@ export default function Checkout() {
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  // --- Discount Code State ---
+  const [discountCodeInput, setDiscountCodeInput] = useState('');
+  const [appliedDiscount, setAppliedDiscount] = useState<{
+    id: string;
+    code: string;
+    type: 'percentage' | 'fixed';
+    value: number;
+    amount: number;
+  } | null>(null);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+  const [isValidatingDiscount, setIsValidatingDiscount] = useState(false);
+
   // Toast auto-hide
   useEffect(() => {
     if (toast) {
@@ -99,14 +111,88 @@ export default function Checkout() {
   }
 
   // Calculate totals
-  const subtotal = (selectedTickets || []).reduce(
+  const subtotalOriginal = (selectedTickets || []).reduce(
     (acc: number, ticket: SelectedTicket) => acc + (Number(ticket.price) || 0) * (Number(ticket.quantity) || 0),
     0
   );
+
+  const discountAmount = appliedDiscount?.amount || 0;
+  const subtotal = Math.max(0, subtotalOriginal - discountAmount);
+
   // Usar la comisión snapshoteada en el evento. Fallback a 3.5% para eventos viejos.
   const eventCommission = Number(event.commissionRate) || 3.5;
   const platformFee = Math.round(subtotal * (eventCommission / 100));
   const total = subtotal + platformFee;
+
+  const handleApplyDiscount = async () => {
+    if (!discountCodeInput.trim()) return;
+    
+    setIsValidatingDiscount(true);
+    setDiscountError(null);
+
+    try {
+      const code = discountCodeInput.trim().toUpperCase();
+      const q = query(
+        collection(db, 'discount_codes'),
+        where('eventId', '==', event.id),
+        where('code', '==', code),
+        where('active', '==', true)
+      );
+
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        setDiscountError('Código inválido o no disponible');
+        return;
+      }
+
+      const discountDoc = querySnapshot.docs[0];
+      const discountData = discountDoc.data();
+
+      // Validar expiración
+      if (discountData.validUntil && discountData.validUntil.toDate() < new Date()) {
+        setDiscountError('Este código ha expirado');
+        return;
+      }
+
+      // Validar usos
+      if (discountData.maxUses && discountData.usedCount >= discountData.maxUses) {
+        setDiscountError('Este código ya alcanzó su límite de usos');
+        return;
+      }
+
+      // Calcular monto de descuento
+      let amount = 0;
+      if (discountData.type === 'percentage') {
+        amount = Math.round(subtotalOriginal * (discountData.value / 100));
+      } else {
+        amount = discountData.value;
+      }
+
+      // No permitir que el descuento supere el subtotal
+      amount = Math.min(amount, subtotalOriginal);
+
+      setAppliedDiscount({
+        id: discountDoc.id,
+        code: discountData.code,
+        type: discountData.type,
+        value: discountData.value,
+        amount
+      });
+      setDiscountCodeInput('');
+      setToast({ message: '¡Código aplicado con éxito!', type: 'success' });
+    } catch (error) {
+      console.error('Error validating discount:', error);
+      setDiscountError('Error al validar el código');
+    } finally {
+      setIsValidatingDiscount(false);
+    }
+  };
+
+  const handleRemoveDiscount = () => {
+    setAppliedDiscount(null);
+    setDiscountError(null);
+  };
 
   const handleConfirmPurchase = async () => {
     if (!buyerInfo.name || !buyerInfo.email || !buyerInfo.dni) {
@@ -119,7 +205,7 @@ export default function Checkout() {
       const buyerId = user?.uid || `guest-${Date.now()}`;
 
       // Create order document
-      const orderData: OrderData = {
+      const orderData: any = {
         buyerId,
         buyerEmail: buyerInfo.email,
         buyerName: buyerInfo.name,
@@ -127,6 +213,10 @@ export default function Checkout() {
         eventId: event.id,
         eventTitle: event.title,
         items: selectedTickets,
+        subtotalBeforeDiscount: subtotalOriginal,
+        discountCodeId: appliedDiscount?.id || null,
+        discountCode: appliedDiscount?.code || null,
+        discountAmount: discountAmount,
         subtotal,
         fee: platformFee,
         total,
@@ -137,6 +227,20 @@ export default function Checkout() {
 
       const orderDocRef = await addDoc(collection(db, 'orders'), orderData);
       const orderId = orderDocRef.id;
+
+      // Incrementar contador de uso del código de descuento
+      if (appliedDiscount) {
+        try {
+          const discountRef = doc(db, 'discount_codes', appliedDiscount.id);
+          await updateDoc(discountRef, {
+            usedCount: increment(1),
+            updatedAt: Timestamp.now()
+          });
+        } catch (discountUpdateError) {
+          console.error('Error updating discount usage count:', discountUpdateError);
+          // No bloqueamos la compra si falla el incremento, pero lo logueamos
+        }
+      }
 
       // Create ticket documents
       const createdTickets: Array<{ id: string; qrCode: string; type: string }> = [];
@@ -857,25 +961,99 @@ ${successState.tickets.map((ticket, i) => `
               <div className="border-t border-white/5" />
 
               {/* Pricing */}
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-bold">${subtotal.toLocaleString('es-AR')}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Comisión ({eventCommission}%)</span>
-                  <span className="font-bold">
-                    ${platformFee.toLocaleString('es-AR')}
-                  </span>
-                </div>
+              <div className="space-y-4">
+                {/* Discount Code Input */}
+                {!appliedDiscount ? (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <div className="relative flex-grow">
+                        <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          value={discountCodeInput}
+                          onChange={(e) => setDiscountCodeInput(e.target.value.toUpperCase())}
+                          placeholder="CÓDIGO"
+                          className="pl-9 bg-white/5 border-white/10 h-10 rounded-xl text-xs font-bold"
+                          onKeyDown={(e) => e.key === 'Enter' && handleApplyDiscount()}
+                        />
+                      </div>
+                      <Button 
+                        onClick={handleApplyDiscount}
+                        disabled={!discountCodeInput.trim() || isValidatingDiscount}
+                        className="h-10 px-4 orange-gradient border-none font-bold text-xs rounded-xl"
+                      >
+                        {isValidatingDiscount ? <Loader2 className="w-4 h-4 animate-spin" /> : 'APLICAR'}
+                      </Button>
+                    </div>
+                    {discountError && (
+                      <p className="text-[10px] font-bold text-red-500 ml-1 uppercase tracking-wider">
+                        {discountError}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-green-500/10 border border-green-500/20 rounded-2xl p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-green-500">
+                        <Percent className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-green-500">
+                          Descuento aplicado
+                        </p>
+                        <p className="text-sm font-black text-white">
+                          {appliedDiscount.code}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleRemoveDiscount}
+                      className="h-8 w-8 rounded-full hover:bg-red-500/20 hover:text-red-500"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
 
-                <div className="border-t border-white/5 pt-3 flex justify-between items-end">
-                  <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                    Total
-                  </span>
-                  <span className="text-3xl font-heading font-black orange-text-gradient">
-                    ${total.toLocaleString('es-AR')}
-                  </span>
+                <div className="space-y-3 pt-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <div className="text-right">
+                      {appliedDiscount && (
+                        <p className="text-xs text-muted-foreground line-through opacity-50">
+                          ${subtotalOriginal.toLocaleString('es-AR')}
+                        </p>
+                      )}
+                      <p className="font-bold">${subtotal.toLocaleString('es-AR')}</p>
+                    </div>
+                  </div>
+
+                  {appliedDiscount && (
+                    <div className="flex justify-between text-sm text-green-500">
+                      <span className="flex items-center gap-1">
+                        <Tag className="w-3 h-3" />
+                        Descuento ({appliedDiscount.type === 'percentage' ? `${appliedDiscount.value}%` : 'Fijo'})
+                      </span>
+                      <span className="font-bold">-${discountAmount.toLocaleString('es-AR')}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Comisión ({eventCommission}%)</span>
+                    <span className="font-bold">
+                      ${platformFee.toLocaleString('es-AR')}
+                    </span>
+                  </div>
+
+                  <div className="border-t border-white/5 pt-3 flex justify-between items-end">
+                    <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                      Total
+                    </span>
+                    <span className="text-3xl font-heading font-black orange-text-gradient">
+                      ${total.toLocaleString('es-AR')}
+                    </span>
+                  </div>
                 </div>
               </div>
 
