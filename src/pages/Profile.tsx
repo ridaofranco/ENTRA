@@ -3,11 +3,12 @@ import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   User, Ticket, LogOut, Calendar, MapPin, QrCode, Download,
-  ChevronRight, Copy, CheckCircle2, ShieldCheck, Loader2, Clock
+  ChevronRight, Copy, CheckCircle2, ShieldCheck, Loader2, Clock, Send
 } from 'lucide-react';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '@/src/lib/firebase';
+import { TransferTicketModal } from '@/src/components/TransferTicketModal';
 
 // QR image URL from a value (uses api.qrserver.com — no dependency needed)
 function qrImageUrl(value: string, size = 220): string {
@@ -54,6 +55,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
   const [expandedTicket, setExpandedTicket] = useState<string | null>(null);
+  const [transferringTicket, setTransferringTicket] = useState<any>(null);
 
   // Listen to auth state directly from Firebase (no context dependency)
   useEffect(() => {
@@ -491,7 +493,7 @@ export default function Profile() {
                       {/* Event image */}
                       <div className="w-14 h-14 rounded-2xl overflow-hidden flex-shrink-0 bg-white/5">
                         {ev?.image ? (
-                          <img src={ev.image || null} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          <img src={ev.image || undefined} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center"><Ticket className="w-6 h-6 text-zinc-600" /></div>
                         )}
@@ -547,6 +549,20 @@ export default function Profile() {
                                 <button onClick={() => handleDownloadQR(ticket, ev)} className="hover:bg-white/10 p-2 rounded-lg transition-colors" title="Descargar Entrada (PDF)">
                                   <Download className="w-4 h-4 text-zinc-400" />
                                 </button>
+                                {ticket.status === 'valid' && upcoming && ev?.allowTransfer !== false && (ticket as any).transferStatus !== 'pending' && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setTransferringTicket({ ...ticket, eventData: ev }); }}
+                                    className="hover:bg-orange-500/10 p-2 rounded-lg transition-colors"
+                                    title="Transferir ticket"
+                                  >
+                                    <Send className="w-4 h-4 text-orange-500" />
+                                  </button>
+                                )}
+                                {(ticket as any).transferStatus === 'pending' && (
+                                  <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full bg-yellow-500/10 text-yellow-500 border border-yellow-500/30">
+                                    Transferencia pendiente
+                                  </span>
+                                )}
                               </div>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
@@ -628,7 +644,7 @@ export default function Profile() {
                       {/* Event image */}
                       <div className="w-14 h-14 rounded-2xl overflow-hidden flex-shrink-0 bg-white/5">
                         {ev?.image ? (
-                          <img src={ev.image || null} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          <img src={ev.image || undefined} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center"><Ticket className="w-6 h-6 text-zinc-600" /></div>
                         )}
@@ -679,6 +695,24 @@ export default function Profile() {
             })
           )}
         </motion.div>
+      )}
+
+      {transferringTicket && (
+        <TransferTicketModal
+          ticket={transferringTicket}
+          event={transferringTicket.eventData}
+          currentUser={user}
+          onClose={() => {
+            setTransferringTicket(null);
+            // Al cerrar el modal (botón "Listo" o X), refrescamos los tickets
+            // para que aparezca el badge "Transferencia pendiente"
+            if (typeof loadUserData === 'function') loadUserData();
+          }}
+          onTransferCreated={() => {
+            // NO cerrar el modal acá. Dejar que el usuario vea el paso 3 (Éxito).
+            // El refetch de tickets se hace en onClose.
+          }}
+        />
       )}
     </div>
   );

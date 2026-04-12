@@ -186,7 +186,7 @@ export default function Landing() {
                         </div>
                         <div className="relative h-48 overflow-hidden flex-shrink-0">
                           <img
-                            src={evt.image || null}
+                            src={evt.image || undefined}
                             alt={evt.title}
                             className="w-full h-full object-cover"
                             referrerPolicy="no-referrer"
@@ -288,7 +288,7 @@ export default function Landing() {
                   <Card className="glass rounded-3xl border-white/10 overflow-hidden hover:border-primary/30 transition-all group cursor-pointer">
                     <div className="relative h-48 overflow-hidden">
                       <img
-                        src={event.image || null}
+                        src={event.image || undefined}
                         alt={event.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         referrerPolicy="no-referrer"

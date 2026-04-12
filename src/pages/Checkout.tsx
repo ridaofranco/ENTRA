@@ -86,13 +86,6 @@ export default function Checkout() {
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  // Redirect if no event data
-  useEffect(() => {
-    if (!event || !selectedTickets) {
-      navigate('/eventos');
-    }
-  }, [event, selectedTickets, navigate]);
-
   // Toast auto-hide
   useEffect(() => {
     if (toast) {
@@ -110,7 +103,9 @@ export default function Checkout() {
     (acc: number, ticket: SelectedTicket) => acc + (Number(ticket.price) || 0) * (Number(ticket.quantity) || 0),
     0
   );
-  const platformFee = Math.round(subtotal * 0.035);
+  // Usar la comisión snapshoteada en el evento. Fallback a 3.5% para eventos viejos.
+  const eventCommission = Number(event.commissionRate) || 3.5;
+  const platformFee = Math.round(subtotal * (eventCommission / 100));
   const total = subtotal + platformFee;
 
   const handleConfirmPurchase = async () => {
@@ -817,7 +812,7 @@ ${successState.tickets.map((ticket, i) => `
               <div className="space-y-3">
                 <div className="relative w-full h-24 rounded-2xl overflow-hidden">
                   <img
-                    src={event.image}
+                    src={event.image || undefined}
                     alt={event.title}
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
@@ -868,7 +863,7 @@ ${successState.tickets.map((ticket, i) => `
                   <span className="font-bold">${subtotal.toLocaleString('es-AR')}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Comisión (3.5%)</span>
+                  <span className="text-muted-foreground">Comisión ({eventCommission}%)</span>
                   <span className="font-bold">
                     ${platformFee.toLocaleString('es-AR')}
                   </span>

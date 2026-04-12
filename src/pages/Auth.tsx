@@ -2,19 +2,21 @@ import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '@/src/context/AuthContext';
 import { MessageCircle, Mail } from 'lucide-react';
 
 export default function Auth() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get('redirect') || '/perfil';
 
   useEffect(() => {
     if (user) {
-      navigate('/perfil');
+      navigate(redirect);
     }
-  }, [user, navigate]);
+  }, [user, navigate, redirect]);
 
   const handleGoogleLogin = async () => {
     try {

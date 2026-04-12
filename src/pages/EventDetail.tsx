@@ -100,7 +100,7 @@ export default function EventDetail() {
       {/* Banner */}
       <div className="relative h-[60vh] overflow-hidden">
         <img 
-          src={event.image || null} 
+          src={event.image || undefined} 
           alt={event.title} 
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"

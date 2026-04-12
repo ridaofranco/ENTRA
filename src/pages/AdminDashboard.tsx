@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Users, Calendar, Ticket, TrendingUp, Loader, ChevronDown,
-  Edit3, Trash2, RotateCcw, Eye, X, Plus, AlertTriangle, BarChart3, Search
+  Edit3, Trash2, RotateCcw, Eye, X, Plus, AlertTriangle, BarChart3, Search, Percent, Save, RefreshCw, Check
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/src/context/AuthContext';
 import { db } from '@/src/lib/firebase';
-import { collection, getDocs, doc, updateDoc, Timestamp, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, setDoc, getDoc, Timestamp, onSnapshot } from 'firebase/firestore';
 import { Card } from '@/src/components/ui/card';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
@@ -18,6 +18,7 @@ interface UserData {
   email: string;
   displayName: string;
   role: 'buyer' | 'organizer' | 'admin' | 'superadmin';
+  plan?: 'starter' | 'pro' | 'enterprise';
   createdAt: any;
   suspended?: boolean;
 }
@@ -32,7 +33,10 @@ interface EventData {
   id: string;
   title: string;
   description?: string;
+  organizerId?: string;
   organizerEmail?: string;
+  organizerPlan?: string;
+  commissionRate?: number;
   date: any;
   venue?: string;
   location?: string;
@@ -41,6 +45,8 @@ interface EventData {
   status: string;
   tickets: TicketType[];
   price?: number;
+  ticketsSold?: number;
+  totalRevenue?: number;
 }
 
 export default function AdminDashboard() {
@@ -53,17 +59,29 @@ export default function AdminDashboard() {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [roleDropdown, setRoleDropdown] = useState<string | null>(null);
+  const [planDropdown, setPlanDropdown] = useState<string | null>(null);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [updatingPlanId, setUpdatingPlanId] = useState<string | null>(null);
+  const [resnapshotId, setResnapshotId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ type: 'user' | 'event'; id: string; title?: string } | null>(null);
   const [editingEvent, setEditingEvent] = useState<EventData | null>(null);
   const [savingEvent, setSavingEvent] = useState(false);
   const [eventFilter, setEventFilter] = useState<'all' | 'active' | 'paused' | 'scheduled' | 'deleted'>('all');
+  // Commission tiers (migrated from PlatformConfig.tsx)
+  const [commissions, setCommissions] = useState({ starter: 3.5, pro: 2.5, enterprise: 1.9 });
+  const [commissionsInput, setCommissionsInput] = useState({ starter: '3.5', pro: '2.5', enterprise: '1.9' });
+  const [commissionLoading, setCommissionLoading] = useState<boolean>(false);
+  const [commissionSaved, setCommissionSaved] = useState<boolean>(false);
   const [eventTimeFilter, setEventTimeFilter] = useState<'all' | 'upcoming' | 'past'>('all');
   const [eventSearch, setEventSearch] = useState('');
 
-  // Authorization: superadmin by email fallback + profile role
+  // Authorization: admin + superadmin can enter the panel
   const isAuthorized =
     profile?.role === 'admin' ||
+    profile?.role === 'superadmin' ||
+    user?.email === 'ridaofrancorg@gmail.com';
+  // But ONLY superadmin can edit platform commission
+  const isSuperAdmin =
     profile?.role === 'superadmin' ||
     user?.email === 'ridaofrancorg@gmail.com';
 
@@ -102,6 +120,100 @@ export default function AdminDashboard() {
       };
     }
   }, [authLoading, isAuthorized]);
+
+  // ===== COMMISSION CONFIG (3 TIERS) =====
+  useEffect(() => {
+    (async () => {
+      try {
+        const snap = await getDoc(doc(db, 'platform_config', 'settings'));
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data?.commissionTiers) {
+            setCommissions(data.commissionTiers);
+            setCommissionsInput({
+              starter: String(data.commissionTiers.starter || '3.5'),
+              pro: String(data.commissionTiers.pro || '2.5'),
+              enterprise: String(data.commissionTiers.enterprise || '1.9'),
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('[AdminDashboard] Could not load commission tiers', err);
+      }
+    })();
+  }, []);
+
+  const handleSaveCommissions = async () => {
+    const s = Number(commissionsInput.starter);
+    const p = Number(commissionsInput.pro);
+    const e = Number(commissionsInput.enterprise);
+
+    if ([s, p, e].some(v => isNaN(v) || v < 0 || v > 100)) {
+      alert('Todos los valores deben ser números entre 0 y 100');
+      return;
+    }
+
+    setCommissionLoading(true);
+    setCommissionSaved(false);
+    try {
+      const newTiers = { starter: s, pro: p, enterprise: e };
+      await setDoc(
+        doc(db, 'platform_config', 'settings'),
+        { commissionTiers: newTiers, updatedAt: Timestamp.now(), updatedBy: user?.email || '' },
+        { merge: true }
+      );
+      setCommissions(newTiers);
+      setCommissionSaved(true);
+      setTimeout(() => setCommissionSaved(false), 3000);
+    } catch (err: any) {
+      console.error('Error saving commissions:', err);
+      alert('No se pudo guardar: ' + (err?.message || 'error'));
+    } finally {
+      setCommissionLoading(false);
+    }
+  };
+
+  const handlePlanChange = async (userId: string, newPlan: any) => {
+    setUpdatingPlanId(userId);
+    try {
+      await updateDoc(doc(db, 'users', userId), { plan: newPlan });
+      setPlanDropdown(null);
+    } catch (err: any) {
+      alert('Error al cambiar plan: ' + err.message);
+    } finally {
+      setUpdatingPlanId(null);
+    }
+  };
+
+  const planColor = (plan: string) => {
+    switch (plan) {
+      case 'enterprise': return 'text-purple-400 bg-purple-500/10 border-purple-500/20';
+      case 'pro': return 'text-blue-400 bg-blue-500/10 border-blue-500/20';
+      default: return 'text-zinc-400 bg-zinc-500/10 border-zinc-500/20';
+    }
+  };
+
+  const handleResnapshotCommission = async (event: EventData) => {
+    if (!event.organizerId) return;
+    setResnapshotId(event.id);
+    try {
+      const uSnap = await getDoc(doc(db, 'users', event.organizerId));
+      const userPlan = uSnap.exists() ? (uSnap.data().plan || 'starter') : 'starter';
+      const cSnap = await getDoc(doc(db, 'platform_config', 'settings'));
+      const tiers = cSnap.exists() ? (cSnap.data().commissionTiers || commissions) : commissions;
+      const newRate = tiers[userPlan] || 3.5;
+
+      await updateDoc(doc(db, 'events', event.id), {
+        commissionRate: newRate,
+        organizerPlan: userPlan
+      });
+      alert(`Comisión actualizada a ${newRate}% (Plan: ${userPlan})`);
+    } catch (err: any) {
+      alert('Error al recalcular: ' + err.message);
+    } finally {
+      setResnapshotId(null);
+    }
+  };
 
   const fetchData = async () => {
     // Keep this for manual refresh if needed, but onSnapshot handles it now
@@ -426,6 +538,86 @@ export default function AdminDashboard() {
         })}
       </div>
 
+      {/* Commission Settings Card (SUPERADMIN ONLY) */}
+      {isSuperAdmin && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="mb-8"
+        >
+          <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/5 rounded-3xl border border-orange-500/20 p-6">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="flex items-start gap-3">
+                <div className="bg-orange-500/20 p-3 rounded-2xl">
+                  <Percent className="w-5 h-5 text-orange-500" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black">Comisiones por tier</h2>
+                  <p className="text-sm text-zinc-400 mt-1 max-w-md">
+                    Configurá el % que cobra ENTRÁ según el plan del organizador.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 bg-black/20 p-4 rounded-2xl border border-white/5 flex-wrap">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Starter</label>
+                  <div className="relative">
+                    <Input
+                      type="text"
+                      value={commissionsInput.starter}
+                      onChange={(e) => setCommissionsInput({ ...commissionsInput, starter: e.target.value })}
+                      className="w-24 bg-white/5 border-white/10 rounded-xl pl-3 pr-8 h-10 font-bold"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">%</span>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Pro</label>
+                  <div className="relative">
+                    <Input
+                      type="text"
+                      value={commissionsInput.pro}
+                      onChange={(e) => setCommissionsInput({ ...commissionsInput, pro: e.target.value })}
+                      className="w-24 bg-white/5 border-white/10 rounded-xl pl-3 pr-8 h-10 font-bold"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">%</span>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Enterprise</label>
+                  <div className="relative">
+                    <Input
+                      type="text"
+                      value={commissionsInput.enterprise}
+                      onChange={(e) => setCommissionsInput({ ...commissionsInput, enterprise: e.target.value })}
+                      className="w-24 bg-white/5 border-white/10 rounded-xl pl-3 pr-8 h-10 font-bold"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">%</span>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleSaveCommissions}
+                  disabled={commissionLoading}
+                  className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-6 h-10 font-bold flex items-center gap-2 transition-all active:scale-95 self-end"
+                >
+                  {commissionLoading ? (
+                    <Loader className="w-4 h-4 animate-spin" />
+                  ) : commissionSaved ? (
+                    <Check className="w-4 h-4" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  {commissionSaved ? 'Guardado' : 'Guardar'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Users Table */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mb-8">
         <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
@@ -440,6 +632,7 @@ export default function AdminDashboard() {
                   <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Nombre</th>
                   <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Email</th>
                   <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Rol</th>
+                  <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Plan</th>
                   <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Registro</th>
                   <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Acciones</th>
                 </tr>
@@ -453,6 +646,33 @@ export default function AdminDashboard() {
                       <span className={`inline-block text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full border ${roleColor(u.role)}`}>
                         {u.role}
                       </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="relative">
+                        <button
+                          onClick={() => setPlanDropdown(planDropdown === u.id ? null : u.id)}
+                          className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[10px] font-bold uppercase tracking-widest transition ${planColor(u.plan || 'starter')}`}
+                          disabled={updatingPlanId === u.id}
+                        >
+                          {updatingPlanId === u.id ? '...' : (u.plan || 'starter')}
+                          <ChevronDown className="w-3 h-3" />
+                        </button>
+                        {planDropdown === u.id && (
+                          <div className="absolute top-full mt-1 left-0 bg-zinc-900 border border-white/10 rounded-xl overflow-hidden z-10 shadow-xl min-w-max">
+                            {(['starter', 'pro', 'enterprise'] as const).map(p => (
+                              <button
+                                key={p}
+                                onClick={() => handlePlanChange(u.id, p)}
+                                className={`w-full text-left px-4 py-2 hover:bg-orange-500/20 transition text-xs font-bold ${
+                                  (u.plan || 'starter') === p ? 'text-orange-400 bg-orange-500/10' : 'text-zinc-300'
+                                }`}
+                              >
+                                {p}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-4 text-zinc-500 text-xs">{formatDate(u.createdAt)}</td>
                     <td className="py-3 px-4">
@@ -587,6 +807,7 @@ export default function AdminDashboard() {
                     <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Fecha</th>
                     <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Tickets</th>
                     <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Estado</th>
+                    <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Comisión</th>
                     <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Acciones</th>
                   </tr>
                 </thead>
@@ -600,7 +821,7 @@ export default function AdminDashboard() {
                       <tr key={e.id} className="border-b border-white/5 hover:bg-white/5 transition">
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
-                            {e.image && (
+                            {e.image && e.image !== "" && (
                               <img src={e.image} alt={e.title} className="w-10 h-10 rounded-lg object-cover" referrerPolicy="no-referrer" />
                             )}
                             <div>
@@ -623,6 +844,12 @@ export default function AdminDashboard() {
                           </span>
                         </td>
                         <td className="py-3 px-4">
+                          <div className="flex flex-col">
+                            <span className="text-zinc-200 font-bold text-xs">{e.commissionRate || '3.5'}%</span>
+                            <span className="text-[9px] text-zinc-500 uppercase tracking-tighter">{e.organizerPlan || 'starter'}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
                           <div className="flex gap-1.5 flex-wrap">
                             <Link to={`/evento/${e.id}`}>
                               <button className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 text-xs font-bold transition" title="Ver página pública">
@@ -641,6 +868,16 @@ export default function AdminDashboard() {
                             >
                               <Edit3 className="w-3.5 h-3.5" />
                             </button>
+                            {isSuperAdmin && (
+                              <button
+                                onClick={() => handleResnapshotCommission(e)}
+                                disabled={resnapshotId === e.id}
+                                className="px-2.5 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-400 text-xs font-bold transition"
+                                title="Recalcular comisión según plan actual del organizador"
+                              >
+                                {resnapshotId === e.id ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                              </button>
+                            )}
                             {!isDeleted && (
                               <>
                                 {e.status === 'active' ? (
@@ -757,6 +994,8 @@ function EditEventModal({
   onSave: (updated: EventData) => void;
 }) {
   const [form, setForm] = useState<EventData>({ ...event });
+  const [ticketToDelete, setTicketToDelete] = useState<number | null>(null);
+  const [showSavedFeedback, setShowSavedFeedback] = useState(false);
   const [dateStr, setDateStr] = useState<string>(() => {
     try {
       const d = event.date?.toDate ? event.date.toDate() : event.date?.seconds ? new Date(event.date.seconds * 1000) : null;
@@ -781,17 +1020,27 @@ function EditEventModal({
   };
 
   const removeTicketType = (idx: number) => {
-    const tickets = [...(form.tickets || [])];
-    tickets.splice(idx, 1);
-    setForm({ ...form, tickets });
+    setTicketToDelete(idx);
   };
 
-  const handleSubmit = () => {
+  const confirmRemoveTicket = () => {
+    if (ticketToDelete === null) return;
+    const tickets = [...(form.tickets || [])];
+    tickets.splice(ticketToDelete, 1);
+    setForm({ ...form, tickets });
+    setTicketToDelete(null);
+  };
+
+  const handleSubmit = async () => {
     const updated = { ...form };
     if (dateStr) {
       updated.date = new Date(dateStr);
     }
-    onSave(updated);
+    await onSave(updated);
+    setShowSavedFeedback(true);
+    setTimeout(() => {
+      setShowSavedFeedback(false);
+    }, 1500);
   };
 
   return (
@@ -883,7 +1132,7 @@ function EditEventModal({
               placeholder="https://..."
               className="bg-white/5 border-white/10 h-12 rounded-2xl"
             />
-            {form.image && (
+            {form.image && form.image !== "" && (
               <img src={form.image} alt="preview" className="w-full h-40 object-cover rounded-2xl mt-2" referrerPolicy="no-referrer" />
             )}
           </div>
@@ -955,6 +1204,42 @@ function EditEventModal({
           </div>
         </div>
 
+        {/* Delete Ticket Confirmation Modal */}
+        {ticketToDelete !== null && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-6">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-zinc-900 border border-white/10 p-8 rounded-[2rem] max-w-sm w-full space-y-6 shadow-2xl"
+            >
+              <div className="text-center space-y-2">
+                <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trash2 className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-black">¿Eliminar sector?</h3>
+                <p className="text-sm text-muted-foreground">
+                  Estás por eliminar el sector <strong className="text-white">{form.tickets[ticketToDelete]?.type}</strong>. 
+                  Esta acción solo se guardará si confirmás los cambios del evento.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setTicketToDelete(null)}
+                  className="flex-1 px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 font-bold transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmRemoveTicket}
+                  className="flex-1 px-4 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition"
+                >
+                  Eliminar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {/* Footer */}
         <div className="flex gap-3 p-6 border-t border-white/10 sticky bottom-0 bg-zinc-900 rounded-b-[2.5rem]">
           <Button
@@ -968,9 +1253,20 @@ function EditEventModal({
           <Button
             onClick={handleSubmit}
             disabled={saving}
-            className="flex-1 h-12 orange-gradient border-none font-bold"
+            className={`flex-1 h-12 font-bold flex items-center justify-center gap-2 border-none ${
+              showSavedFeedback 
+                ? 'bg-green-500 hover:bg-green-600 text-white' 
+                : 'orange-gradient text-white'
+            }`}
           >
-            {saving ? 'Guardando...' : 'Guardar cambios'}
+            {saving ? (
+              <Loader className="w-4 h-4 animate-spin" />
+            ) : showSavedFeedback ? (
+              <Check className="w-4 h-4" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            {saving ? 'Guardando...' : showSavedFeedback ? '¡Guardado!' : 'Guardar cambios'}
           </Button>
         </div>
       </motion.div>

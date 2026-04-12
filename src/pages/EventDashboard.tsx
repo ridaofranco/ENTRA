@@ -79,6 +79,7 @@ export default function EventDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'resumen' | 'tickets' | 'cortesias' | 'ventas' | 'asistentes'>('resumen');
   const [isSaving, setIsSaving] = useState(false);
+  const [showSavedFeedback, setShowSavedFeedback] = useState(false);
   const [isEditingEvent, setIsEditingEvent] = useState(false);
   const [editForm, setEditForm] = useState<Partial<EventData>>({});
 
@@ -99,6 +100,9 @@ export default function EventDashboard() {
   const [bulkRefundConfirm, setBulkRefundConfirm] = useState('');
   const [showBulkRefundModal, setShowBulkRefundModal] = useState(false);
   const [ticketToRefund, setTicketToRefund] = useState<any>(null);
+  const [ticketToDelete, setTicketToDelete] = useState<number | null>(null);
+  const [courtesyToDelete, setCourtesyToDelete] = useState<string | null>(null);
+  const [showRefundEmailConfirm, setShowRefundEmailConfirm] = useState<any>(null);
 
   // Courtesy form state
   const [courtesyName, setCourtesyName] = useState('');
@@ -113,6 +117,12 @@ export default function EventDashboard() {
   // Active tickets (excluding refunded ones)
   const activeTickets = tickets.filter(t => t.status !== 'refunded');
 
+  // Refunded tickets (for KPI adjustments)
+  const refundedTickets = tickets.filter(t => t.status === 'refunded');
+  const refundedPaidTickets = refundedTickets.filter(t => !t.isCourtesy);
+  const refundedCount = refundedPaidTickets.length;
+  const refundedRevenue = refundedPaidTickets.reduce((s, t) => s + (Number(t.price) || 0), 0);
+
   // Courtesies list (excluding refunded)
   const courtesies = activeTickets.filter(t => t.isCourtesy);
   const totalCourtesies = courtesies.length;
@@ -124,11 +134,17 @@ export default function EventDashboard() {
     (profile?.role === 'organizer' && event?.organizerEmail === authUser?.email) ||
     authUser?.email === 'ridaofrancorg@gmail.com';
 
-  // Real-time stats calculation
-  const realTotalRevenue = orders.filter(o => o.status === 'confirmed').reduce((sum, o) => sum + (o.total || 0), 0);
-  const realTicketsSold = orders.filter(o => o.status === 'confirmed').reduce((sum, o) => {
-    return sum + (o.items || []).reduce((s, item) => s + (item.quantity || 0), 0);
+  // Real-time stats calculation — NET of platform commission AND refunds.
+  // Organizers should only see what they actually earn (total - fee). ENTRÁ keeps the fee.
+  const grossRevenue = orders.filter(o => o.status === 'confirmed').reduce(
+    (sum, o: any) => sum + (Number(o.subtotal) || (Number(o.total) || 0) - (Number(o.fee) || 0)),
+    0
+  );
+  const grossTicketsSold = orders.filter(o => o.status === 'confirmed').reduce((sum, o: any) => {
+    return sum + (o.items || []).reduce((s: number, item: any) => s + (item.quantity || 0), 0);
   }, 0);
+  const realTotalRevenue = Math.max(0, grossRevenue - refundedRevenue);
+  const realTicketsSold = Math.max(0, grossTicketsSold - refundedCount);
 
   // Filtered attendees
   const filteredAttendees = activeTickets.filter(t => {
@@ -232,8 +248,28 @@ export default function EventDashboard() {
         ...editForm,
         updatedAt: Timestamp.now()
       });
-      setIsEditingEvent(false);
-      alert('Evento actualizado con éxito');
+      setShowSavedFeedback(true);
+      setTimeout(() => {
+        setIsEditingEvent(false);
+        setShowSavedFeedback(false);
+      }, 1500);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `events/${event.id}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleManualSave = async () => {
+    if (!event) return;
+    try {
+      setIsSaving(true);
+      // Aunque se guarda auto, hacemos un update final para asegurar y dar feedback
+      await updateDoc(doc(db, 'events', event.id), {
+        updatedAt: Timestamp.now()
+      });
+      setShowSavedFeedback(true);
+      setTimeout(() => setShowSavedFeedback(false), 3000);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `events/${event.id}`);
     } finally {
@@ -256,19 +292,26 @@ export default function EventDashboard() {
     }
   };
 
-  const handleRemoveTicket = async (idx: number) => {
-    if (!event) return;
-    if (!confirm('¿Estás seguro de eliminar este sector?')) return;
+  const handleRemoveTicket = (idx: number) => {
+    setTicketToDelete(idx);
+  };
+
+  const confirmRemoveTicket = async () => {
+    if (!event || ticketToDelete === null) return;
     
-    const newTickets = (event.tickets || []).filter((_, i) => i !== idx);
+    const newTickets = (event.tickets || []).filter((_, i) => i !== ticketToDelete);
     
     try {
+      setIsSaving(true);
       await updateDoc(doc(db, 'events', event.id), {
         tickets: newTickets,
         updatedAt: Timestamp.now()
       });
+      setTicketToDelete(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `events/${event.id}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -335,9 +378,9 @@ export default function EventDashboard() {
 
       // Log action
       await logAction('GENERATE_COURTESY', 'events', event.id, { 
-        name: courtesyName, 
-        qty: courtesyQty, 
-        type: courtesyType 
+        name: courtesyName || 'Sin nombre', 
+        qty: courtesyQty || 1, 
+        type: courtesyType || 'Sin tipo' 
       });
 
       if (courtesySendEmail) {
@@ -364,7 +407,7 @@ export default function EventDashboard() {
       setIsSaving(true);
       // Simulate email resend
       console.log(`Resending email to ${ticket.buyerEmail}`);
-      await logAction('RESEND_COURTESY_EMAIL', 'tickets', ticket.id, { email: ticket.buyerEmail });
+      await logAction('RESEND_COURTESY_EMAIL', 'tickets', ticket.id, { email: ticket.buyerEmail || 'Sin email' });
       alert(`Email reenviado a ${ticket.buyerEmail}`);
     } catch (error) {
       console.error('Error resending email:', error);
@@ -392,21 +435,51 @@ export default function EventDashboard() {
     }
   };
 
-  const handleDeleteCourtesy = async (ticketId: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta cortesía?')) return;
+  const handleDeleteCourtesy = (ticketId: string) => {
+    setCourtesyToDelete(ticketId);
+  };
+
+  const confirmDeleteCourtesy = async () => {
+    if (!courtesyToDelete) return;
     try {
       setIsSaving(true);
-      await deleteDoc(doc(db, 'tickets', ticketId));
-      await logAction('DELETE_COURTESY', 'tickets', ticketId);
-      alert('Cortesía eliminada');
+      await deleteDoc(doc(db, 'tickets', courtesyToDelete));
+      await logAction('DELETE_COURTESY', 'tickets', courtesyToDelete);
+      setCourtesyToDelete(null);
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `tickets/${ticketId}`);
+      handleFirestoreError(error, OperationType.DELETE, `tickets/${courtesyToDelete}`);
     } finally {
       setIsSaving(false);
     }
   };
 
   // ===== REFUND (soft delete + restore stock) =====
+  // Build a friendly refund-in-progress email and return a mailto: URL.
+  // We use mailto so the email opens in the user's default mail client
+  // (Gmail / Outlook / etc.) — no backend needed.
+  const buildRefundMailto = (ticket: any) => {
+    if (!event || !ticket?.buyerEmail) return null;
+    const eventTitle = event.title || 'tu evento';
+    const ticketType = ticket.ticketType || '';
+    const price = Number(ticket.price) || 0;
+    const buyerName = ticket.buyerName || 'Hola';
+
+    const subject = `Devolución en proceso — ${eventTitle}`;
+    const body =
+`Hola ${buyerName},
+
+Te confirmamos que tu devolución por la entrada de "${eventTitle}" ${ticketType ? `(${ticketType})` : ''} ${price > 0 ? `por un total de $${price.toLocaleString('es-AR')}` : ''} está en proceso.
+
+El monto será reintegrado al mismo medio de pago que utilizaste al momento de la compra. Tené en cuenta que los tiempos de acreditación dependen de tu banco o tarjeta y, según el medio de pago, pueden variar entre 5 y 15 días hábiles.
+
+Si tenés cualquier consulta sobre tu devolución, respondé a este mismo correo y te ayudamos enseguida.
+
+¡Gracias por elegir ENTRÁ!
+El equipo de ENTRÁ`;
+
+    return `mailto:${encodeURIComponent(ticket.buyerEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
   // Soft-delete one ticket and restore its stock to the event.
   // Used after refunding a customer manually (e.g. via MercadoPago transfer).
   const handleRefundTicket = async (ticket: any) => {
@@ -449,14 +522,18 @@ export default function EventDashboard() {
       await updateDoc(doc(db, 'events', event.id), updates);
 
       await logAction('REFUND_TICKET', 'tickets', ticketToRefund.id, {
-        buyer: ticketToRefund.buyerName,
-        type: ticketToRefund.ticketType,
+        buyer: ticketToRefund.buyerName || 'Sin nombre',
+        type: ticketToRefund.ticketType || 'Sin tipo',
         price: ticketToRefund.price || 0,
         isCourtesy: !!ticketToRefund.isCourtesy,
       });
 
-      alert(`Ticket de ${ticketToRefund.buyerName} devuelto. Stock restaurado al evento.`);
-      setTicketToRefund(null);
+      // Open the pre-filled refund email in the user's mail client (only for paid tickets)
+      if (!ticketToRefund.isCourtesy && ticketToRefund.buyerEmail) {
+        setShowRefundEmailConfirm(ticketToRefund);
+      } else {
+        setTicketToRefund(null);
+      }
     } catch (error: any) {
       console.error('Refund error:', error);
       alert(`Error al devolver ticket: ${error.message || 'Error desconocido'}`);
@@ -646,7 +723,7 @@ export default function EventDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
           { label: 'Tickets Vendidos', value: `${realTicketsSold} / ${totalCap}`, sub: `${totalCap > 0 ? Math.round((realTicketsSold / totalCap) * 100) : 0}% vendido`, icon: Ticket, color: 'text-orange-500', bg: 'bg-orange-500/10' },
-          { label: 'Ingresos', value: `$${realTotalRevenue.toLocaleString('es-AR')}`, sub: `${orders.filter(o => o.status === 'confirmed').length} transacciones`, icon: DollarSign, color: 'text-green-500', bg: 'bg-green-500/10' },
+          { label: 'Ingresos', value: `$${realTotalRevenue.toLocaleString('es-AR')}`, sub: `$${refundedRevenue.toLocaleString('es-AR')} devueltos · ${orders.filter(o => o.status === 'confirmed').length} transacciones`, icon: DollarSign, color: 'text-green-500', bg: 'bg-green-500/10' },
           { label: 'Cortesías', value: totalCourtesies.toString(), sub: `${totalCourtesies} tickets emitidos`, icon: Gift, color: 'text-purple-500', bg: 'bg-purple-500/10' },
           { label: 'Check-ins', value: activeTickets.filter(t => t.status === 'used').length.toString(), sub: 'Asistentes en el lugar', icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
         ].map((stat, i) => (
@@ -855,8 +932,23 @@ export default function EventDashboard() {
             {/* Save button */}
             <div className="flex justify-between items-center mt-6 pt-4 border-t border-white/10">
               <p className="text-xs text-zinc-500">Capacidad total: <strong className="text-white">{totalCap} tickets</strong> ({event.ticketsSold || 0} vendidos + {totalCourtesies} cortesías)</p>
-              <button className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm shadow-lg shadow-orange-500/20">
-                <Save className="w-4 h-4" /> Guardar cambios
+              <button 
+                onClick={handleManualSave}
+                disabled={isSaving}
+                className={`flex items-center gap-2 font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-lg ${
+                  showSavedFeedback 
+                    ? 'bg-green-500 text-white shadow-green-500/20' 
+                    : 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-orange-500/20'
+                }`}
+              >
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : showSavedFeedback ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {isSaving ? 'Guardando...' : showSavedFeedback ? '¡Guardado!' : 'Guardar cambios'}
               </button>
             </div>
           </div>
@@ -1243,9 +1335,23 @@ export default function EventDashboard() {
               <button onClick={() => setIsEditingEvent(false)} className="flex-1 px-6 py-3 rounded-2xl bg-white/5 hover:bg-white/10 font-bold transition">
                 Cancelar
               </button>
-              <button onClick={handleSaveEventDetails} disabled={isSaving}
-                className="flex-1 px-6 py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold transition disabled:opacity-50">
-                {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+              <button 
+                onClick={handleSaveEventDetails} 
+                disabled={isSaving}
+                className={`flex-1 px-6 py-3 rounded-2xl font-bold transition flex items-center justify-center gap-2 ${
+                  showSavedFeedback 
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/20'
+                } disabled:opacity-50`}
+              >
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : showSavedFeedback ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {isSaving ? 'Guardando...' : showSavedFeedback ? '¡Guardado!' : 'Guardar Cambios'}
               </button>
             </div>
           </motion.div>
@@ -1359,6 +1465,114 @@ export default function EventDashboard() {
                 className="flex-1 px-6 py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold transition disabled:opacity-50"
               >
                 {isSaving ? 'Procesando...' : 'Confirmar Devolución'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ==================== DELETE TICKET MODAL ==================== */}
+      {ticketToDelete !== null && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+            className="bg-zinc-900 border border-white/10 p-8 rounded-[2.5rem] max-w-md w-full space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="bg-red-500/20 p-3 rounded-2xl">
+                <Trash className="w-6 h-6 text-red-400" />
+              </div>
+              <h3 className="text-2xl font-black">Eliminar Sector</h3>
+            </div>
+            <p className="text-sm text-zinc-400">
+              ¿Estás seguro de eliminar el sector <strong className="text-white">{event.tickets[ticketToDelete]?.type}</strong>? 
+              Esta acción no se puede deshacer y el sector dejará de estar disponible para la venta.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setTicketToDelete(null)}
+                className="flex-1 px-6 py-3 rounded-2xl bg-white/5 hover:bg-white/10 font-bold transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmRemoveTicket}
+                disabled={isSaving}
+                className="flex-1 px-6 py-3 rounded-2xl bg-red-600 text-white font-bold transition disabled:opacity-50"
+              >
+                {isSaving ? 'Eliminando...' : 'Eliminar Sector'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ==================== DELETE COURTESY MODAL ==================== */}
+      {courtesyToDelete !== null && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+            className="bg-zinc-900 border border-white/10 p-8 rounded-[2.5rem] max-w-md w-full space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="bg-red-500/20 p-3 rounded-2xl">
+                <Trash className="w-6 h-6 text-red-400" />
+              </div>
+              <h3 className="text-2xl font-black">Eliminar Cortesía</h3>
+            </div>
+            <p className="text-sm text-zinc-400">
+              ¿Estás seguro de eliminar esta cortesía? El ticket quedará invalidado permanentemente.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setCourtesyToDelete(null)}
+                className="flex-1 px-6 py-3 rounded-2xl bg-white/5 hover:bg-white/10 font-bold transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDeleteCourtesy}
+                disabled={isSaving}
+                className="flex-1 px-6 py-3 rounded-2xl bg-red-600 text-white font-bold transition disabled:opacity-50"
+              >
+                {isSaving ? 'Eliminando...' : 'Eliminar Cortesía'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ==================== REFUND EMAIL CONFIRM MODAL ==================== */}
+      {showRefundEmailConfirm && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+            className="bg-zinc-900 border border-white/10 p-8 rounded-[2.5rem] max-w-md w-full space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-500/20 p-3 rounded-2xl">
+                <Send className="w-6 h-6 text-blue-400" />
+              </div>
+              <h3 className="text-2xl font-black">Notificar al Cliente</h3>
+            </div>
+            <p className="text-sm text-zinc-400">
+              Ticket de <strong className="text-white">{showRefundEmailConfirm.buyerName}</strong> devuelto correctamente.
+              ¿Querés abrir tu cliente de email para avisarle que su devolución está en proceso?
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => { setTicketToRefund(null); setShowRefundEmailConfirm(null); }}
+                className="flex-1 px-6 py-3 rounded-2xl bg-white/5 hover:bg-white/10 font-bold transition"
+              >
+                No, cerrar
+              </button>
+              <button
+                onClick={async () => {
+                  const mailtoUrl = buildRefundMailto(showRefundEmailConfirm);
+                  if (mailtoUrl) {
+                    window.open(mailtoUrl, '_blank');
+                    await logAction('SEND_REFUND_EMAIL', 'tickets', showRefundEmailConfirm.id, { email: showRefundEmailConfirm.buyerEmail || 'Sin email' });
+                  }
+                  setTicketToRefund(null);
+                  setShowRefundEmailConfirm(null);
+                }}
+                className="flex-1 px-6 py-3 rounded-2xl bg-blue-600 text-white font-bold transition"
+              >
+                Sí, enviar email
               </button>
             </div>
           </motion.div>

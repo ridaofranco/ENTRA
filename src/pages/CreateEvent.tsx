@@ -18,7 +18,7 @@ import {
   Sparkles,
   Info
 } from 'lucide-react';
-import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { useAuth } from '@/src/context/AuthContext';
 import { logAction } from '@/src/services/auditService';
@@ -27,6 +27,7 @@ export default function CreateEvent() {
   const navigate = useNavigate();
   const { user, profile, login, updateRole } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [ticketToDelete, setTicketToDelete] = useState<number | null>(null);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -38,6 +39,7 @@ export default function CreateEvent() {
     category: 'Música',
     image: '',
     price: 0,
+    allowTransfer: true,
   });
 
   const [tickets, setTickets] = useState([
@@ -64,13 +66,27 @@ export default function CreateEvent() {
   };
 
   const removeTicketType = (index: number) => {
-    setTickets(tickets.filter((_, i) => i !== index));
+    setTicketToDelete(index);
+  };
+
+  const confirmRemoveTicket = () => {
+    if (ticketToDelete === null) return;
+    setTickets(tickets.filter((_, i) => i !== ticketToDelete));
+    setTicketToDelete(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
+      // 1. Obtener plan del usuario y tiers globales para snapshot
+      const userSnap = await getDoc(doc(db, 'users', user.uid));
+      const userPlan = userSnap.exists() ? (userSnap.data().plan || 'starter') : 'starter';
+      
+      const configSnap = await getDoc(doc(db, 'platform_config', 'settings'));
+      const tiers = configSnap.exists() ? configSnap.data().commissionTiers : null;
+      const commissionRate = (tiers && tiers[userPlan]) ? tiers[userPlan] : 3.5;
+
       const eventDate = new Date(`${formData.date}T${formData.time}`);
       // Create a copy of formData without the 'time' field which is not needed in Firestore
       const { time, ...restFormData } = formData;
@@ -86,6 +102,8 @@ export default function CreateEvent() {
         organizerId: user.uid,
         organizerEmail: user.email || '',
         organizerName: user.displayName || profile?.displayName || '',
+        organizerPlan: userPlan, // Snapshot del plan al crear
+        commissionRate: commissionRate, // Snapshot de la tasa al crear
         ticketsSold: 0,
         totalRevenue: 0,
         status: 'active',
@@ -212,7 +230,7 @@ export default function CreateEvent() {
                   onChange={e => setFormData({...formData, image: e.target.value})}
                 />
                 <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 overflow-hidden">
-                  {formData.image ? <img src={formData.image} className="w-full h-full object-cover" /> : <ImageIcon className="text-muted-foreground" />}
+                  {formData.image && formData.image !== "" ? <img src={formData.image} className="w-full h-full object-cover" /> : <ImageIcon className="text-muted-foreground" />}
                 </div>
               </div>
             </div>
@@ -294,6 +312,30 @@ export default function CreateEvent() {
           </Card>
         </section>
 
+        {/* Toggle: permitir transferencia */}
+        <div className="flex items-center justify-between p-6 rounded-[2rem] bg-white/5 border border-white/10">
+          <div className="flex-1 pr-4">
+            <label className="font-bold text-lg block mb-1">Permitir transferencia de tickets</label>
+            <p className="text-sm text-zinc-400">
+              Los compradores podrán transferir su ticket a otra persona sin costo. El QR original queda invalidado al transferir.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFormData({ ...formData, allowTransfer: !formData.allowTransfer })}
+            className={`relative w-14 h-8 rounded-full transition-colors ${
+              formData.allowTransfer ? 'bg-orange-500' : 'bg-white/10'
+            }`}
+            aria-label="Toggle transferencias"
+          >
+            <div
+              className={`absolute top-1.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                formData.allowTransfer ? 'translate-x-7' : 'translate-x-1.5'
+              }`}
+            />
+          </button>
+        </div>
+
         <Button 
           type="submit" 
           disabled={loading}
@@ -302,6 +344,38 @@ export default function CreateEvent() {
           {loading ? "Publicando..." : "Publicar Evento"}
         </Button>
       </form>
+
+      {/* Delete Ticket Confirmation Modal */}
+      {ticketToDelete !== null && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+            className="bg-zinc-900 border border-white/10 p-8 rounded-[2.5rem] max-w-md w-full space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="bg-red-500/20 p-3 rounded-2xl">
+                <Trash2 className="w-6 h-6 text-red-400" />
+              </div>
+              <h3 className="text-2xl font-black">Eliminar Sector</h3>
+            </div>
+            <p className="text-sm text-zinc-400">
+              ¿Estás seguro de eliminar el sector <strong className="text-white">{tickets[ticketToDelete]?.type || 'este sector'}</strong>?
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setTicketToDelete(null)}
+                className="flex-1 px-6 py-3 rounded-2xl bg-white/5 hover:bg-white/10 font-bold transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmRemoveTicket}
+                className="flex-1 px-6 py-3 rounded-2xl bg-red-600 text-white font-bold transition"
+              >
+                Eliminar
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

@@ -3,11 +3,12 @@ import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Plus, DollarSign, Ticket, Calendar, Users, TrendingUp,
-  MapPin, BarChart3, Loader2, Eye, Settings, ChevronRight, Search
+  MapPin, BarChart3, Loader2, Eye, Settings, ChevronRight, Search, Percent
 } from 'lucide-react';
 import { collection, query, where, getDocs, doc, getDoc, orderBy } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '@/src/lib/firebase';
+import { useAuth } from '@/src/context/AuthContext';
 
 interface EventData {
   id: string;
@@ -43,7 +44,10 @@ export default function Dashboard() {
   const [recentOrders, setRecentOrders] = useState<OrderData[]>([]);
   const [allOrders, setAllOrders] = useState<OrderData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'eventos' | 'ventas'>('eventos');
+  const [activeTab, setActiveTab] = useState<'eventos' | 'ventas' | 'comisiones'>('eventos');
+  const { profile } = useAuth();
+  const isSuperAdmin =
+    profile?.role === 'superadmin' || user?.email === 'ridaofrancorg@gmail.com';
   const [eventSearch, setEventSearch] = useState('');
   const [eventTimeFilter, setEventTimeFilter] = useState<'all' | 'upcoming' | 'past'>('all');
 
@@ -108,17 +112,39 @@ export default function Dashboard() {
     }
   };
 
-  // ==================== COMPUTED STATS (from real orders) ====================
+  // ==================== COMPUTED STATS ====================
+  // Fuente de verdad: el documento del evento. event.ticketsSold y event.totalRevenue
+  // se actualizan en tiempo real por Checkout (suma) y por EventDashboard handleRefundTicket (resta).
+  // Esto es lo que asegura que refund/venta/nuevo evento refresquen el dashboard automáticamente.
   const confirmedOrders = allOrders.filter(o => o.status === 'confirmed');
-  const totalRevenue = confirmedOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
-  const totalTicketsSold = confirmedOrders.reduce((sum, o) => {
-    return sum + (o.items || []).reduce((s: number, item: any) => s + (Number(item.quantity) || 0), 0);
-  }, 0);
+
+  const totalRevenue = events.reduce(
+    (sum, e: any) => sum + (Number(e.totalRevenue) || 0),
+    0
+  );
+  const totalTicketsSold = events.reduce(
+    (sum, e: any) => sum + (Number(e.ticketsSold) || 0),
+    0
+  );
+  const totalCommissions = confirmedOrders.reduce(
+    (sum, o: any) => sum + (Number(o.fee) || 0),
+    0
+  );
+  const commissionsByEvent = events.map((ev: any) => {
+    const evOrders = confirmedOrders.filter(o => o.eventId === ev.id);
+    const commission = evOrders.reduce((s, o: any) => s + (Number(o.fee) || 0), 0);
+    const net = Number(ev.totalRevenue) || 0;
+    const sales = evOrders.length;
+    return { id: ev.id, title: ev.title, commission, net, sales };
+  }).filter(x => x.commission > 0).sort((a, b) => b.commission - a.commission);
+
   const activeEvents = events.filter(e => e.status === 'active').length;
-  const totalCapacity = events.reduce((sum, e) => {
+  // La capacidad incluye lo disponible + lo ya vendido (neto de refunds, porque
+  // event.ticketsSold se decrementa en el refund y tickets[].available se restaura)
+  const totalCapacity = events.reduce((sum, e: any) => {
     const cap = (e.tickets || []).reduce((s: number, t: any) => s + (Number(t.available) || 0), 0);
-    return sum + cap;
-  }, 0) + totalTicketsSold;
+    return sum + cap + (Number(e.ticketsSold) || 0);
+  }, 0);
 
   const formatDate = (date: any) => {
     try {
@@ -253,6 +279,19 @@ export default function Dashboard() {
             <BarChart3 className="w-4 h-4" />
             Ultimas Ventas
           </button>
+          {isSuperAdmin && (
+            <button
+              onClick={() => setActiveTab('comisiones')}
+              className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm transition-all ${
+                activeTab === 'comisiones'
+                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                  : 'bg-white/5 text-zinc-400 hover:bg-white/10 border border-white/10'
+              }`}
+            >
+              <Percent className="w-4 h-4" />
+              Mis Comisiones
+            </button>
+          )}
         </div>
 
         {activeTab === 'eventos' && events.length > 0 && (
@@ -326,10 +365,11 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredEvents.map((event, index) => {
-                const eventOrders = confirmedOrders.filter(o => o.eventId === event.id);
-                const eventTicketsSold = eventOrders.reduce((sum, o) => sum + (o.items || []).reduce((s: number, item: any) => s + (Number(item.quantity) || 0), 0), 0);
-                const eventRevenue = eventOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+              {filteredEvents.map((event: any, index) => {
+                // Fuente de verdad: event.ticketsSold y event.totalRevenue.
+                // Así refund y venta se reflejan al instante sin depender de recomputar orders.
+                const eventTicketsSold = Number(event.ticketsSold) || 0;
+                const eventRevenue = Number(event.totalRevenue) || 0;
                 const totalCap = (event.tickets || []).reduce((s: number, t: any) => s + (Number(t.available) || 0), 0) + eventTicketsSold;
                 const soldPercent = totalCap > 0 ? Math.round((eventTicketsSold / totalCap) * 100) : 0;
                 const safeSoldPercent = isNaN(soldPercent) ? 0 : soldPercent;
@@ -455,6 +495,68 @@ export default function Dashboard() {
                 </div>
               </motion.div>
             ))
+          )}
+        </motion.div>
+      )}
+
+      {/* ==================== MIS COMISIONES TAB (SUPERADMIN ONLY) ==================== */}
+      {activeTab === 'comisiones' && isSuperAdmin && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+          {/* Total card */}
+          <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/5 border border-orange-500/20 rounded-3xl p-6">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold uppercase tracking-widest text-orange-400">Comisiones totales ENTRÁ</span>
+              <div className="bg-orange-500/20 p-2 rounded-xl">
+                <Percent className="w-4 h-4 text-orange-500" />
+              </div>
+            </div>
+            <p className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">
+              ${totalCommissions.toLocaleString('es-AR')}
+            </p>
+            <p className="text-xs text-zinc-500 mt-2">
+              Total acumulado por comisiones sobre ventas confirmadas. Los refunds NO devuelven la comisión — ENTRÁ se la queda.
+            </p>
+          </div>
+
+          {/* Per-event breakdown */}
+          {commissionsByEvent.length === 0 ? (
+            <div className="text-center py-20 space-y-4">
+              <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto">
+                <Percent className="w-10 h-10 text-zinc-600" />
+              </div>
+              <h3 className="text-xl font-bold text-zinc-400">Todavía no hay comisiones</h3>
+              <p className="text-zinc-500 text-sm">Cuando se empiecen a vender entradas, las comisiones van a aparecer acá.</p>
+            </div>
+          ) : (
+            <div className="bg-white/5 rounded-3xl border border-white/10 overflow-hidden">
+              <div className="p-5 border-b border-white/10">
+                <h3 className="font-black text-lg">Comisiones por evento</h3>
+                <p className="text-xs text-zinc-500 mt-0.5">Ordenado de mayor a menor comisión ganada</p>
+              </div>
+              <div className="divide-y divide-white/5">
+                {commissionsByEvent.map((row) => (
+                  <div key={row.id} className="p-5 flex items-center justify-between gap-4 hover:bg-white/5 transition-all">
+                    <div className="min-w-0 flex-grow">
+                      <p className="font-bold text-sm truncate">{row.title}</p>
+                      <p className="text-xs text-zinc-500 mt-0.5">
+                        {row.sales} venta{row.sales === 1 ? '' : 's'} · Neto organizador: ${row.net.toLocaleString('es-AR')}
+                      </p>
+                    </div>
+                    <div className="flex-shrink-0 text-right">
+                      <p className="text-xs text-zinc-500">Comisión ENTRÁ</p>
+                      <p className="font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">
+                        ${row.commission.toLocaleString('es-AR')}
+                      </p>
+                    </div>
+                    <Link to={`/dashboard/evento/${row.id}`}>
+                      <button className="text-orange-500 hover:text-orange-400">
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </motion.div>
       )}

@@ -19,7 +19,7 @@ import Contact from '@/src/pages/Contact';
 import Profile from '@/src/pages/Profile';
 import AdminDashboard from '@/src/pages/AdminDashboard';
 import EventDashboard from '@/src/pages/EventDashboard';
-import PlatformConfig from '@/src/pages/PlatformConfig';
+import ClaimTicket from '@/src/pages/ClaimTicket';
 
 export default function App() {
   return (
@@ -33,6 +33,7 @@ export default function App() {
             <Route path="/evento/:id" element={<EventDetail />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/auth/login" element={<Auth />} />
+            <Route path="/claim/:token" element={<ClaimTicket />} />
             <Route path="/contacto" element={<Contact />} />
             
             {/* Protected Routes */}
@@ -70,13 +71,6 @@ export default function App() {
             <Route path="/admin/dashboard" element={
               <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
                 <AdminDashboard />
-              </ProtectedRoute>
-            } />
-
-            {/* SuperAdmin Routes */}
-            <Route path="/admin/config" element={
-              <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
-                <PlatformConfig />
               </ProtectedRoute>
             } />
           </Routes>

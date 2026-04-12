@@ -28,7 +28,7 @@ service cloud.firestore {
     //   - venue: string (required, size < 100)
     //   - price: number (positive)
     //   - organizerId: string (required, immutable)
-    //   - status: string (enum: ['draft', 'pending', 'published', 'paused', 'cancelled'])
+    //   - status: string (enum: ['draft', 'pending', 'published', 'active', 'paused', 'cancelled'])
     //
     // ===============================================================
 
@@ -90,19 +90,26 @@ service cloud.firestore {
     }
 
     function isValidEvent(data) {
-      return hasOnlyAllowedFields(['id', 'title', 'description', 'date', 'endDate', 'location', 'venue', 'latitude', 'longitude', 'price', 'image', 'category', 'organizerId', 'organizerEmail', 'tickets', 'status', 'featured', 'minAge', 'refundPolicy', 'maxPerPurchase', 'createdAt', 'updatedAt', 'ticketsSold', 'totalRevenue']) &&
-             data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
-             data.venue is string && data.venue.size() > 0 && data.venue.size() < 100 &&
-             data.date is timestamp &&
-             (data.image == null || data.image == "" || isValidUrl(data.image));
+      return hasOnlyAllowedFields(['id', 'title', 'description', 'date', 'endDate', 'location', 'venue', 'latitude', 'longitude', 'price', 'image', 'category', 'organizerId', 'organizerEmail', 'organizerName', 'tickets', 'status', 'featured', 'minAge', 'refundPolicy', 'maxPerPurchase', 'createdAt', 'updatedAt', 'deletedAt', 'ticketsSold', 'totalRevenue', 'allowTransfer']) &&
+             (!('title' in data) || (data.title is string && data.title.size() < 100)) &&
+             (!('venue' in data) || (data.venue is string && data.venue.size() < 100)) &&
+             (!('date' in data) || data.date is timestamp) &&
+             (!('image' in data) || data.image == null || data.image == "" || isValidUrl(data.image)) &&
+             (!('status' in data) || data.status in ['draft', 'pending', 'published', 'active', 'paused', 'cancelled', 'deleted']) &&
+             (!('organizerName' in data) || data.organizerName is string);
     }
 
     function isValidTicket(data) {
-      return hasOnlyAllowedFields(['id', 'orderId', 'eventId', 'eventTitle', 'buyerId', 'buyerName', 'buyerEmail', 'buyerPhone', 'buyerDni', 'ticketType', 'price', 'isCourtesy', 'courtesyReason', 'qrCode', 'status', 'createdAt', 'refundedAt', 'refundedBy', 'purchasedAt', 'transferredTo', 'transferredAt']) &&
+      return hasOnlyAllowedFields(['id', 'orderId', 'eventId', 'eventTitle', 'buyerId', 'buyerName', 'buyerEmail', 'buyerPhone', 'buyerDni', 'ticketType', 'price', 'isCourtesy', 'courtesyReason', 'qrCode', 'qrImage', 'status', 'createdAt', 'refundedAt', 'refundedBy', 'purchasedAt', 'transferredTo', 'transferredAt', 'transferStatus', 'transferToken']) &&
              (data.buyerId == 'guest' || (isAuthenticated() && data.buyerId == request.auth.uid) || isAdmin()) &&
              data.status in ['valid', 'used', 'cancelled', 'refunded'] &&
              data.qrCode is string && data.qrCode.size() < 100 &&
              data.buyerEmail is string && isValidEmail(data.buyerEmail);
+    }
+
+    function isValidTransfer(data) {
+      return hasOnlyAllowedFields(['token', 'ticketId', 'eventId', 'eventTitle', 'eventDate', 'ticketType', 'fromUserId', 'fromUserEmail', 'fromUserName', 'toUserId', 'toUserEmail', 'toUserName', 'toUserPhone', 'toUserNote', 'status', 'createdAt', 'claimedAt']) &&
+             data.status in ['pending', 'claimed', 'cancelled'];
     }
 
     // ===============================================================
@@ -135,12 +142,31 @@ service cloud.firestore {
     }
 
     match /tickets/{ticketId} {
-      allow read: if (isAuthenticated() && (isOwner(resource.data.buyerId) || 
-                   isOwner(get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organizerId))) || 
-                   isAdmin();
-      allow create: if true; // Allow guest purchase
-      allow update: if isAdmin() || (isAuthenticated() && isOwner(resource.data.buyerId)) || (isAuthenticated() && isOwner(get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organizerId));
-      allow delete: if isAdmin() || (isAuthenticated() && isOwner(get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organizerId));
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if false;
+    }
+
+    match /ticket_transfers/{transferId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.fromUserId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && isValidTransfer(request.resource.data);
+      allow update: if request.auth != null
+        && (
+          (resource.data.status == 'pending'
+            && request.resource.data.status == 'claimed'
+            && request.resource.data.toUserId == request.auth.uid
+          )
+          || (resource.data.status == 'pending'
+            && request.resource.data.status == 'cancelled'
+            && resource.data.fromUserId == request.auth.uid
+          )
+        )
+        && isValidTransfer(request.resource.data);
+      allow delete: if false;
     }
 
     match /orders/{orderId} {
