@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/__/auth/(.*)",
+      "destination": "https://gen-lang-client-0748196420.firebaseapp.com/__/auth/$1"
+    },
+    {
+      "source": "/((?!assets/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
