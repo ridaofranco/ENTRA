@@ -73,7 +73,7 @@ export default function Contact() {
               <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Mensaje</label>
               <Textarea placeholder="Contanos más detalles..." className="bg-white/5 border-white/10 min-h-[150px] rounded-2xl" />
             </div>
-            <Button className="w-full h-16 orange-gradient border-none font-bold text-lg rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all">
+            <Button className="w-full h-16 orange-gradient border-none font-bold text-lg rounded-2xl transition-all">
               <Send className="w-5 h-5 mr-2" />
               Enviar Mensaje
             </Button>

@@ -638,7 +638,7 @@ export default function Profile() {
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
         <div className="flex items-center gap-6">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white text-3xl font-black shadow-lg shadow-orange-500/20 overflow-hidden">
+          <div className="w-20 h-20 rounded-full orange-gradient flex items-center justify-center text-white text-3xl font-black overflow-hidden">
             {user.photoURL ? (
               <img src={user.photoURL} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             ) : (
@@ -683,7 +683,7 @@ export default function Profile() {
           onClick={() => setActiveTab('tickets')}
           className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm transition-all whitespace-nowrap ${
             activeTab === 'tickets'
-              ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+              ? 'bg-orange-500 text-white'
               : 'bg-white/5 text-zinc-400 hover:bg-white/10 border border-white/10'
           }`}
         >
@@ -694,7 +694,7 @@ export default function Profile() {
           onClick={() => setActiveTab('orders')}
           className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm transition-all whitespace-nowrap ${
             activeTab === 'orders'
-              ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+              ? 'bg-orange-500 text-white'
               : 'bg-white/5 text-zinc-400 hover:bg-white/10 border border-white/10'
           }`}
         >
@@ -705,7 +705,7 @@ export default function Profile() {
           onClick={() => setActiveTab('account')}
           className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm transition-all whitespace-nowrap ${
             activeTab === 'account'
-              ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+              ? 'bg-orange-500 text-white'
               : 'bg-white/5 text-zinc-400 hover:bg-white/10 border border-white/10'
           }`}
         >
@@ -725,7 +725,7 @@ export default function Profile() {
               <h3 className="text-xl font-bold text-zinc-400">No tenés tickets todavía</h3>
               <p className="text-zinc-500 text-sm">Cuando compres entradas, van a aparecer acá con su código QR.</p>
               <Link to="/eventos">
-                <button className="mt-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold px-6 py-3 rounded-2xl hover:from-orange-600 hover:to-orange-700 transition-all">
+                <button className="mt-4 orange-gradient text-white font-bold px-6 py-3 rounded-2xl hover:from-orange-600 hover:to-orange-700 transition-all">
                   Explorar Eventos
                 </button>
               </Link>
@@ -872,7 +872,7 @@ export default function Profile() {
               <h3 className="text-xl font-bold text-zinc-400">No tenés compras todavía</h3>
               <p className="text-zinc-500 text-sm">Tu historial de compras va a aparecer acá.</p>
               <Link to="/eventos">
-                <button className="mt-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold px-6 py-3 rounded-2xl hover:from-orange-600 hover:to-orange-700 transition-all">
+                <button className="mt-4 orange-gradient text-white font-bold px-6 py-3 rounded-2xl hover:from-orange-600 hover:to-orange-700 transition-all">
                   Explorar Eventos
                 </button>
               </Link>
@@ -907,7 +907,7 @@ export default function Profile() {
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">
+                        <p className="text-lg font-black text-transparent bg-clip-text orange-gradient">
                           {formatCurrency(order.total || 0)}
                         </p>
                         <span className={`text-[10px] font-bold uppercase tracking-widest ${
@@ -1050,7 +1050,7 @@ export default function Profile() {
               <button
                 onClick={handleSaveProfile}
                 disabled={savingProfile}
-                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold py-3 rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full orange-gradient text-white font-bold py-3 rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {savingProfile ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

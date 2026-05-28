@@ -978,7 +978,7 @@ El equipo de ENTRÁ`;
                   }
                 }}
                 disabled={isSaving}
-                className="flex items-center gap-2 orange-gradient text-white shadow-lg shadow-orange-500/20 text-sm font-black px-5 py-2.5 rounded-xl hover:scale-[1.02] transition-all"
+                className="flex items-center gap-2 orange-gradient text-white text-sm font-black px-5 py-2.5 rounded-xl transition-all"
               >
                 <Sparkles className="w-4 h-4" /> Lanzar Venta Oficial
               </button>
@@ -1035,7 +1035,7 @@ El equipo de ENTRÁ`;
             onClick={() => setActiveTab(tab.key)}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs whitespace-nowrap transition-all ${
               activeTab === tab.key
-                ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                ? 'bg-orange-500 text-white'
                 : 'bg-white/5 text-zinc-400 hover:bg-white/10 border border-white/10'
             }`}
           >
@@ -1067,7 +1067,7 @@ El equipo de ENTRÁ`;
                       <span className="text-xs font-bold">{(Number(ticketSold) || 0)}/{(Number(ticketTotal) || 0)}</span>
                     </div>
                     <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-orange-500 to-orange-600 rounded-full" style={{ width: `${safePct}%` }} />
+                      <div className="h-full orange-gradient rounded-full" style={{ width: `${safePct}%` }} />
                     </div>
                     <p className="text-[10px] text-zinc-500">{safePct}% vendido</p>
                   </div>
@@ -1173,7 +1173,7 @@ El equipo de ENTRÁ`;
                     </div>
 
                     <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-orange-500 to-orange-600 rounded-full" style={{ width: `${safePct}%` }} />
+                      <div className="h-full orange-gradient rounded-full" style={{ width: `${safePct}%` }} />
                     </div>
                   </div>
                 );
@@ -1223,7 +1223,7 @@ El equipo de ENTRÁ`;
               <button 
                 onClick={handleAddSector}
                 disabled={isSaving}
-                className="mt-4 flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm disabled:opacity-50"
+                className="mt-4 flex items-center gap-2 orange-gradient text-white font-bold px-5 py-2.5 rounded-xl text-sm disabled:opacity-50"
               >
                 <Plus className="w-4 h-4" /> {isSaving ? 'Agregando...' : 'Agregar sector'}
               </button>
@@ -1238,7 +1238,7 @@ El equipo de ENTRÁ`;
                 className={`flex items-center gap-2 font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-lg ${
                   showSavedFeedback 
                     ? 'bg-green-500 text-white shadow-green-500/20' 
-                    : 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-orange-500/20'
+                    : 'orange-gradient text-white shadow-orange-500/20'
                 }`}
               >
                 {isSaving ? (
@@ -1324,7 +1324,7 @@ El equipo de ENTRÁ`;
                 <button 
                   onClick={handleGenerateCourtesy}
                   disabled={isSaving}
-                  className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm shadow-lg shadow-orange-500/20 disabled:opacity-50"
+                  className="flex items-center gap-2 orange-gradient text-white font-bold px-5 py-2.5 rounded-xl text-sm disabled:opacity-50"
                 >
                   <Gift className="w-4 h-4" /> {isSaving ? 'Generando...' : 'Generar cortesía'}
                 </button>
@@ -1341,7 +1341,7 @@ El equipo de ENTRÁ`;
             <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
               <h3 className="font-bold mb-4">Resumen de cortesías</h3>
               <div className="text-center py-4">
-                <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">{totalCourtesies}</div>
+                <div className="text-4xl font-black text-transparent bg-clip-text orange-gradient">{totalCourtesies}</div>
                 <p className="text-xs text-zinc-500">cortesías emitidas</p>
               </div>
               <div className="border-t border-white/10 pt-4 space-y-2">
@@ -1685,7 +1685,7 @@ El equipo de ENTRÁ`;
                 <button 
                   onClick={handleCreateDiscount}
                   disabled={creatingDiscount || !discountForm.code || discountForm.value <= 0}
-                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold h-12 rounded-2xl shadow-lg shadow-orange-500/20 disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 orange-gradient text-white font-bold h-12 rounded-2xl disabled:opacity-50"
                 >
                   {creatingDiscount ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
                   Crear Código
@@ -1819,7 +1819,7 @@ El equipo de ENTRÁ`;
                 className={`flex-1 px-6 py-3 rounded-2xl font-bold transition flex items-center justify-center gap-2 ${
                   showSavedFeedback 
                     ? 'bg-green-500 text-white' 
-                    : 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/20'
+                    : 'orange-gradient text-white'
                 } disabled:opacity-50`}
               >
                 {isSaving ? (
@@ -1940,7 +1940,7 @@ El equipo de ENTRÁ`;
               <button
                 onClick={confirmRefundTicket}
                 disabled={isSaving}
-                className="flex-1 px-6 py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold transition disabled:opacity-50"
+                className="flex-1 px-6 py-3 rounded-2xl orange-gradient text-white font-bold transition disabled:opacity-50"
               >
                 {isSaving ? 'Procesando...' : 'Confirmar Devolución'}
               </button>

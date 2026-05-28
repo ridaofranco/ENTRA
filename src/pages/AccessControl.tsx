@@ -426,7 +426,6 @@ export default function AccessControl() {
                 {activeEventsList.map((e) => (
                   <motion.div
                     key={e.id}
-                    whileHover={{ scale: 1.02 }}
                     className="cursor-pointer"
                     onClick={() => setSelectedEvent(e)}
                   >

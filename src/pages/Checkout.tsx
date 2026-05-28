@@ -376,8 +376,11 @@ export default function Checkout() {
       // ==================== ENVIAR MAIL DE CONFIRMACIÓN ====================
       // Se dispara apenas se completa la compra. Si el envío falla, NO rompe
       // la compra: el QR igual se muestra y se puede descargar en pantalla.
+      let emailStatus: 'sent' | 'failed' = 'failed';
+      let emailMessageId: string | null = null;
+      let emailError: string | null = null;
       try {
-        await fetch('/api/send-ticket-email', {
+        const emailResp = await fetch('/api/send-ticket-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -393,8 +396,31 @@ export default function Checkout() {
             tickets: createdTickets.map((t) => ({ qrCode: t.qrCode, type: t.type })),
           }),
         });
-      } catch (emailError) {
-        console.error('[Checkout] No se pudo enviar el mail de confirmación:', emailError);
+        const emailJson = await emailResp.json().catch(() => ({ ok: false, error: 'Respuesta inválida' }));
+        emailStatus = emailJson.ok ? 'sent' : 'failed';
+        emailMessageId = emailJson.messageId || null;
+        emailError = emailJson.ok ? null : (emailJson.error || 'Error desconocido');
+      } catch (emailErr) {
+        console.error('[Checkout] No se pudo enviar el mail de confirmación:', emailErr);
+        emailError = emailErr instanceof Error ? emailErr.message : 'Fallo de red';
+      }
+
+      // Registrar el resultado del envío para poder auditarlo en el dashboard.
+      try {
+        await addDoc(collection(db, 'email_logs'), {
+          orderId,
+          eventId: event.id,
+          eventTitle: event.title,
+          buyerEmail: buyerInfo.email,
+          buyerName: buyerInfo.name,
+          ticketCount: createdTickets.length,
+          status: emailStatus,
+          messageId: emailMessageId,
+          error: emailError,
+          createdAt: Timestamp.now(),
+        });
+      } catch (logErr) {
+        console.error('[Checkout] No se pudo registrar el log de email:', logErr);
       }
 
       // Set success state and move to confirmation step

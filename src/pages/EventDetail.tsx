@@ -402,7 +402,7 @@ export default function EventDetail() {
                   >
                     <Button
                       disabled={totalQty === 0}
-                      className="w-full h-16 orange-gradient border-none font-heading font-black text-2xl uppercase tracking-wider rounded-2xl shadow-xl shadow-primary/20 disabled:opacity-50 disabled:grayscale"
+                      className="w-full h-16 orange-gradient border-none font-heading font-black text-2xl uppercase tracking-wider rounded-2xl disabled:opacity-50 disabled:grayscale"
                     >
                       ENTRÁ
                       <ChevronRight className="ml-2 w-6 h-6" />

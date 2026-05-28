@@ -90,7 +90,7 @@ export default function CreateEvent() {
         </p>
         {!user ? (
           <Link to="/auth/login?redirect=/crear-evento">
-            <Button className="h-14 px-12 orange-gradient border-none font-bold text-lg rounded-2xl shadow-xl shadow-primary/20">
+            <Button className="h-14 px-12 orange-gradient border-none font-bold text-lg rounded-2xl">
               Iniciar Sesión
             </Button>
           </Link>
@@ -687,7 +687,7 @@ export default function CreateEvent() {
         <Button 
           type="submit" 
           disabled={loading}
-          className="w-full h-20 orange-gradient border-none font-black text-2xl rounded-[2rem] shadow-2xl shadow-primary/30 hover:scale-[1.02] transition-all"
+          className="w-full h-20 orange-gradient border-none font-black text-2xl rounded-[2rem] transition-all"
         >
           {loading ? "Enviando..." : "Enviar a revisión"}
         </Button>

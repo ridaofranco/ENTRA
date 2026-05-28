@@ -487,7 +487,7 @@ export default function AdminDashboard() {
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8 flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-black tracking-tight">
-            Panel de <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">Administración</span>
+            Panel de <span className="text-transparent bg-clip-text orange-gradient">Administración</span>
           </h1>
           <p className="text-zinc-400 mt-1 text-sm">
             Gestión de usuarios, eventos y métricas · Sesión: {user.email}
@@ -610,7 +610,7 @@ export default function AdminDashboard() {
                 <Button
                   onClick={handleSaveCommissions}
                   disabled={commissionLoading}
-                  className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-6 h-10 font-bold flex items-center gap-2 transition-all active:scale-95 self-end"
+                  className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-6 h-10 font-bold flex items-center gap-2 transition-all self-end"
                 >
                   {commissionLoading ? (
                     <Loader className="w-4 h-4 animate-spin" />
@@ -631,7 +631,7 @@ export default function AdminDashboard() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mb-8">
         <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
           <h2 className="text-xl font-black mb-4">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">Usuarios</span>
+            <span className="text-transparent bg-clip-text orange-gradient">Usuarios</span>
             <span className="text-zinc-500 text-sm font-normal ml-3">{users.length} total</span>
           </h2>
           <div className="overflow-x-auto">
@@ -736,7 +736,7 @@ export default function AdminDashboard() {
         <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
           <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
             <h2 className="text-xl font-black">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">Eventos</span>
+              <span className="text-transparent bg-clip-text orange-gradient">Eventos</span>
               <span className="text-zinc-500 text-sm font-normal ml-3">
                 {filteredEvents.length} de {events.length}
               </span>
@@ -762,7 +762,7 @@ export default function AdminDashboard() {
                     onClick={() => setEventTimeFilter(t)}
                     className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
                       eventTimeFilter === t
-                        ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                        ? 'bg-orange-500 text-white'
                         : 'text-zinc-500 hover:text-white'
                     }`}
                   >
@@ -893,7 +893,7 @@ export default function AdminDashboard() {
                                 {e.status === 'pending' ? (
                                   <button
                                     onClick={() => handleEventStatusChange(e.id, 'active')}
-                                    className="px-3 py-1.5 rounded-xl bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/40 text-orange-400 text-xs font-bold transition flex items-center gap-1 shadow-lg shadow-orange-500/10"
+                                    className="px-3 py-1.5 rounded-xl bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/40 text-orange-400 text-xs font-bold transition flex items-center gap-1"
                                   >
                                     <Check className="w-3.5 h-3.5" /> Publicar
                                   </button>

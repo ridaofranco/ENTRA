@@ -246,7 +246,7 @@ export default function Dashboard() {
           <p className="text-zinc-400 mt-1">Gestion de tus eventos y ventas</p>
         </div>
         <Link to="/crear-evento">
-          <button className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold px-5 py-3 rounded-2xl hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg shadow-orange-500/20">
+          <button className="flex items-center gap-2 orange-gradient text-white font-bold px-5 py-3 rounded-2xl hover:from-orange-600 hover:to-orange-700 transition-all">
             <Plus className="w-5 h-5" />
             Crear Evento
           </button>
@@ -310,7 +310,7 @@ export default function Dashboard() {
             onClick={() => setActiveTab('eventos')}
             className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm transition-all ${
               activeTab === 'eventos'
-                ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                ? 'bg-orange-500 text-white'
                 : 'bg-white/5 text-zinc-400 hover:bg-white/10 border border-white/10'
             }`}
           >
@@ -321,7 +321,7 @@ export default function Dashboard() {
             onClick={() => setActiveTab('ventas')}
             className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm transition-all ${
               activeTab === 'ventas'
-                ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                ? 'bg-orange-500 text-white'
                 : 'bg-white/5 text-zinc-400 hover:bg-white/10 border border-white/10'
             }`}
           >
@@ -333,7 +333,7 @@ export default function Dashboard() {
               onClick={() => setActiveTab('comisiones')}
               className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm transition-all ${
                 activeTab === 'comisiones'
-                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                  ? 'bg-orange-500 text-white'
                   : 'bg-white/5 text-zinc-400 hover:bg-white/10 border border-white/10'
               }`}
             >
@@ -365,7 +365,7 @@ export default function Dashboard() {
                   onClick={() => setEventTimeFilter(t)}
                   className={`flex-1 md:flex-none px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
                     eventTimeFilter === t
-                      ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                      ? 'bg-orange-500 text-white'
                       : 'text-zinc-500 hover:text-white'
                   }`}
                 >
@@ -397,7 +397,7 @@ export default function Dashboard() {
               <h3 className="text-xl font-bold text-zinc-400">No tenes eventos todavia</h3>
               <p className="text-zinc-500 text-sm">Crea tu primer evento y empeza a vender entradas.</p>
               <Link to="/crear-evento">
-                <button className="mt-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold px-6 py-3 rounded-2xl">
+                <button className="mt-4 orange-gradient text-white font-bold px-6 py-3 rounded-2xl">
                   Crear mi primer evento
                 </button>
               </Link>
@@ -474,7 +474,7 @@ export default function Dashboard() {
                           </div>
                           <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-gradient-to-r from-orange-500 to-orange-600 rounded-full transition-all"
+                              className="h-full orange-gradient rounded-full transition-all"
                               style={{ width: `${safeSoldPercent}%` }}
                             />
                           </div>
@@ -484,7 +484,7 @@ export default function Dashboard() {
                         <div className="flex items-center justify-between pt-2 border-t border-white/5">
                           <div>
                             <p className="text-xs text-zinc-500">Ingresos</p>
-                            <p className="font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">
+                            <p className="font-black text-transparent bg-clip-text orange-gradient">
                                {formatCurrency(Number(eventRevenue) || 0)}
                             </p>
                           </div>
@@ -563,7 +563,7 @@ export default function Dashboard() {
                 <Percent className="w-4 h-4 text-orange-500" />
               </div>
             </div>
-            <p className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">
+            <p className="text-4xl font-black text-transparent bg-clip-text orange-gradient">
               {formatCurrency(totalCommissions || 0)}
             </p>
             <p className="text-xs text-zinc-500 mt-2">
@@ -597,7 +597,7 @@ export default function Dashboard() {
                     </div>
                     <div className="flex-shrink-0 text-right">
                       <p className="text-xs text-zinc-500">Comisión ENTRÁ</p>
-                      <p className="font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">
+                      <p className="font-black text-transparent bg-clip-text orange-gradient">
                         {formatCurrency(row.commission || 0)}
                       </p>
                     </div>

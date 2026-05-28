@@ -144,6 +144,13 @@ service cloud.firestore {
              data.active is bool;
     }
 
+    function isValidEmailLog(data) {
+      return hasOnlyAllowedFields(['orderId', 'eventId', 'eventTitle', 'buyerEmail', 'buyerName', 'ticketCount', 'status', 'messageId', 'error', 'createdAt']) &&
+             data.buyerEmail is string &&
+             data.status in ['sent', 'failed'] &&
+             data.eventId is string;
+    }
+
     function isValidAuditLog(data) {
       return hasOnlyAllowedFields(['userId', 'userEmail', 'action', 'target', 'targetId', 'details', 'timestamp']) &&
              data.userId == request.auth.uid &&
@@ -231,6 +238,16 @@ service cloud.firestore {
         isOwner(get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organizerId)
       );
       allow create: if isValidOrder(request.resource.data);
+    }
+
+    match /email_logs/{logId} {
+      // Lo crea el checkout (incluso invitados) al registrar el resultado del envío.
+      allow create: if isValidEmailLog(request.resource.data);
+      // Solo el admin o el organizador del evento pueden ver los registros de envío.
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        isOwner(get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organizerId)
+      );
     }
 
     match /discount_codes/{codeId} {

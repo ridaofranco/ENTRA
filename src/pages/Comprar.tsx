@@ -258,7 +258,7 @@ export default function Comprar() {
                   onClick={() => setSelectedCategory(cat)}
                   className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
                     selectedCategory === cat
-                      ? 'orange-gradient text-white shadow-lg shadow-primary/20'
+                      ? 'orange-gradient text-white'
                       : 'bg-white/5 border border-white/10 text-muted-foreground hover:border-primary/30 hover:text-white'
                   }`}
                 >
@@ -276,7 +276,7 @@ export default function Comprar() {
                   onClick={() => setTimeFilter(t)}
                   className={`flex-1 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
                     timeFilter === t
-                      ? 'orange-gradient text-white shadow-lg shadow-primary/20'
+                      ? 'orange-gradient text-white'
                       : 'text-muted-foreground hover:text-white'
                   }`}
                 >
@@ -426,7 +426,7 @@ export default function Comprar() {
             </p>
             <div>
               <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-                <Button className="h-12 px-8 orange-gradient border-none font-bold rounded-2xl shadow-lg shadow-primary/20">
+                <Button className="h-12 px-8 orange-gradient border-none font-bold rounded-2xl">
                   Quiero vender entradas
                 </Button>
               </a>
