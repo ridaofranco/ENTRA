@@ -36,9 +36,12 @@ interface OrderData {
 interface TicketData {
   orderId: string;
   eventId: string;
+  eventTitle: string;
   buyerId: string;
+  buyerName: string;
   buyerEmail: string;
   buyerPhone?: string;
+  buyerDni: string;
   ticketType: string;
   price: number;
   finalPricePaid?: number;
@@ -300,9 +303,12 @@ export default function Checkout() {
           const ticketData: TicketData = {
             orderId,
             eventId: event.id,
+            eventTitle: event.title,
             buyerId,
+            buyerName: buyerInfo.name,
             buyerEmail: buyerInfo.email,
             buyerPhone: buyerInfo.phone || '',
+            buyerDni: buyerInfo.dni,
             ticketType: selectedTicket.type,
             price: selectedTicket.price,
             finalPricePaid,
