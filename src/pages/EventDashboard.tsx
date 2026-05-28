@@ -936,6 +936,13 @@ El equipo de ENTRÁ`;
     );
   }
 
+  // Vendidos REALES por tipo, contados desde la colección de tickets
+  // (excluye cortesías y devoluciones). Es la fuente de verdad, no una estimación.
+  const soldByType = (type: string) =>
+    tickets.filter(
+      (t: any) => t.ticketType === type && !t.isCourtesy && t.status !== 'refunded' && t.status !== 'cancelled'
+    ).length;
+
   const totalCap = (event.tickets || []).reduce((s, t) => s + (t.available || 0), 0) + (Number(event.ticketsSold) || 0);
   const soldPercent = totalCap > 0 ? Math.round(((Number(event.ticketsSold) || 0) / totalCap) * 100) : 0;
 
@@ -1067,8 +1074,8 @@ El equipo de ENTRÁ`;
             <h3 className="font-bold mb-4">Desglose por tipo de ticket</h3>
             <div className="space-y-4">
               {(event.tickets || []).map((ticket, i) => {
-                const ticketTotal = (Number(ticket.available) || 0) + Math.round((Number(event.ticketsSold) || 0) * (totalCap > 0 ? ((Number(ticket.available) || 0) / totalCap) : 0));
-                const ticketSold = Math.max(0, ticketTotal - (Number(ticket.available) || 0));
+                const ticketSold = soldByType(ticket.type);
+                const ticketTotal = (Number(ticket.available) || 0) + ticketSold;
                 const pct = ticketTotal > 0 ? Math.round((ticketSold / ticketTotal) * 100) : 0;
                 const safePct = isNaN(pct) ? 0 : pct;
                 return (
@@ -1127,8 +1134,8 @@ El equipo de ENTRÁ`;
 
             <div className="space-y-4">
               {(event.tickets || []).map((ticket, i) => {
-                const ticketTotal = (Number(ticket.available) || 0) + Math.round((Number(event.ticketsSold) || 0) * ((Number(ticket.available) || 0) / (totalCap || 1)));
-                const ticketSold = Math.max(0, ticketTotal - (Number(ticket.available) || 0));
+                const ticketSold = soldByType(ticket.type);
+                const ticketTotal = (Number(ticket.available) || 0) + ticketSold;
                 const pct = ticketTotal > 0 ? Math.round((ticketSold / ticketTotal) * 100) : 0;
                 const safePct = isNaN(pct) ? 0 : pct;
                 return (

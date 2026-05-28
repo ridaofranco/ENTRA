@@ -95,8 +95,10 @@ service cloud.firestore {
     }
 
     function isStockUpdate() {
-      return isAuthenticated() && 
-             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tickets', 'ticketsSold', 'totalRevenue', 'updatedAt']);
+      // No requiere auth: una compra de invitado debe poder descontar el stock.
+      // Queda acotado a SOLO los 4 campos de stock (no se puede tocar precio,
+      // título, etc.), por lo que es seguro para el flujo de venta pública.
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tickets', 'ticketsSold', 'totalRevenue', 'updatedAt']);
     }
 
     function isValidEvent(data) {
