@@ -51,21 +51,21 @@ export default function Productores() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           
           {/* Left info column */}
-          <div className="lg:col-span-7 space-y-8">
-            <span className="text-[10px] font-sans font-black tracking-[0.3em] uppercase text-primary">
+          <div className="lg:col-span-7">
+            <span className="block text-[10px] font-sans font-black tracking-[0.3em] uppercase text-primary">
               PARA PRODUCTORES
             </span>
 
-            <h1 className="text-5xl sm:text-6xl md:text-7xl font-heading font-black tracking-tighter leading-[0.85] uppercase text-white">
+            <h1 className="text-5xl sm:text-6xl md:text-7xl font-heading font-black tracking-tighter uppercase text-white mt-5" style={{ lineHeight: '0.9' }}>
               Control total <br />
               <span className="orange-text-gradient">del acceso.</span>
             </h1>
 
-            <p className="text-lg md:text-xl text-muted-foreground font-sans max-w-xl leading-relaxed">
+            <p className="text-lg md:text-xl text-muted-foreground font-sans max-w-xl leading-relaxed mt-8">
               Cobrás el 100% de cada entrada, validás en la puerta en tiempo real y tu data es tuya. Sin intermediarios ni trabas de setup.
             </p>
 
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-4 mt-8">
               <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
                 <Button className="h-14 px-10 orange-gradient border-none font-bold text-lg rounded-xl shadow-lg shadow-primary/20 hover:scale-105 transition-transform font-sans uppercase tracking-wider">
                   Producir con ENTRÁ
