@@ -55,13 +55,13 @@ export default function Ayuda() {
           </p>
           <div className="pt-4 flex flex-col sm:flex-row gap-4 justify-center">
             <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-block">
-              <Button className="h-14 px-8 orange-gradient border-none font-heading font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center gap-2">
+              <Button className="h-14 px-8 orange-gradient border-none text-white font-heading font-black text-xs uppercase tracking-wide rounded-xl transition-all hover:brightness-110 flex items-center justify-center gap-2.5">
                 <WhatsAppIcon className="w-4 h-4" />
                 WhatsApp Directo
               </Button>
             </a>
             <a href="mailto:soporte@entra.com.ar" className="inline-block">
-              <Button variant="outline" className="h-14 px-8 border-white/5 hover:border-white/10 text-white font-heading font-black text-xs uppercase tracking-widest rounded-2xl flex items-center justify-center gap-2 bg-white/[0.01]">
+              <Button variant="outline" className="h-14 px-8 bg-white/[0.03] border border-white/10 hover:border-white/20 hover:bg-white/[0.06] text-white font-heading font-black text-xs uppercase tracking-wide rounded-xl transition-all flex items-center justify-center gap-2.5">
                 <Mail className="w-4 h-4 text-primary" />
                 Soporte por Mail
               </Button>
@@ -160,7 +160,7 @@ export default function Ayuda() {
           </p>
           <div className="pt-2">
             <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-              <Button size="sm" variant="outline" className="border-white/10 text-white hover:text-primary hover:border-primary text-xs font-bold uppercase tracking-wider rounded-xl">
+              <Button size="sm" variant="outline" className="h-11 px-6 bg-white/[0.03] border border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20 text-xs font-heading font-black uppercase tracking-wide rounded-xl transition-all">
                 Contactar a soporte en directo
               </Button>
             </a>

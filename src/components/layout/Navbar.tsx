@@ -74,7 +74,7 @@ export function Navbar() {
         ) : null}
 
         <Link to={user ? "/perfil" : "/auth/login"}>
-          <Button className="orange-gradient border-none font-bold px-8 py-5 text-sm uppercase tracking-wider rounded-xl shadow-lg shadow-primary/20 hover:scale-105 transition-transform font-sans">
+          <Button className="orange-gradient border-none text-white px-8 py-5 text-sm uppercase tracking-wide rounded-xl transition-all hover:brightness-110 font-heading font-black">
             ENTRÁ
           </Button>
         </Link>

@@ -353,7 +353,7 @@ export default function Auth() {
                     <Button
                       type="submit"
                       disabled={submitting}
-                      className="w-full h-13 orange-gradient border-none font-heading font-black text-xs uppercase tracking-widest rounded-xl shadow-lg shadow-[#ff5c00]/10"
+                      className="w-full h-13 orange-gradient border-none text-white font-heading font-black text-xs uppercase tracking-wide rounded-xl transition-all hover:brightness-110"
                     >
                       {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Entrar'}
                     </Button>
@@ -461,7 +461,7 @@ export default function Auth() {
                     <Button
                       type="submit"
                       disabled={submitting}
-                      className="w-full h-13 orange-gradient border-none font-heading font-black text-xs uppercase tracking-widest rounded-xl shadow-lg shadow-[#ff5c00]/10"
+                      className="w-full h-13 orange-gradient border-none text-white font-heading font-black text-xs uppercase tracking-wide rounded-xl transition-all hover:brightness-110"
                     >
                       {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Crear Cuenta'}
                     </Button>
@@ -500,7 +500,7 @@ export default function Auth() {
                     <Button
                       type="submit"
                       disabled={submitting}
-                      className="w-full h-13 orange-gradient border-none font-heading font-black text-xs uppercase tracking-widest rounded-xl"
+                      className="w-full h-13 orange-gradient border-none text-white font-heading font-black text-xs uppercase tracking-wide rounded-xl transition-all hover:brightness-110"
                     >
                       {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Enviar Enlace'}
                     </Button>
@@ -564,7 +564,7 @@ export default function Auth() {
                     <Button
                       type="submit"
                       disabled={submitting}
-                      className="w-full h-13 orange-gradient border-none font-heading font-black text-xs uppercase tracking-widest rounded-xl shadow-lg shadow-[#ff5c00]/10"
+                      className="w-full h-13 orange-gradient border-none text-white font-heading font-black text-xs uppercase tracking-wide rounded-xl transition-all hover:brightness-110"
                     >
                       {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirmar y ENTRAR'}
                     </Button>

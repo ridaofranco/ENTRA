@@ -67,12 +67,12 @@ export default function Productores() {
 
             <div className="flex flex-wrap gap-4 mt-8">
               <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-                <Button className="h-14 px-10 orange-gradient border-none font-bold text-lg rounded-xl shadow-lg shadow-primary/20 hover:scale-105 transition-transform font-sans uppercase tracking-wider">
+                <Button className="h-14 px-10 orange-gradient border-none text-white text-base rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
                   Producir con ENTRÁ
                 </Button>
               </a>
               <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" className="h-14 px-10 rounded-xl border-white/10 font-bold text-lg hover:bg-white/5 transition-colors font-sans gap-2 text-white">
+                <Button variant="outline" className="h-14 px-10 rounded-xl bg-white/[0.03] border border-white/10 text-white text-base hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide gap-2.5">
                   <WhatsAppIcon className="w-5 h-5" />
                   Hablar por WhatsApp
                 </Button>
@@ -301,7 +301,7 @@ export default function Productores() {
       {/* 5. CTA — minimal, bold, huge text */}
       <section className="bg-black py-32 border-t border-white/5 text-center px-6">
         <div className="max-w-4xl mx-auto">
-          <Badge className="orange-gradient border-none font-bold uppercase tracking-widest text-[10px] px-4 py-1.5 font-sans">
+          <Badge className="orange-gradient border-none text-white uppercase tracking-widest text-[10px] px-4 py-1.5 font-heading font-black">
             COMENZAR AHORA
           </Badge>
           <h2 className="text-4xl md:text-6xl font-heading font-black tracking-tighter uppercase text-white mt-6" style={{ lineHeight: '1.15' }}>
@@ -312,12 +312,12 @@ export default function Productores() {
           </p>
           <div className="flex flex-wrap justify-center gap-4 mt-10">
             <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-              <Button className="h-16 px-10 orange-gradient border-none font-bold text-lg rounded-xl shadow-lg shadow-primary/20 hover:scale-105 transition-transform font-sans uppercase tracking-[0.1em]">
+              <Button className="h-16 px-10 orange-gradient border-none text-white text-lg rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
                 Quiero vender entradas
               </Button>
             </a>
             <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" className="h-16 px-10 rounded-xl border-white/10 font-bold text-lg hover:bg-white/5 transition-colors font-sans gap-2 text-white">
+              <Button variant="outline" className="h-16 px-10 rounded-xl bg-white/[0.03] border border-white/10 text-white text-lg hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide gap-2.5">
                 <WhatsAppIcon className="w-5 h-5" />
                 Hablar por WhatsApp
               </Button>

@@ -96,12 +96,12 @@ export default function Landing() {
 
             <div className="flex flex-wrap gap-4 pt-4">
               <Link to={user ? "/perfil" : "/auth/login"}>
-                <Button className="h-14 px-10 orange-gradient border-none font-bold text-lg rounded-xl shadow-lg shadow-primary/20 hover:scale-105 transition-transform font-sans uppercase tracking-wider">
+                <Button className="h-14 px-10 orange-gradient border-none text-white text-base rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
                   ENTRÁ
                 </Button>
               </Link>
               <Link to="/eventos">
-                <Button variant="outline" className="h-14 px-10 rounded-xl border-white/10 font-bold text-lg hover:bg-white/5 transition-colors font-sans">
+                <Button variant="outline" className="h-14 px-10 rounded-xl bg-white/[0.03] border border-white/10 text-white text-base hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide">
                   Ver eventos
                 </Button>
               </Link>
@@ -296,7 +296,7 @@ export default function Landing() {
             </p>
           </div>
           <Link to="/productores">
-            <Button className="h-12 px-6 rounded-xl border border-white/15 hover:border-primary/50 text-white hover:text-primary bg-transparent hover:bg-white/[0.02] transition-all font-sans font-bold uppercase text-xs tracking-wider">
+            <Button className="h-12 px-6 rounded-xl bg-white/[0.03] border border-white/10 hover:border-white/20 text-white hover:bg-white/[0.06] transition-all font-heading font-black uppercase text-xs tracking-wide">
               Para productores &rarr;
             </Button>
           </Link>
@@ -311,7 +311,7 @@ export default function Landing() {
           </h2>
           <div>
             <Link to="/eventos">
-              <Button className="h-16 px-12 orange-gradient border-none font-bold text-lg rounded-xl shadow-lg shadow-primary/30 hover:scale-105 transition-transform font-sans uppercase tracking-[0.1em]">
+              <Button className="h-16 px-12 orange-gradient border-none text-white text-lg rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
                 Ver eventos
               </Button>
             </Link>
