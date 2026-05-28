@@ -154,7 +154,7 @@ export default function Comprar() {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-4"
           >
-            <span className="text-[10px] font-sans font-bold tracking-[0.3em] uppercase text-primary">
+            <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-primary">
               CARTELERA OFICIAL
             </span>
             <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-[6rem] font-heading font-black tracking-tighter leading-none uppercase">
@@ -170,7 +170,7 @@ export default function Comprar() {
       {/* Por qué comprar en ENTRÁ - Sleek minimal row of benefits */}
       <section className="max-w-7xl mx-auto px-6 mb-16">
         <div className="border border-white/5 bg-white/[0.01] rounded-[2rem] p-8 md:p-10">
-          <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] font-sans mb-6 text-center md:text-left">
+          <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] mb-6 text-center md:text-left">
             Por qué comprar en ENTRÁ
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -426,7 +426,7 @@ export default function Comprar() {
             </p>
             <div>
               <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-                <Button className="h-12 px-8 orange-gradient border-none font-bold rounded-2xl">
+                <Button className="h-12 px-8 orange-gradient border-none font-heading font-black rounded-xl hover:brightness-110">
                   Quiero vender entradas
                 </Button>
               </a>

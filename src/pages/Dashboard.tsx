@@ -246,7 +246,7 @@ export default function Dashboard() {
           <p className="text-zinc-400 mt-1">Gestion de tus eventos y ventas</p>
         </div>
         <Link to="/crear-evento">
-          <button className="flex items-center gap-2 orange-gradient text-white font-bold px-5 py-3 rounded-2xl hover:from-orange-600 hover:to-orange-700 transition-all">
+          <button className="flex items-center gap-2 orange-gradient text-white font-heading font-black px-5 py-3 rounded-xl hover:brightness-110 transition-all">
             <Plus className="w-5 h-5" />
             Crear Evento
           </button>
@@ -397,7 +397,7 @@ export default function Dashboard() {
               <h3 className="text-xl font-bold text-zinc-400">No tenes eventos todavia</h3>
               <p className="text-zinc-500 text-sm">Crea tu primer evento y empeza a vender entradas.</p>
               <Link to="/crear-evento">
-                <button className="mt-4 orange-gradient text-white font-bold px-6 py-3 rounded-2xl">
+                <button className="mt-4 orange-gradient text-white font-heading font-black px-6 py-3 rounded-xl hover:brightness-110 transition-all">
                   Crear mi primer evento
                 </button>
               </Link>
@@ -440,9 +440,9 @@ export default function Dashboard() {
                             <Calendar className="w-10 h-10 text-orange-500/50" />
                           </div>
                         )}
-                        <span className={`absolute top-3 right-3 text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full backdrop-blur-sm border shadow-lg ${
-                          event.status === 'active' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 
-                          event.status === 'pending' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30 shadow-orange-500/10' :
+                        <span className={`absolute top-3 right-3 text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full backdrop-blur-sm border ${
+                          event.status === 'active' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                          event.status === 'pending' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
                           'bg-zinc-500/20 text-zinc-400 border-zinc-500/30'
                         }`}>
                           {event.status === 'active' ? 'Activo' : 

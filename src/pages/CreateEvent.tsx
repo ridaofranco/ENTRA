@@ -90,13 +90,13 @@ export default function CreateEvent() {
         </p>
         {!user ? (
           <Link to="/auth/login?redirect=/crear-evento">
-            <Button className="h-14 px-12 orange-gradient border-none font-bold text-lg rounded-2xl">
+            <Button className="h-14 px-12 orange-gradient border-none font-heading font-black text-lg rounded-xl hover:brightness-110">
               Iniciar Sesión
             </Button>
           </Link>
         ) : (
           <Link to="/contacto">
-            <Button className="h-14 px-12 bg-white/5 border border-white/10 font-bold text-lg rounded-2xl">
+            <Button className="h-14 px-12 bg-white/5 border border-white/10 font-heading font-black text-lg rounded-xl">
               Contactar Soporte
             </Button>
           </Link>
@@ -255,7 +255,7 @@ export default function CreateEvent() {
         <section className="space-y-6">
           <div className="flex items-center gap-2 text-primary">
             <Info className="w-5 h-5" />
-            <h2 className="text-xl font-heading font-bold uppercase tracking-tight">Información Básica</h2>
+            <h2 className="text-xl font-heading font-black uppercase tracking-tight">Información Básica</h2>
           </div>
           <Card className="glass p-8 rounded-[2.5rem] border-white/5 space-y-6">
             <div className="space-y-2">
@@ -271,7 +271,7 @@ export default function CreateEvent() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground font-sans">Fecha</label>
+                  <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Fecha</label>
                   <label className="flex items-center gap-1.5 cursor-pointer select-none">
                     <input 
                       type="checkbox" 
@@ -298,7 +298,7 @@ export default function CreateEvent() {
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground font-sans">Hora</label>
+                  <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Hora</label>
                   <label className="flex items-center gap-1.5 cursor-pointer select-none">
                     <input 
                       type="checkbox" 
@@ -342,13 +342,13 @@ export default function CreateEvent() {
         <section className="space-y-6">
           <div className="flex items-center gap-2 text-primary">
             <MapPin className="w-5 h-5" />
-            <h2 className="text-xl font-heading font-bold uppercase tracking-tight">Lugar y Estética</h2>
+            <h2 className="text-xl font-heading font-black uppercase tracking-tight">Lugar y Estética</h2>
           </div>
           <Card className="glass p-8 rounded-[2.5rem] border-white/5 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground font-sans">Nombre del Lugar</label>
+                  <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Nombre del Lugar</label>
                   <label className="flex items-center gap-1.5 cursor-pointer select-none">
                     <input 
                       type="checkbox" 
@@ -377,7 +377,7 @@ export default function CreateEvent() {
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 font-sans">Ciudad / Zona</label>
+                  <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Ciudad / Zona</label>
                 </div>
                 <Input 
                   required
@@ -409,7 +409,7 @@ export default function CreateEvent() {
         <section className="space-y-6">
           <div className="flex items-center gap-2 text-primary">
             <Ticket className="w-5 h-5" />
-            <h2 className="text-xl font-heading font-bold uppercase tracking-tight">Tickets y Precios</h2>
+            <h2 className="text-xl font-heading font-black uppercase tracking-tight">Tickets y Precios</h2>
           </div>
           <Card className="glass p-8 rounded-[2.5rem] border-white/5 space-y-6">
             {tickets.map((ticket, index) => (
@@ -523,7 +523,7 @@ export default function CreateEvent() {
         >
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-heading font-bold text-lg">Campos personalizados</h3>
+              <h3 className="font-heading font-black text-lg">Campos personalizados</h3>
               <p className="text-xs text-zinc-500 mt-1">
                 Agregá preguntas extras que los compradores deben completar al comprar (ej: talle, restricciones alimentarias, empresa).
                 {customFields.length === 0 && ' Esto es opcional.'}
@@ -687,7 +687,7 @@ export default function CreateEvent() {
         <Button 
           type="submit" 
           disabled={loading}
-          className="w-full h-20 orange-gradient border-none font-black text-2xl rounded-[2rem] transition-all"
+          className="w-full h-20 orange-gradient border-none font-heading font-black text-2xl rounded-xl transition-all"
         >
           {loading ? "Enviando..." : "Enviar a revisión"}
         </Button>

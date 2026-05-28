@@ -4,7 +4,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, BarChart3, Calendar, Clock, DollarSign, Download,
   Edit, Gift, Loader2, MapPin, Minus, Plus, Save, Search, Send, Ticket,
-  Trash, Users, Eye, Copy, Check, RotateCcw, AlertTriangle, Tag, Percent, Sparkles
+  Trash, Users, Eye, Copy, Check, RotateCcw, AlertTriangle, Tag, Percent, Sparkles, Mail
 } from 'lucide-react';
 import { 
   doc, 
@@ -132,8 +132,9 @@ export default function EventDashboard() {
   const [orders, setOrders] = useState<OrderData[]>([]);
   const [tickets, setTickets] = useState<any[]>([]);
   const [discountCodes, setDiscountCodes] = useState<any[]>([]);
+  const [emailLogs, setEmailLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'resumen' | 'tickets' | 'cortesias' | 'ventas' | 'asistentes' | 'descuentos'>('resumen');
+  const [activeTab, setActiveTab] = useState<'resumen' | 'tickets' | 'cortesias' | 'ventas' | 'asistentes' | 'descuentos' | 'envios'>('resumen');
   const [isSaving, setIsSaving] = useState(false);
   const [showSavedFeedback, setShowSavedFeedback] = useState(false);
   const [isEditingEvent, setIsEditingEvent] = useState(false);
@@ -299,11 +300,23 @@ export default function EventDashboard() {
       setDiscountCodes(discountsList);
     });
 
+    // 5. Email logs listener (registro de envíos de confirmación)
+    const qEmailLogs = query(collection(db, 'email_logs'), where('eventId', '==', id));
+    const unsubEmailLogs = onSnapshot(qEmailLogs, (snap) => {
+      const logsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      logsList.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      setEmailLogs(logsList);
+    }, (err) => {
+      // Si la regla de Firestore aún no fue publicada, no rompemos el dashboard.
+      console.error('[EventDashboard] No se pudieron leer email_logs:', err);
+    });
+
     return () => {
       unsubEvent();
       unsubOrders();
       unsubTickets();
       unsubDiscounts();
+      unsubEmailLogs();
     };
   }, [id, user]);
 
@@ -933,6 +946,7 @@ El equipo de ENTRÁ`;
     { key: 'cortesias', label: 'Cortesías', icon: Gift },
     { key: 'ventas', label: 'Ventas', icon: DollarSign },
     { key: 'asistentes', label: 'Asistentes', icon: Users },
+    { key: 'envios', label: 'Envíos', icon: Mail },
   ] as const;
 
   return (
@@ -978,26 +992,26 @@ El equipo de ENTRÁ`;
                   }
                 }}
                 disabled={isSaving}
-                className="flex items-center gap-2 orange-gradient text-white text-sm font-black px-5 py-2.5 rounded-xl transition-all"
+                className="flex items-center gap-2 orange-gradient text-white text-sm font-heading font-black px-5 py-2.5 rounded-xl transition-all"
               >
                 <Sparkles className="w-4 h-4" /> Lanzar Venta Oficial
               </button>
             )}
             <button
               onClick={() => setIsEditingEvent(true)}
-              className="flex items-center gap-2 bg-white/5 border border-white/10 text-sm font-bold px-4 py-2.5 rounded-xl hover:border-blue-500/30 transition-all text-blue-400"
+              className="flex items-center gap-2 bg-white/5 border border-white/10 text-sm font-heading font-black px-4 py-2.5 rounded-xl hover:border-blue-500/30 transition-all text-blue-400"
             >
               <Edit className="w-4 h-4" /> Editar Info
             </button>
             <Link to={`/evento/${event.id}`}>
-              <button className="flex items-center gap-2 bg-white/5 border border-white/10 text-sm font-bold px-4 py-2.5 rounded-xl hover:border-orange-500/30 transition-all">
+              <button className="flex items-center gap-2 bg-white/5 border border-white/10 text-sm font-heading font-black px-4 py-2.5 rounded-xl hover:border-orange-500/30 transition-all">
                 <Eye className="w-4 h-4" /> Ver página pública
               </button>
             </Link>
             {canRefund && activeTickets.length > 0 && (
               <button
                 onClick={() => setShowBulkRefundModal(true)}
-                className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-sm font-bold px-4 py-2.5 rounded-xl hover:bg-red-500/20 transition-all text-red-400"
+                className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-sm font-heading font-black px-4 py-2.5 rounded-xl hover:bg-red-500/20 transition-all text-red-400"
                 title="Devolver TODOS los tickets y limpiar el evento"
               >
                 <AlertTriangle className="w-4 h-4" /> Devolver todos ({activeTickets.length})
@@ -1223,7 +1237,7 @@ El equipo de ENTRÁ`;
               <button 
                 onClick={handleAddSector}
                 disabled={isSaving}
-                className="mt-4 flex items-center gap-2 orange-gradient text-white font-bold px-5 py-2.5 rounded-xl text-sm disabled:opacity-50"
+                className="mt-4 flex items-center gap-2 orange-gradient text-white font-heading font-black px-5 py-2.5 rounded-xl text-sm disabled:opacity-50"
               >
                 <Plus className="w-4 h-4" /> {isSaving ? 'Agregando...' : 'Agregar sector'}
               </button>
@@ -1235,10 +1249,10 @@ El equipo de ENTRÁ`;
               <button 
                 onClick={handleManualSave}
                 disabled={isSaving}
-                className={`flex items-center gap-2 font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-lg ${
-                  showSavedFeedback 
-                    ? 'bg-green-500 text-white shadow-green-500/20' 
-                    : 'orange-gradient text-white shadow-orange-500/20'
+                className={`flex items-center gap-2 font-heading font-black px-5 py-2.5 rounded-xl text-sm transition-all ${
+                  showSavedFeedback
+                    ? 'bg-green-500 text-white'
+                    : 'orange-gradient text-white'
                 }`}
               >
                 {isSaving ? (
@@ -1324,7 +1338,7 @@ El equipo de ENTRÁ`;
                 <button 
                   onClick={handleGenerateCourtesy}
                   disabled={isSaving}
-                  className="flex items-center gap-2 orange-gradient text-white font-bold px-5 py-2.5 rounded-xl text-sm disabled:opacity-50"
+                  className="flex items-center gap-2 orange-gradient text-white font-heading font-black px-5 py-2.5 rounded-xl text-sm disabled:opacity-50"
                 >
                   <Gift className="w-4 h-4" /> {isSaving ? 'Generando...' : 'Generar cortesía'}
                 </button>
@@ -1607,6 +1621,71 @@ El equipo de ENTRÁ`;
                 </tbody>
               </table>
               {filteredAttendees.length === 0 && <p className="text-center text-zinc-500 py-8">No se encontraron asistentes con los filtros aplicados</p>}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ==================== ENVÍOS ==================== */}
+      {activeTab === 'envios' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+              <div>
+                <h3 className="font-heading font-black text-lg">Envíos de email</h3>
+                <p className="text-xs text-zinc-500">
+                  {emailLogs.length} {emailLogs.length === 1 ? 'envío registrado' : 'envíos registrados'}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
+                  {emailLogs.filter((l: any) => l.status === 'sent').length} enviados
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+                  {emailLogs.filter((l: any) => l.status === 'failed').length} fallidos
+                </span>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-left">
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Destinatario</th>
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Entradas</th>
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Estado</th>
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Fecha</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {emailLogs.map((log: any, idx: number) => (
+                    <tr key={log.id || idx} className="border-b border-white/5">
+                      <td className="p-2">
+                        <p className="font-bold">{log.buyerName || '—'}</p>
+                        <p className="text-zinc-400 text-xs">{log.buyerEmail || '—'}</p>
+                      </td>
+                      <td className="p-2 text-zinc-300">{log.ticketCount || 1}</td>
+                      <td className="p-2">
+                        {log.status === 'sent' ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400">Enviado</span>
+                        ) : (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/10 text-red-400" title={log.error || ''}>
+                            Falló
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-2 text-zinc-400 text-xs">
+                        {log.createdAt?.toDate ? log.createdAt.toDate().toLocaleString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {emailLogs.length === 0 && (
+                <p className="text-center text-zinc-500 py-8 text-sm">
+                  Todavía no hay envíos registrados. Aparecerán acá automáticamente cuando se concrete una compra.
+                </p>
+              )}
             </div>
           </div>
         </motion.div>

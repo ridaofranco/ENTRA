@@ -693,7 +693,7 @@ ${successState.tickets.map((ticket, i) => `
             Inicia sesión para una compra más rápida
           </p>
           <Link to="/auth/login">
-            <Button className="w-full orange-gradient border-none font-bold rounded-xl h-11">
+            <Button className="w-full orange-gradient border-none font-heading font-black rounded-xl h-11">
               Iniciar Sesión
             </Button>
           </Link>
@@ -757,7 +757,7 @@ ${successState.tickets.map((ticket, i) => `
       <Button
         disabled={!buyerInfo.name || !buyerInfo.email || !buyerInfo.dni}
         onClick={() => setStep(2)}
-        className="w-full h-14 orange-gradient border-none font-bold text-lg rounded-2xl"
+        className="w-full h-14 orange-gradient border-none font-heading font-black text-lg rounded-xl"
       >
         Siguiente: Revisar y Confirmar
       </Button>
@@ -832,7 +832,7 @@ ${successState.tickets.map((ticket, i) => `
         <Button
           disabled={isProcessing}
           onClick={handleConfirmPurchase}
-          className="flex-grow h-12 orange-gradient border-none font-bold rounded-2xl"
+          className="flex-grow h-12 orange-gradient border-none font-heading font-black rounded-xl"
         >
           {isProcessing ? 'Procesando...' : 'Confirmar Compra'}
         </Button>
@@ -868,7 +868,7 @@ ${successState.tickets.map((ticket, i) => `
       {/* Botón prominente de descarga de todas las entradas */}
       <Button
         onClick={handleDownloadTickets}
-        className="w-full h-14 orange-gradient border-none font-bold text-base rounded-2xl flex items-center justify-center gap-3"
+        className="w-full h-14 orange-gradient border-none font-heading font-black text-base rounded-xl flex items-center justify-center gap-3"
       >
         <Download className="w-5 h-5" />
         Descargar {successState.tickets.length === 1 ? 'mi entrada' : `mis ${successState.tickets.length} entradas`} (PDF imprimible)
@@ -968,14 +968,14 @@ ${successState.tickets.map((ticket, i) => `
 
       <div className="flex flex-col sm:flex-row gap-3">
         <Link to="/perfil" className="flex-grow">
-          <Button className="w-full orange-gradient border-none font-bold h-12 rounded-2xl">
+          <Button className="w-full orange-gradient border-none font-heading font-black h-12 rounded-xl">
             Ver Mis Entradas
           </Button>
         </Link>
         <Link to="/eventos" className="flex-grow">
           <Button
             variant="outline"
-            className="w-full h-12 rounded-2xl border-white/10 font-bold"
+            className="w-full h-12 rounded-xl border-white/10 font-heading font-black"
           >
             Seguir Explorando
           </Button>
@@ -1135,7 +1135,7 @@ ${successState.tickets.map((ticket, i) => `
                       <Button 
                         onClick={handleApplyDiscount}
                         disabled={!discountCodeInput.trim() || isValidatingDiscount}
-                        className="h-10 px-4 orange-gradient border-none font-bold text-xs rounded-xl"
+                        className="h-10 px-4 orange-gradient border-none font-heading font-black text-xs rounded-xl"
                       >
                         {isValidatingDiscount ? <Loader2 className="w-4 h-4 animate-spin" /> : 'APLICAR'}
                       </Button>

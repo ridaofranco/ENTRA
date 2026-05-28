@@ -725,7 +725,7 @@ export default function Profile() {
               <h3 className="text-xl font-bold text-zinc-400">No tenés tickets todavía</h3>
               <p className="text-zinc-500 text-sm">Cuando compres entradas, van a aparecer acá con su código QR.</p>
               <Link to="/eventos">
-                <button className="mt-4 orange-gradient text-white font-bold px-6 py-3 rounded-2xl hover:from-orange-600 hover:to-orange-700 transition-all">
+                <button className="mt-4 orange-gradient text-white font-heading font-black px-6 py-3 rounded-xl hover:brightness-110 transition-all">
                   Explorar Eventos
                 </button>
               </Link>
@@ -872,7 +872,7 @@ export default function Profile() {
               <h3 className="text-xl font-bold text-zinc-400">No tenés compras todavía</h3>
               <p className="text-zinc-500 text-sm">Tu historial de compras va a aparecer acá.</p>
               <Link to="/eventos">
-                <button className="mt-4 orange-gradient text-white font-bold px-6 py-3 rounded-2xl hover:from-orange-600 hover:to-orange-700 transition-all">
+                <button className="mt-4 orange-gradient text-white font-heading font-black px-6 py-3 rounded-xl hover:brightness-110 transition-all">
                   Explorar Eventos
                 </button>
               </Link>
@@ -1050,7 +1050,7 @@ export default function Profile() {
               <button
                 onClick={handleSaveProfile}
                 disabled={savingProfile}
-                className="w-full orange-gradient text-white font-bold py-3 rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full orange-gradient text-white font-heading font-black py-3 rounded-xl hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {savingProfile ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -1143,7 +1143,7 @@ export default function Profile() {
                 <button
                   onClick={handleChangeEmail}
                   disabled={savingEmail}
-                  className="w-full bg-white/5 border border-white/10 text-white font-bold py-3 rounded-xl hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full bg-white/5 border border-white/10 text-white font-heading font-black py-3 rounded-xl hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {savingEmail ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -1280,7 +1280,7 @@ export default function Profile() {
                 <button
                   onClick={handleChangePassword}
                   disabled={savingPassword}
-                  className="w-full bg-white/5 border border-white/10 text-white font-bold py-3 rounded-xl hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full bg-white/5 border border-white/10 text-white font-heading font-black py-3 rounded-xl hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {savingPassword ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -1350,7 +1350,7 @@ export default function Profile() {
           {/* ────────── SECCIÓN 5: CERRAR SESIÓN ────────── */}
           <button
             onClick={handleLogout}
-            className="w-full bg-red-500/10 border border-red-500/20 text-red-400 font-bold py-4 rounded-2xl hover:bg-red-500/20 transition-all flex items-center justify-center gap-2"
+            className="w-full bg-red-500/10 border border-red-500/20 text-red-400 font-heading font-black py-4 rounded-xl hover:bg-red-500/20 transition-all flex items-center justify-center gap-2"
           >
             <LogOut className="w-5 h-5" />
             Cerrar sesión

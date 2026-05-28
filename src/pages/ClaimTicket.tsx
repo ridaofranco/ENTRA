@@ -188,10 +188,10 @@ export default function ClaimTicket() {
           <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-8 h-8 text-red-500" />
           </div>
-          <h1 className="text-2xl font-bold mb-2">No se puede reclamar</h1>
+          <h1 className="text-2xl font-heading font-black mb-2">No se puede reclamar</h1>
           <p className="text-sm text-zinc-400 mb-6">{error}</p>
           <Link to="/eventos">
-            <button className="px-6 py-3 rounded-2xl bg-orange-500 hover:bg-orange-600 text-sm font-bold transition">
+            <button className="px-6 py-3 rounded-xl orange-gradient hover:brightness-110 text-sm font-heading font-black transition">
               Volver a ENTRÁ
             </button>
           </Link>
@@ -212,7 +212,7 @@ export default function ClaimTicket() {
           <div className="w-16 h-16 rounded-2xl bg-green-500/10 border border-green-500/30 flex items-center justify-center mx-auto mb-4">
             <Check className="w-8 h-8 text-green-500" />
           </div>
-          <h1 className="text-2xl font-bold mb-2">¡Ticket reclamado!</h1>
+          <h1 className="text-2xl font-heading font-black mb-2">¡Ticket reclamado!</h1>
           <p className="text-sm text-zinc-400 mb-4">
             Ya es tuyo. Lo vas a ver en tu sección "Mis Tickets".
           </p>
@@ -234,7 +234,7 @@ export default function ClaimTicket() {
           <div className="w-16 h-16 rounded-2xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center mx-auto mb-3">
             <Ticket className="w-8 h-8 text-orange-500" />
           </div>
-          <h1 className="text-2xl font-bold mb-1">Te transfirieron un ticket</h1>
+          <h1 className="text-2xl font-heading font-black mb-1">Te transfirieron un ticket</h1>
           <p className="text-sm text-zinc-400">
             <strong className="text-orange-500">{transfer?.fromUserName || 'Alguien'}</strong> te envió un ticket por ENTRÁ
           </p>
@@ -258,7 +258,7 @@ export default function ClaimTicket() {
             </div>
           )}
           <div className="p-5 space-y-3">
-            <h2 className="font-bold text-lg">{transfer?.eventTitle}</h2>
+            <h2 className="font-heading font-black text-lg">{transfer?.eventTitle}</h2>
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-xs text-zinc-400">
                 <User className="w-3.5 h-3.5" />
@@ -297,7 +297,7 @@ export default function ClaimTicket() {
         {/* CTA */}
         {!user ? (
           <Link to={`/auth/login?redirect=/claim/${token}`}>
-            <button className="w-full px-6 py-4 rounded-2xl bg-orange-500 hover:bg-orange-600 text-sm font-bold transition flex items-center justify-center gap-2">
+            <button className="w-full px-6 py-4 rounded-xl orange-gradient hover:brightness-110 text-sm font-heading font-black transition flex items-center justify-center gap-2">
               <LogIn className="w-4 h-4" />
               {transfer?.toUserEmail
                 ? `Iniciá sesión con ${transfer.toUserEmail}`
@@ -308,7 +308,7 @@ export default function ClaimTicket() {
           <button
             onClick={handleClaim}
             disabled={claiming}
-            className="w-full px-6 py-4 rounded-2xl bg-orange-500 hover:bg-orange-600 text-sm font-bold transition flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full px-6 py-4 rounded-xl orange-gradient hover:brightness-110 text-sm font-heading font-black transition flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {claiming ? (
               <>

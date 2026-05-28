@@ -562,7 +562,7 @@ export default function AdminDashboard() {
                   <Percent className="w-5 h-5 text-orange-500" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black">Comisiones por tier</h2>
+                  <h2 className="text-xl font-heading font-black">Comisiones por tier</h2>
                   <p className="text-sm text-zinc-400 mt-1 max-w-md">
                     Configurá el % que cobra ENTRÁ según el plan del organizador.
                   </p>
@@ -610,7 +610,7 @@ export default function AdminDashboard() {
                 <Button
                   onClick={handleSaveCommissions}
                   disabled={commissionLoading}
-                  className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-6 h-10 font-bold flex items-center gap-2 transition-all self-end"
+                  className="orange-gradient hover:brightness-110 text-white rounded-xl px-6 h-10 font-bold flex items-center gap-2 transition-all self-end"
                 >
                   {commissionLoading ? (
                     <Loader className="w-4 h-4 animate-spin" />
@@ -630,7 +630,7 @@ export default function AdminDashboard() {
       {/* Users Table */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mb-8">
         <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
-          <h2 className="text-xl font-black mb-4">
+          <h2 className="text-xl font-heading font-black mb-4">
             <span className="text-transparent bg-clip-text orange-gradient">Usuarios</span>
             <span className="text-zinc-500 text-sm font-normal ml-3">{users.length} total</span>
           </h2>
@@ -735,7 +735,7 @@ export default function AdminDashboard() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
         <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
           <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-            <h2 className="text-xl font-black">
+            <h2 className="text-xl font-heading font-black">
               <span className="text-transparent bg-clip-text orange-gradient">Eventos</span>
               <span className="text-zinc-500 text-sm font-normal ml-3">
                 {filteredEvents.length} de {events.length}

@@ -103,7 +103,7 @@ export default function EventDetail() {
     return (
       <div className="pt-40 text-center max-w-md mx-auto px-6">
         <AlertTriangle className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-        <h2 className="text-2xl font-heading font-bold mb-2">Evento no disponible</h2>
+        <h2 className="text-2xl font-heading font-black mb-2">Evento no disponible</h2>
         <p className="text-muted-foreground mb-6">Este evento fue eliminado y ya no está disponible.</p>
         <Link to="/eventos">
           <Button variant="outline" className="font-bold border-white/10 hover:border-primary hover:text-primary">
@@ -161,7 +161,7 @@ export default function EventDetail() {
         {/* Left Column: Info */}
         <div className="lg:col-span-2 space-y-12">
           <section>
-            <h2 className="text-2xl font-heading font-bold mb-6 flex items-center gap-3">
+            <h2 className="text-2xl font-heading font-black mb-6 flex items-center gap-3">
               <Info className="w-6 h-6 text-primary" />
               Sobre el evento
             </h2>
@@ -402,7 +402,7 @@ export default function EventDetail() {
                   >
                     <Button
                       disabled={totalQty === 0}
-                      className="w-full h-16 orange-gradient border-none font-heading font-black text-2xl uppercase tracking-wider rounded-2xl disabled:opacity-50 disabled:grayscale"
+                      className="w-full h-16 orange-gradient border-none font-heading font-black text-2xl uppercase tracking-wider rounded-xl disabled:opacity-50 disabled:grayscale"
                     >
                       ENTRÁ
                       <ChevronRight className="ml-2 w-6 h-6" />
