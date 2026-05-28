@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, MessageCircle, Mail, ShieldCheck, Ticket, Sparkles, HelpCircle } from 'lucide-react';
+import { ChevronDown, Mail, ShieldCheck, Ticket, Sparkles, HelpCircle } from 'lucide-react';
+import { WhatsAppIcon } from '@/src/components/icons/WhatsAppIcon';
 
 const whatsappNumber = '5491171540675';
 const whatsappUrl = `https://wa.me/${whatsappNumber}?text=Hola!%20Necesito%20ayuda%20con%20una%20entrada%20de%20ENTRÁ`;
@@ -55,7 +56,7 @@ export default function Ayuda() {
           <div className="pt-4 flex flex-col sm:flex-row gap-4 justify-center">
             <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-block">
               <Button className="h-14 px-8 orange-gradient border-none font-heading font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center gap-2">
-                <MessageCircle className="w-4 h-4" />
+                <WhatsAppIcon className="w-4 h-4" />
                 WhatsApp Directo
               </Button>
             </a>

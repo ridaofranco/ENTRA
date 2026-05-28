@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  ShieldCheck, Smartphone, Check, Lock, ChevronDown, 
-  MessageCircle, BarChart3, HelpCircle, ArrowRight, Layers 
+import {
+  ShieldCheck, Smartphone, Check, Lock, ChevronDown,
+  BarChart3, HelpCircle, ArrowRight, Layers
 } from 'lucide-react';
+import { WhatsAppIcon } from '@/src/components/icons/WhatsAppIcon';
 
 const whatsappNumber = '5491171540675';
 const whatsappUrl = `https://wa.me/${whatsappNumber}?text=Hola!%20Quiero%20vender%20mis%20eventos%20con%20ENTRÁ`;
@@ -72,7 +73,7 @@ export default function Productores() {
               </a>
               <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
                 <Button variant="outline" className="h-14 px-10 rounded-xl border-white/10 font-bold text-lg hover:bg-white/5 transition-colors font-sans gap-2 text-white">
-                  <MessageCircle className="w-5 h-5" />
+                  <WhatsAppIcon className="w-5 h-5" />
                   Hablar por WhatsApp
                 </Button>
               </a>
@@ -141,9 +142,9 @@ export default function Productores() {
 
       {/* 2. QUÉ TE DA (concreto, sin épica) */}
       <section className="max-w-7xl mx-auto px-6 py-16 border-t border-white/5">
-        <div className="mb-16 space-y-2">
-          <span className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] font-sans">Propuesta de Valor</span>
-          <h2 className="text-4xl md:text-5xl font-heading font-black tracking-tighter uppercase text-white">
+        <div className="mb-16">
+          <span className="block text-[10px] font-bold text-primary uppercase tracking-[0.2em] font-sans">Propuesta de Valor</span>
+          <h2 className="text-4xl md:text-5xl font-heading font-black tracking-tighter uppercase text-white mt-5" style={{ lineHeight: '1.15' }}>
             Infraestructura para operar sin fallas.
           </h2>
         </div>
@@ -200,12 +201,12 @@ export default function Productores() {
       {/* 3. CÓMO EMPEZÁS (Vertical, clean step design, high background contrast) */}
       <section className="bg-black py-24 border-y border-white/5 my-12">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          <div className="lg:col-span-5 space-y-4">
-            <span className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] font-sans">PROCESO</span>
-            <h2 className="text-4xl md:text-5xl font-heading font-black tracking-tighter uppercase text-white leading-none">
+          <div className="lg:col-span-5">
+            <span className="block text-[10px] font-bold text-primary uppercase tracking-[0.3em] font-sans">PROCESO</span>
+            <h2 className="text-4xl md:text-5xl font-heading font-black tracking-tighter uppercase text-white mt-5" style={{ lineHeight: '1.15' }}>
               Cómo empezás.
             </h2>
-            <p className="text-muted-foreground font-sans text-sm max-w-sm leading-relaxed">
+            <p className="text-muted-foreground font-sans text-sm max-w-sm leading-relaxed mt-6">
               Diseñado para no perder tiempo en setups complejos ni llamadas eternas. Arrancás y listo.
             </p>
           </div>
@@ -239,12 +240,12 @@ export default function Productores() {
 
       {/* 4. PRECIOS EXPLICADO & BENEFICIOS LISTS (Clean, transparent, premium) */}
       <section className="max-w-7xl mx-auto px-6 py-16 space-y-16">
-        <div className="text-center max-w-2xl mx-auto space-y-4">
-          <span className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] font-sans">CONTRATO CLARO</span>
-          <h2 className="text-4xl md:text-5xl font-heading font-black tracking-tighter uppercase text-white leading-none">
+        <div className="text-center max-w-2xl mx-auto">
+          <span className="block text-[10px] font-bold text-primary uppercase tracking-[0.3em] font-sans">CONTRATO CLARO</span>
+          <h2 className="text-4xl md:text-5xl font-heading font-black tracking-tighter uppercase text-white mt-5" style={{ lineHeight: '1.15' }}>
             Vos cobrás el 100%. Siempre.
           </h2>
-          <p className="text-muted-foreground font-sans text-sm leading-relaxed">
+          <p className="text-muted-foreground font-sans text-sm leading-relaxed mt-6">
             Sin costos ocultos ni cargos sorpresa. El precio que fijás es el que recibís en tu bolsillo, limpio.
           </p>
         </div>
@@ -299,17 +300,17 @@ export default function Productores() {
 
       {/* 5. CTA — minimal, bold, huge text */}
       <section className="bg-black py-32 border-t border-white/5 text-center px-6">
-        <div className="max-w-4xl mx-auto space-y-10">
+        <div className="max-w-4xl mx-auto">
           <Badge className="orange-gradient border-none font-bold uppercase tracking-widest text-[10px] px-4 py-1.5 font-sans">
             COMENZAR AHORA
           </Badge>
-          <h2 className="text-4xl md:text-6xl font-heading font-black tracking-tighter leading-none uppercase text-white">
+          <h2 className="text-4xl md:text-6xl font-heading font-black tracking-tighter uppercase text-white mt-6" style={{ lineHeight: '1.15' }}>
             Producí con ENTRÁ.
           </h2>
-          <p className="text-muted-foreground font-sans text-sm max-w-md mx-auto leading-relaxed">
+          <p className="text-muted-foreground font-sans text-sm max-w-md mx-auto leading-relaxed mt-6">
             Te creamos tu cuenta de organizador sin costo. Cobrás el 100% neto de cada entrada desde el primer día.
           </p>
-          <div className="flex flex-wrap justify-center gap-4 pt-4">
+          <div className="flex flex-wrap justify-center gap-4 mt-10">
             <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
               <Button className="h-16 px-10 orange-gradient border-none font-bold text-lg rounded-xl shadow-lg shadow-primary/20 hover:scale-105 transition-transform font-sans uppercase tracking-[0.1em]">
                 Quiero vender entradas
@@ -317,7 +318,7 @@ export default function Productores() {
             </a>
             <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
               <Button variant="outline" className="h-16 px-10 rounded-xl border-white/10 font-bold text-lg hover:bg-white/5 transition-colors font-sans gap-2 text-white">
-                <MessageCircle className="w-5 h-5" />
+                <WhatsAppIcon className="w-5 h-5" />
                 Hablar por WhatsApp
               </Button>
             </a>

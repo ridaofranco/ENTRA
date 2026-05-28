@@ -112,9 +112,9 @@ export default function Landing() {
 
       {/* 3. EVENTOS EN VIVO (Posters editoriales, sin cajas de e-commerce, limpio, aire) */}
       <section className="max-w-7xl mx-auto px-6 py-24 space-y-16">
-        <div className="space-y-2">
-          <span className="block text-[10px] font-bold text-primary uppercase tracking-[0.2em] font-sans mb-3">En Cartelera</span>
-          <h2 className="text-4xl md:text-5xl font-heading font-black tracking-tighter uppercase">
+        <div>
+          <span className="block text-[10px] font-bold text-primary uppercase tracking-[0.2em] font-sans">En Cartelera</span>
+          <h2 className="text-4xl md:text-5xl font-heading font-black tracking-tighter uppercase mt-5" style={{ lineHeight: '1.15' }}>
             Lo que viene.
           </h2>
         </div>
@@ -211,16 +211,16 @@ export default function Landing() {
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            className="space-y-6"
+            className=""
           >
-            <span className="block text-[10px] font-bold text-primary uppercase tracking-[0.3em] font-sans mb-3">
+            <span className="block text-[10px] font-bold text-primary uppercase tracking-[0.3em] font-sans">
               Seguridad Absoluta
             </span>
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-heading font-black tracking-tighter uppercase leading-[1.5] pt-[15px] mb-5 max-w-[673px]">
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-heading font-black tracking-tighter uppercase max-w-[673px] mt-5" style={{ lineHeight: '1.15' }}>
               Tu entrada es tuya.<br />
               Y de nadie más.
             </h2>
-            <p className="text-lg text-muted-foreground font-sans leading-relaxed">
+            <p className="text-lg text-muted-foreground font-sans leading-relaxed mt-6">
               Un QR único que no se clona. Si no podés ir, se la pasás a un amigo de forma oficial desde la plataforma, el tuyo anterior deja de existir instantáneamente y se genera un QR nuevo para quien la recibe. En la puerta, entrás vos.
             </p>
           </motion.div>
@@ -251,9 +251,9 @@ export default function Landing() {
 
       {/* 5. CULTURA — photographic, raw, real, argentinian, nightlife */}
       <section className="max-w-7xl mx-auto px-6 py-28 space-y-16">
-        <div className="space-y-2">
-          <span className="block text-[10px] font-bold text-primary uppercase tracking-[0.2em] font-sans mb-3">Nuestra Escena</span>
-          <h2 className="text-4xl md:text-5xl font-heading font-black tracking-tighter uppercase leading-none">
+        <div>
+          <span className="block text-[10px] font-bold text-primary uppercase tracking-[0.2em] font-sans">Nuestra Escena</span>
+          <h2 className="text-4xl md:text-5xl font-heading font-black tracking-tighter uppercase mt-5" style={{ lineHeight: '1.15' }}>
             Donde querés estar.
           </h2>
         </div>
@@ -287,11 +287,11 @@ export default function Landing() {
       {/* 6. FRANJA PRODUCTORES (Discreto, al final, único guiño B2B) */}
       <section className="border-t border-white/5 bg-[#0b0b0d] py-16 px-6">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-          <div className="space-y-3">
-            <span className="block text-[10px] font-sans font-bold tracking-widest text-primary uppercase mb-3">
+          <div>
+            <span className="block text-[10px] font-sans font-bold tracking-widest text-primary uppercase">
               ¿Organizás eventos?
             </span>
-            <p className="text-xl md:text-2xl font-heading font-black text-white uppercase tracking-tight">
+            <p className="text-xl md:text-2xl font-heading font-black text-white uppercase tracking-tight mt-4">
               Control total del acceso, cobros claros y tu data, en un solo lugar.
             </p>
           </div>

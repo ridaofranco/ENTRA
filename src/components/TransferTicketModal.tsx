@@ -5,7 +5,6 @@ import {
   Copy,
   Check,
   CheckCircle2,
-  MessageCircle,
   Mail,
   Send,
   Loader2,
@@ -18,6 +17,7 @@ import {
   Calendar,
   MapPin,
 } from 'lucide-react';
+import { WhatsAppIcon } from '@/src/components/icons/WhatsAppIcon';
 import { doc, updateDoc, addDoc, collection, Timestamp } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
 
@@ -570,7 +570,7 @@ export const TransferTicketModal = ({
                     onClick={handleShareWhatsApp}
                     className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 transition-colors"
                   >
-                    <MessageCircle className="w-6 h-6 text-green-500" />
+                    <WhatsAppIcon className="w-6 h-6 text-green-500" />
                     <div className="text-center">
                       <p className="text-xs font-bold">WhatsApp</p>
                       <p className="text-[10px] text-zinc-400 truncate max-w-[120px]">{recipientPhone}</p>

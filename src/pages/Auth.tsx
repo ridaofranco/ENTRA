@@ -4,7 +4,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/src/context/AuthContext';
-import { AlertCircle, Eye, EyeOff, Loader2, MessageCircle, Mail, ArrowLeft, Check } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, Loader2, Mail, ArrowLeft, Check } from 'lucide-react';
+import { WhatsAppIcon } from '@/src/components/icons/WhatsAppIcon';
 
 type AuthView = 'buttons' | 'email-login' | 'email-register' | 'forgot' | 'complete-profile';
 
@@ -589,7 +590,7 @@ export default function Auth() {
                       rel="noopener noreferrer"
                       className="flex-1 h-9 bg-zinc-900 border border-white/5 text-white text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 rounded-lg hover:border-emerald-500/30 transition-colors"
                     >
-                      <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+                      <WhatsAppIcon className="w-3.5 h-3.5 text-emerald-400" />
                       WhatsApp
                     </a>
                     <a
