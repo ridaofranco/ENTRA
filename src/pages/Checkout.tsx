@@ -239,7 +239,9 @@ export default function Checkout() {
 
     setIsProcessing(true);
     try {
-      const buyerId = user?.uid || `guest-${Date.now()}`;
+      // Para invitados, el buyerId debe ser exactamente 'guest' para cumplir
+      // con las reglas de seguridad de Firestore (isValidOrder / isValidTicket).
+      const buyerId = user?.uid || 'guest';
 
       // Create order document
       const orderData: any = {
@@ -378,7 +380,13 @@ export default function Checkout() {
       });
       setStep(3);
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'orders/tickets');
+      console.error('[Checkout] Error procesando la compra:', error);
+      try {
+        handleFirestoreError(error, OperationType.CREATE, 'orders/tickets');
+      } catch (_) {
+        // handleFirestoreError re-lanza para loguear; lo absorbemos para poder
+        // mostrarle el toast al usuario en vez de cortar la ejecución.
+      }
       setToast({ message: 'Error al procesar la compra. Por favor intenta nuevamente.', type: 'error' });
     } finally {
       setIsProcessing(false);
