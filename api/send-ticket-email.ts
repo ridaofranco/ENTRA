@@ -152,14 +152,19 @@ export default async function handler(req: any, res: any) {
       auth: { user: SMTP_USER, pass: SMTP_PASS },
     });
 
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: { name: 'ENTRÁ Tickets', address: SMTP_USER },
       to: body.buyerEmail,
       subject: `Tu entrada para ${body.eventTitle} — ENTRÁ`,
       html: buildConfirmationHTML(body),
     });
 
-    return res.status(200).json({ ok: true });
+    // Log del destinatario y resultado para poder auditar a quién salió cada mail.
+    console.log(
+      `[send-ticket-email] OK → to=${body.buyerEmail} | orden=${body.orderId} | tickets=${body.tickets.length} | messageId=${info.messageId} | accepted=${JSON.stringify(info.accepted)} | rejected=${JSON.stringify(info.rejected)}`
+    );
+
+    return res.status(200).json({ ok: true, to: body.buyerEmail, messageId: info.messageId });
   } catch (error) {
     console.error('[send-ticket-email] Error enviando el mail:', error);
     return res.status(500).json({ ok: false, error: 'No se pudo enviar el email.' });
