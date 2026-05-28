@@ -256,7 +256,6 @@ export default function Checkout() {
         eventId: event.id,
         eventTitle: event.title,
         items: selectedTickets,
-        subtotalBeforeDiscount: subtotalOriginal,
         discountCodeId: appliedDiscount?.id || null,
         discountCode: appliedDiscount?.code || null,
         discountAmount: discountAmount,
