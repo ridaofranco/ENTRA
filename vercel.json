@@ -5,7 +5,7 @@
       "destination": "https://gen-lang-client-0748196420.firebaseapp.com/__/auth/:path*"
     },
     {
-      "source": "/((?!assets|__/).*)",
+      "source": "/((?!api/|assets|__/).*)",
       "destination": "/index.html"
     }
   ]

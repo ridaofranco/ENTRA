@@ -373,6 +373,30 @@ export default function Checkout() {
         }
       }
 
+      // ==================== ENVIAR MAIL DE CONFIRMACIÓN ====================
+      // Se dispara apenas se completa la compra. Si el envío falla, NO rompe
+      // la compra: el QR igual se muestra y se puede descargar en pantalla.
+      try {
+        await fetch('/api/send-ticket-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            buyerName: buyerInfo.name,
+            buyerEmail: buyerInfo.email,
+            buyerDni: buyerInfo.dni,
+            eventTitle: event.title,
+            eventDate: formatEventDate(event.date),
+            eventVenue: event.venue || '',
+            eventLocation: event.location || '',
+            orderId,
+            total,
+            tickets: createdTickets.map((t) => ({ qrCode: t.qrCode, type: t.type })),
+          }),
+        });
+      } catch (emailError) {
+        console.error('[Checkout] No se pudo enviar el mail de confirmación:', emailError);
+      }
+
       // Set success state and move to confirmation step
       setSuccessState({
         orderId,
