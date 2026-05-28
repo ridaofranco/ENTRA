@@ -1,19 +1,112 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   User, Ticket, LogOut, Calendar, MapPin, QrCode, Download,
-  ChevronRight, Copy, CheckCircle2, ShieldCheck, Loader2, Clock, Send
+  ChevronRight, Copy, CheckCircle2, ShieldCheck, Loader2, Clock,
+  Settings, Save, Eye, EyeOff, AlertTriangle, Mail, Lock, Phone, CreditCard, Pencil, Send
 } from 'lucide-react';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
-import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { db, auth } from '@/src/lib/firebase';
+import { db } from '@/src/lib/firebase';
+import { useAuth } from '@/src/context/AuthContext';
 import { TransferTicketModal } from '@/src/components/TransferTicketModal';
+import { formatCurrency } from '@/src/lib/utils';
 
-// QR image URL from a value (uses api.qrserver.com — no dependency needed)
-function qrImageUrl(value: string, size = 220): string {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=8&data=${encodeURIComponent(value)}`;
+// ============================================================
+// QR CODE GENERATOR (same as Checkout)
+// ============================================================
+function generateQRCodeSVG(text: string, size: number = 200): string {
+  const modules = 25;
+  const cellSize = size / modules;
+
+  function hashCode(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash);
+  }
+
+  function seededRandom(seed: number): () => number {
+    let s = seed;
+    return () => {
+      s = (s * 16807 + 0) % 2147483647;
+      return s / 2147483647;
+    };
+  }
+
+  const hash = hashCode(text);
+  const rand = seededRandom(hash);
+  const matrix: boolean[][] = Array(modules).fill(null).map(() => Array(modules).fill(false));
+
+  function addFinderPattern(row: number, col: number) {
+    for (let r = 0; r < 7; r++) {
+      for (let c = 0; c < 7; c++) {
+        if (r === 0 || r === 6 || c === 0 || c === 6 || (r >= 2 && r <= 4 && c >= 2 && c <= 4)) {
+          if (row + r < modules && col + c < modules) matrix[row + r][col + c] = true;
+        }
+      }
+    }
+  }
+
+  addFinderPattern(0, 0);
+  addFinderPattern(0, modules - 7);
+  addFinderPattern(modules - 7, 0);
+
+  for (let i = 8; i < modules - 8; i++) {
+    matrix[6][i] = i % 2 === 0;
+    matrix[i][6] = i % 2 === 0;
+  }
+
+  const ap = modules - 9;
+  for (let r = ap; r < ap + 5; r++) {
+    for (let c = ap; c < ap + 5; c++) {
+      if (r < modules && c < modules) {
+        if (r === ap || r === ap + 4 || c === ap || c === ap + 4 || (r === ap + 2 && c === ap + 2)) {
+          matrix[r][c] = true;
+        }
+      }
+    }
+  }
+
+  for (let r = 0; r < modules; r++) {
+    for (let c = 0; c < modules; c++) {
+      const inFinderTL = r < 8 && c < 8;
+      const inFinderTR = r < 8 && c >= modules - 8;
+      const inFinderBL = r >= modules - 8 && c < 8;
+      const inTiming = r === 6 || c === 6;
+      const inAlignment = r >= ap && r < ap + 5 && c >= ap && c < ap + 5;
+      if (!inFinderTL && !inFinderTR && !inFinderBL && !inTiming && !inAlignment) {
+        matrix[r][c] = rand() > 0.5;
+      }
+    }
+  }
+
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">`;
+  svg += `<rect width="${size}" height="${size}" fill="white"/>`;
+  for (let r = 0; r < modules; r++) {
+    for (let c = 0; c < modules; c++) {
+      if (matrix[r][c]) {
+        svg += `<rect x="${c * cellSize}" y="${r * cellSize}" width="${cellSize}" height="${cellSize}" fill="#09090B"/>`;
+      }
+    }
+  }
+  svg += '</svg>';
+  return `data:image/svg+xml;base64,${btoa(svg)}`;
 }
+
+// Helper to determine accurate final price paid with ENTRÁ commissions
+function getFinalPriceForTicket(ticketPrice: number): number {
+  if (ticketPrice <= 0) return 0;
+  const fee = ticketPrice * 0.08;
+  const feeConIva = Math.round(fee * 1.21);
+  const processorRate = 0.0499;
+  return Math.round((ticketPrice + feeConIva) / (1 - processorRate));
+}
+
+// ============================================================
 
 interface TicketData {
   id: string;
@@ -22,6 +115,7 @@ interface TicketData {
   eventTitle: string;
   ticketType: string;
   price: number;
+  finalPricePaid?: number;
   status: string;
   qrCode: string;
   createdAt: any;
@@ -45,10 +139,9 @@ interface EventCache {
 
 export default function Profile() {
   const navigate = useNavigate();
+  const { user, profile, loading: authLoading, logout, updateUserProfile, changeEmail, changePassword } = useAuth();
 
-  const [user, setUser] = useState<any>(null);
-  const [authChecked, setAuthChecked] = useState(false);
-  const [activeTab, setActiveTab] = useState<'tickets' | 'orders'>('tickets');
+  const [activeTab, setActiveTab] = useState<'tickets' | 'orders' | 'account'>('tickets');
   const [tickets, setTickets] = useState<TicketData[]>([]);
   const [orders, setOrders] = useState<OrderData[]>([]);
   const [eventCache, setEventCache] = useState<EventCache>({});
@@ -57,18 +150,50 @@ export default function Profile() {
   const [expandedTicket, setExpandedTicket] = useState<string | null>(null);
   const [transferringTicket, setTransferringTicket] = useState<any>(null);
 
-  // Listen to auth state directly from Firebase (no context dependency)
+  // ==================== ACCOUNT EDIT STATE ====================
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editDni, setEditDni] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSuccess, setProfileSuccess] = useState('');
+  const [profileError, setProfileError] = useState('');
+
+  // ==================== EMAIL CHANGE STATE ====================
+  const [newEmail, setNewEmail] = useState('');
+  const [emailPassword, setEmailPassword] = useState('');
+  const [savingEmail, setSavingEmail] = useState(false);
+  const [emailSuccess, setEmailSuccess] = useState('');
+  const [emailError, setEmailError] = useState('');
+
+  // ==================== PASSWORD CHANGE STATE ====================
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
+  // Provider detection
+  const isGoogleUser = user?.providerData?.some(p => p.providerId === 'google.com') || false;
+  const isEmailUser = user?.providerData?.some(p => p.providerId === 'password') || false;
+
+  // Initialize edit fields when profile loads
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser) {
-        setUser(firebaseUser);
-      } else {
-        navigate('/auth/login');
-      }
-      setAuthChecked(true);
-    });
-    return () => unsubscribe();
-  }, [navigate]);
+    if (profile) {
+      setEditName(profile.displayName || '');
+      setEditPhone(profile.phone || '');
+      setEditDni(profile.dni || '');
+    }
+  }, [profile]);
+
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/auth/login');
+    }
+  }, [authLoading, user, navigate]);
 
   useEffect(() => {
     if (user) loadUserData();
@@ -78,40 +203,24 @@ export default function Profile() {
     if (!user) return;
     setLoading(true);
     try {
-      // Load tickets for this user
       const ticketsQuery = query(
         collection(db, 'tickets'),
         where('buyerEmail', '==', user.email)
       );
       const ticketsSnap = await getDocs(ticketsQuery);
-      const ticketsList: TicketData[] = ticketsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as TicketData));
-
-      // Sort by createdAt descending (newest first)
-      ticketsList.sort((a, b) => {
-        const aTime = a.createdAt?.seconds || 0;
-        const bTime = b.createdAt?.seconds || 0;
-        return bTime - aTime;
-      });
-
+      const ticketsList: TicketData[] = ticketsSnap.docs.map(d => ({ id: d.id, ...d.data() } as TicketData));
+      ticketsList.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
       setTickets(ticketsList);
 
-      // Load orders for this user
       const ordersQuery = query(
         collection(db, 'orders'),
         where('buyerEmail', '==', user.email)
       );
       const ordersSnap = await getDocs(ordersQuery);
-      const ordersList: OrderData[] = ordersSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as OrderData));
-
-      ordersList.sort((a, b) => {
-        const aTime = a.createdAt?.seconds || 0;
-        const bTime = b.createdAt?.seconds || 0;
-        return bTime - aTime;
-      });
-
+      const ordersList: OrderData[] = ordersSnap.docs.map(d => ({ id: d.id, ...d.data() } as OrderData));
+      ordersList.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
       setOrders(ordersList);
 
-      // Load event info for each unique eventId
       const eventIds = [...new Set([...ticketsList.map(t => t.eventId), ...ordersList.map(o => o.eventId)])];
       const cache: EventCache = {};
       for (const eid of eventIds) {
@@ -140,6 +249,165 @@ export default function Profile() {
     navigator.clipboard.writeText(text);
     setCopied(text);
     setTimeout(() => setCopied(null), 2000);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  const formatDate = (date: any) => {
+    try {
+      if (date?.toDate) return date.toDate().toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+      if (date?.seconds) return new Date(date.seconds * 1000).toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    } catch { }
+    return '';
+  };
+
+  const formatShortDate = (date: any) => {
+    try {
+      if (date?.toDate) return date.toDate().toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+      if (date?.seconds) return new Date(date.seconds * 1000).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+    } catch { }
+    return '';
+  };
+
+  const isUpcoming = (eventId: string) => {
+    const ev = eventCache[eventId];
+    if (!ev?.date) return true;
+    try {
+      const eventDate = ev.date?.toDate ? ev.date.toDate() : new Date(ev.date.seconds * 1000);
+      return eventDate > new Date();
+    } catch { return true; }
+  };
+
+  // ==================== PROFILE SAVE HANDLER ====================
+  const handleSaveProfile = async () => {
+    setProfileError('');
+    setProfileSuccess('');
+
+    if (!editName.trim()) {
+      setProfileError('El nombre es obligatorio.');
+      return;
+    }
+
+    setSavingProfile(true);
+    try {
+      await updateUserProfile({
+        displayName: editName.trim(),
+        phone: editPhone.trim(),
+        dni: editDni.trim(),
+      });
+      setProfileSuccess('Datos actualizados correctamente.');
+      setTimeout(() => setProfileSuccess(''), 4000);
+    } catch (error: any) {
+      setProfileError('Error al guardar los cambios. Intentá de nuevo.');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  // ==================== EMAIL CHANGE HANDLER ====================
+  const handleChangeEmail = async () => {
+    setEmailError('');
+    setEmailSuccess('');
+
+    if (!newEmail.trim()) {
+      setEmailError('Ingresá el nuevo email.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+      setEmailError('El formato del email no es válido.');
+      return;
+    }
+    if (newEmail === user?.email) {
+      setEmailError('El nuevo email es igual al actual.');
+      return;
+    }
+    if (!emailPassword) {
+      setEmailError('Ingresá tu contraseña actual para confirmar.');
+      return;
+    }
+
+    setSavingEmail(true);
+    try {
+      await changeEmail(newEmail.trim(), emailPassword);
+      setEmailSuccess('Email actualizado. Revisá tu nuevo email para verificarlo.');
+      setNewEmail('');
+      setEmailPassword('');
+      setTimeout(() => setEmailSuccess(''), 6000);
+    } catch (error: any) {
+      if (error.message === 'GOOGLE_USER') {
+        setEmailError('Tu cuenta usa Google. El email está vinculado a tu cuenta de Google y no se puede cambiar desde acá.');
+      } else if (error.code === 'auth/wrong-password') {
+        setEmailError('La contraseña es incorrecta.');
+      } else if (error.code === 'auth/email-already-in-use') {
+        setEmailError('Ese email ya está registrado en otra cuenta.');
+      } else if (error.code === 'auth/invalid-email') {
+        setEmailError('El formato del email no es válido.');
+      } else if (error.code === 'auth/requires-recent-login') {
+        setEmailError('Tu sesión expiró. Cerrá sesión, volvé a entrar, e intentá de nuevo.');
+      } else {
+        setEmailError('Error al cambiar el email. Intentá de nuevo.');
+      }
+    } finally {
+      setSavingEmail(false);
+    }
+  };
+
+  // ==================== PASSWORD CHANGE HANDLER ====================
+  const handleChangePassword = async () => {
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (!currentPassword) {
+      setPasswordError('Ingresá tu contraseña actual.');
+      return;
+    }
+    if (!newPassword) {
+      setPasswordError('Ingresá la nueva contraseña.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordError('La nueva contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Las contraseñas no coinciden.');
+      return;
+    }
+    if (currentPassword === newPassword) {
+      setPasswordError('La nueva contraseña debe ser diferente a la actual.');
+      return;
+    }
+
+    setSavingPassword(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      setPasswordSuccess('Contraseña actualizada correctamente.');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => setPasswordSuccess(''), 4000);
+    } catch (error: any) {
+      if (error.message === 'GOOGLE_USER') {
+        setPasswordError('Tu cuenta usa Google. La contraseña se gestiona desde tu cuenta de Google.');
+      } else if (error.code === 'auth/wrong-password') {
+        setPasswordError('La contraseña actual es incorrecta.');
+      } else if (error.code === 'auth/weak-password') {
+        setPasswordError('La nueva contraseña es muy débil. Usá al menos 6 caracteres.');
+      } else if (error.code === 'auth/requires-recent-login') {
+        setPasswordError('Tu sesión expiró. Cerrá sesión, volvé a entrar, e intentá de nuevo.');
+      } else {
+        setPasswordError('Error al cambiar la contraseña. Intentá de nuevo.');
+      }
+    } finally {
+      setSavingPassword(false);
+    }
   };
 
   const handleDownloadQR = (ticket: TicketData, ev: any) => {
@@ -313,7 +581,7 @@ export default function Profile() {
   <div class="ticket-body">
     <div class="qr-section">
       <div class="qr-wrap">
-        <img src="${qrImageUrl(ticket.qrCode, 320)}" alt="QR Code" />
+        <img src="${generateQRCodeSVG(ticket.qrCode, 320)}" alt="QR Code" />
       </div>
       <div class="code">${ticket.qrCode}</div>
     </div>
@@ -352,43 +620,9 @@ export default function Profile() {
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   };
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      navigate('/');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
+  // ==================== LOADING / GUARD ====================
+  if (authLoading || !user) return null;
 
-  const formatDate = (date: any) => {
-    try {
-      if (date?.toDate) return date.toDate().toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-      if (date?.seconds) return new Date(date.seconds * 1000).toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-    } catch { }
-    return '';
-  };
-
-  const formatShortDate = (date: any) => {
-    try {
-      if (date?.toDate) return date.toDate().toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
-      if (date?.seconds) return new Date(date.seconds * 1000).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
-    } catch { }
-    return '';
-  };
-
-  const isUpcoming = (eventId: string) => {
-    const ev = eventCache[eventId];
-    if (!ev?.date) return true;
-    try {
-      const eventDate = ev.date?.toDate ? ev.date.toDate() : new Date(ev.date.seconds * 1000);
-      return eventDate > new Date();
-    } catch { return true; }
-  };
-
-  if (!authChecked || !user) return null;
-
-  // ==================== LOADING STATE ====================
   if (loading) {
     return (
       <div className="pt-32 pb-20 px-6 max-w-4xl mx-auto flex flex-col items-center justify-center min-h-[60vh]">
@@ -404,19 +638,33 @@ export default function Profile() {
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
         <div className="flex items-center gap-6">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white text-3xl font-black shadow-lg shadow-orange-500/20">
-            {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase()}
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white text-3xl font-black shadow-lg shadow-orange-500/20 overflow-hidden">
+            {user.photoURL ? (
+              <img src={user.photoURL} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            ) : (
+              user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase()
+            )}
           </div>
           <div className="flex-grow">
-            <h1 className="text-3xl font-black tracking-tight">{user.displayName || 'Usuario'}</h1>
+            <h1 className="text-3xl font-black tracking-tight">{profile?.displayName || user.displayName || 'Usuario'}</h1>
             <p className="text-zinc-400 mt-1">{user.email}</p>
-            <div className="flex items-center gap-4 mt-3">
+            <div className="flex items-center gap-3 mt-3 flex-wrap">
               <span className="text-xs font-bold uppercase tracking-widest text-zinc-500 bg-white/5 px-3 py-1 rounded-full border border-white/10">
                 {tickets.length} {tickets.length === 1 ? 'ticket' : 'tickets'}
               </span>
               <span className="text-xs font-bold uppercase tracking-widest text-zinc-500 bg-white/5 px-3 py-1 rounded-full border border-white/10">
                 {orders.length} {orders.length === 1 ? 'compra' : 'compras'}
               </span>
+              {isGoogleUser && (
+                <span className="text-xs font-bold uppercase tracking-widest text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
+                  Google
+                </span>
+              )}
+              {profile?.role && profile.role !== 'buyer' && (
+                <span className="text-xs font-bold uppercase tracking-widest text-orange-400 bg-orange-500/10 px-3 py-1 rounded-full border border-orange-500/20">
+                  {profile.role}
+                </span>
+              )}
             </div>
           </div>
           <button
@@ -424,16 +672,16 @@ export default function Profile() {
             className="flex items-center gap-2 text-sm text-zinc-400 hover:text-red-400 px-4 py-2 rounded-xl hover:bg-red-500/10 transition-all"
           >
             <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Cerrar sesion</span>
+            <span className="hidden sm:inline">Cerrar sesión</span>
           </button>
         </div>
       </motion.div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-8">
+      <div className="flex gap-2 mb-8 overflow-x-auto pb-1">
         <button
           onClick={() => setActiveTab('tickets')}
-          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm transition-all ${
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm transition-all whitespace-nowrap ${
             activeTab === 'tickets'
               ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
               : 'bg-white/5 text-zinc-400 hover:bg-white/10 border border-white/10'
@@ -444,7 +692,7 @@ export default function Profile() {
         </button>
         <button
           onClick={() => setActiveTab('orders')}
-          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm transition-all ${
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm transition-all whitespace-nowrap ${
             activeTab === 'orders'
               ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
               : 'bg-white/5 text-zinc-400 hover:bg-white/10 border border-white/10'
@@ -452,6 +700,17 @@ export default function Profile() {
         >
           <Ticket className="w-4 h-4" />
           Mis Compras
+        </button>
+        <button
+          onClick={() => setActiveTab('account')}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm transition-all whitespace-nowrap ${
+            activeTab === 'account'
+              ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+              : 'bg-white/5 text-zinc-400 hover:bg-white/10 border border-white/10'
+          }`}
+        >
+          <Settings className="w-4 h-4" />
+          Mi Cuenta
         </button>
       </div>
 
@@ -463,8 +722,8 @@ export default function Profile() {
               <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto">
                 <Ticket className="w-10 h-10 text-zinc-600" />
               </div>
-              <h3 className="text-xl font-bold text-zinc-400">No tenes tickets todavia</h3>
-              <p className="text-zinc-500 text-sm">Cuando compres entradas, van a aparecer aca con su codigo QR.</p>
+              <h3 className="text-xl font-bold text-zinc-400">No tenés tickets todavía</h3>
+              <p className="text-zinc-500 text-sm">Cuando compres entradas, van a aparecer acá con su código QR.</p>
               <Link to="/eventos">
                 <button className="mt-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold px-6 py-3 rounded-2xl hover:from-orange-600 hover:to-orange-700 transition-all">
                   Explorar Eventos
@@ -485,20 +744,17 @@ export default function Profile() {
                   transition={{ delay: index * 0.05 }}
                 >
                   <div className={`bg-white/5 rounded-3xl border border-white/10 overflow-hidden transition-all ${!upcoming ? 'opacity-60' : ''}`}>
-                    {/* Ticket header — always visible */}
                     <button
                       onClick={() => setExpandedTicket(isExpanded ? null : ticket.id)}
                       className="w-full p-5 flex items-center gap-4 text-left hover:bg-white/[0.02] transition-colors"
                     >
-                      {/* Event image */}
                       <div className="w-14 h-14 rounded-2xl overflow-hidden flex-shrink-0 bg-white/5">
                         {ev?.image ? (
-                          <img src={ev.image || undefined} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          <img src={ev.image} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center"><Ticket className="w-6 h-6 text-zinc-600" /></div>
                         )}
                       </div>
-
                       <div className="flex-grow min-w-0">
                         <h3 className="font-bold text-sm truncate">{ticket.eventTitle}</h3>
                         <div className="flex items-center gap-3 mt-1 text-xs text-zinc-400">
@@ -507,7 +763,6 @@ export default function Profile() {
                           {ev?.date && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{formatShortDate(ev.date)}</span>}
                         </div>
                       </div>
-
                       <div className="flex items-center gap-3 flex-shrink-0">
                         <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full ${
                           ticket.status === 'valid'
@@ -516,13 +771,12 @@ export default function Profile() {
                             ? 'bg-zinc-500/10 text-zinc-500'
                             : 'bg-red-500/10 text-red-500'
                         }`}>
-                          {ticket.status === 'valid' ? 'Valido' : ticket.status === 'used' ? 'Usado' : 'Cancelado'}
+                          {ticket.status === 'valid' ? 'Válido' : ticket.status === 'used' ? 'Usado' : 'Cancelado'}
                         </span>
                         <ChevronRight className={`w-4 h-4 text-zinc-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                       </div>
                     </button>
 
-                    {/* Expanded: QR + details */}
                     {isExpanded && (
                       <motion.div
                         initial={{ height: 0, opacity: 0 }}
@@ -530,20 +784,15 @@ export default function Profile() {
                         className="border-t border-white/10"
                       >
                         <div className="p-6 flex flex-col sm:flex-row items-center gap-6">
-                          {/* QR Code */}
                           <div className="bg-white rounded-2xl p-4 flex-shrink-0 shadow-lg">
-                            <img 
-                              src={qrImageUrl(ticket.qrCode, 140)} 
-                              alt="QR Code"
-                              className="w-[140px] h-[140px] block"
-                            />
+                            <img src={generateQRCodeSVG(ticket.qrCode, 160)} alt="QR" className="w-[140px] h-[140px]" />
                           </div>
                           <div className="flex-grow text-center sm:text-left space-y-3">
                             <div>
-                              <p className="text-xs uppercase tracking-widest text-zinc-400 font-bold">Codigo</p>
+                              <p className="text-xs uppercase tracking-widest text-zinc-400 font-bold">Código</p>
                               <div className="flex items-center gap-2 justify-center sm:justify-start mt-1">
                                 <code className="text-sm font-mono bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">{ticket.qrCode}</code>
-                                <button onClick={() => handleCopy(ticket.qrCode)} className="hover:bg-white/10 p-2 rounded-lg transition-colors" title="Copiar código">
+                                <button onClick={() => handleCopy(ticket.qrCode)} className="hover:bg-white/10 p-2 rounded-lg transition-colors">
                                   {copied === ticket.qrCode ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-zinc-400" />}
                                 </button>
                                 <button onClick={() => handleDownloadQR(ticket, ev)} className="hover:bg-white/10 p-2 rounded-lg transition-colors" title="Descargar Entrada (PDF)">
@@ -571,8 +820,11 @@ export default function Profile() {
                                 <p className="font-bold text-orange-500">{ticket.ticketType}</p>
                               </div>
                               <div>
-                                <p className="text-xs uppercase tracking-widest text-zinc-500 font-bold">Precio</p>
-                                <p className="font-bold">${(Number(ticket.price) || 0).toLocaleString('es-AR')}</p>
+                                <p className="text-xs uppercase tracking-widest text-zinc-500 font-bold">Precio pagado</p>
+                                <p className="font-bold text-white">
+                                  {formatCurrency(ticket.finalPricePaid || getFinalPriceForTicket(ticket.price || 0))}
+                                </p>
+                                <p className="text-[10px] text-zinc-500 mt-0.5">Base: {formatCurrency(ticket.price || 0)}</p>
                               </div>
                             </div>
                             {ev?.date && (
@@ -589,8 +841,6 @@ export default function Profile() {
                             )}
                           </div>
                         </div>
-
-                        {/* Footer */}
                         <div className="border-t border-dashed border-white/10 px-6 py-3 flex justify-between items-center text-xs">
                           <span className="text-zinc-500 flex items-center gap-1.5">
                             <Clock className="w-3.5 h-3.5" />
@@ -598,7 +848,7 @@ export default function Profile() {
                           </span>
                           <span className={`flex items-center gap-1.5 font-bold ${ticket.status === 'valid' ? 'text-green-500' : 'text-zinc-500'}`}>
                             <ShieldCheck className="w-3.5 h-3.5" />
-                            {ticket.status === 'valid' ? 'VALIDO' : ticket.status === 'used' ? 'USADO' : 'CANCELADO'}
+                            {ticket.status === 'valid' ? 'VÁLIDO' : ticket.status === 'used' ? 'USADO' : 'CANCELADO'}
                           </span>
                         </div>
                       </motion.div>
@@ -619,8 +869,8 @@ export default function Profile() {
               <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto">
                 <Ticket className="w-10 h-10 text-zinc-600" />
               </div>
-              <h3 className="text-xl font-bold text-zinc-400">No tenes compras todavia</h3>
-              <p className="text-zinc-500 text-sm">Tu historial de compras va a aparecer aca.</p>
+              <h3 className="text-xl font-bold text-zinc-400">No tenés compras todavía</h3>
+              <p className="text-zinc-500 text-sm">Tu historial de compras va a aparecer acá.</p>
               <Link to="/eventos">
                 <button className="mt-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold px-6 py-3 rounded-2xl hover:from-orange-600 hover:to-orange-700 transition-all">
                   Explorar Eventos
@@ -641,15 +891,13 @@ export default function Profile() {
                 >
                   <div className="bg-white/5 rounded-3xl border border-white/10 p-5">
                     <div className="flex items-center gap-4">
-                      {/* Event image */}
                       <div className="w-14 h-14 rounded-2xl overflow-hidden flex-shrink-0 bg-white/5">
                         {ev?.image ? (
-                          <img src={ev.image || undefined} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          <img src={ev.image} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center"><Ticket className="w-6 h-6 text-zinc-600" /></div>
                         )}
                       </div>
-
                       <div className="flex-grow min-w-0">
                         <h3 className="font-bold text-sm truncate">{order.eventTitle}</h3>
                         <div className="flex items-center gap-3 mt-1 text-xs text-zinc-400">
@@ -658,10 +906,9 @@ export default function Profile() {
                           <span>{formatShortDate(order.createdAt)}</span>
                         </div>
                       </div>
-
                       <div className="text-right flex-shrink-0">
                         <p className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">
-                          ${(Number(order.total) || 0).toLocaleString('es-AR')}
+                          {formatCurrency(order.total || 0)}
                         </p>
                         <span className={`text-[10px] font-bold uppercase tracking-widest ${
                           order.status === 'confirmed' ? 'text-green-500' : 'text-zinc-500'
@@ -671,15 +918,26 @@ export default function Profile() {
                       </div>
                     </div>
 
-                    {/* Order items detail */}
                     {order.items && order.items.length > 0 && (
-                      <div className="mt-4 pt-4 border-t border-white/5 space-y-1">
+                      <div className="mt-4 pt-4 border-t border-white/5 space-y-1.5">
                         {order.items.map((item: any, i: number) => (
                           <div key={i} className="flex justify-between text-xs text-zinc-400">
-                            <span>{item.quantity}x {item.type}</span>
-                            <span>${(Number(item.quantity || 0) * Number(item.price || 0)).toLocaleString('es-AR')}</span>
+                            <span>{item.quantity}x {item.type} (Costo base c/u: {formatCurrency(item.price || 0)})</span>
+                            <span>{formatCurrency((item.quantity || 0) * (item.price || 0))}</span>
                           </div>
                         ))}
+                        {(order as any).fee > 0 && (
+                          <>
+                            <div className="flex justify-between text-[11px] text-zinc-500 pt-1.5 border-t border-white/5">
+                              <span>Subtotal entradas</span>
+                              <span>{formatCurrency((order as any).subtotal || 0)}</span>
+                            </div>
+                            <div className="flex justify-between text-[11px] text-zinc-500 font-medium">
+                              <span>Cargos de servicio y procesamiento</span>
+                              <span>{formatCurrency((order as any).fee || 0)}</span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
 
@@ -697,6 +955,409 @@ export default function Profile() {
         </motion.div>
       )}
 
+      {/* ==================== MI CUENTA TAB ==================== */}
+      {activeTab === 'account' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+
+          {/* ────────── SECCIÓN 1: DATOS PERSONALES ────────── */}
+          <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-orange-500/10 rounded-xl flex items-center justify-center">
+                <User className="w-5 h-5 text-orange-500" />
+              </div>
+              <div>
+                <h2 className="font-bold text-lg">Datos personales</h2>
+                <p className="text-xs text-zinc-500">Tu nombre, teléfono y documento</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {/* Nombre */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 block mb-1.5">
+                  Nombre completo *
+                </label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Tu nombre completo"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500/50 transition-colors"
+                />
+              </div>
+
+              {/* Teléfono */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 block mb-1.5">
+                  Teléfono
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <input
+                    type="tel"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    placeholder="+54 9 11 1234-5678"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-orange-500/50 transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* DNI */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 block mb-1.5">
+                  DNI / Documento
+                </label>
+                <div className="relative">
+                  <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <input
+                    type="text"
+                    value={editDni}
+                    onChange={(e) => setEditDni(e.target.value)}
+                    placeholder="12345678"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-orange-500/50 transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Success / Error */}
+              <AnimatePresence>
+                {profileSuccess && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-center gap-2 text-green-400 text-xs font-bold bg-green-500/10 px-4 py-2.5 rounded-xl"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    {profileSuccess}
+                  </motion.div>
+                )}
+                {profileError && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-center gap-2 text-red-400 text-xs font-bold bg-red-500/10 px-4 py-2.5 rounded-xl"
+                  >
+                    <AlertTriangle className="w-4 h-4" />
+                    {profileError}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Save button */}
+              <button
+                onClick={handleSaveProfile}
+                disabled={savingProfile}
+                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold py-3 rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {savingProfile ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {savingProfile ? 'Guardando...' : 'Guardar cambios'}
+              </button>
+            </div>
+          </div>
+
+          {/* ────────── SECCIÓN 2: CAMBIAR EMAIL ────────── */}
+          <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
+                <Mail className="w-5 h-5 text-blue-400" />
+              </div>
+              <div>
+                <h2 className="font-bold text-lg">Email</h2>
+                <p className="text-xs text-zinc-500">
+                  {user.email}
+                  {isGoogleUser && ' — vinculado a Google'}
+                </p>
+              </div>
+            </div>
+
+            {isGoogleUser && !isEmailUser ? (
+              <div className="flex items-start gap-3 bg-blue-500/5 border border-blue-500/10 rounded-xl p-4">
+                <AlertTriangle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-blue-300 font-bold">Cuenta de Google</p>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    Tu email está vinculado a tu cuenta de Google. Para cambiarlo, tenés que hacerlo desde la configuración de tu cuenta de Google.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 block mb-1.5">
+                    Nuevo email
+                  </label>
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="nuevo@email.com"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500/50 transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 block mb-1.5">
+                    Contraseña actual (para confirmar)
+                  </label>
+                  <input
+                    type="password"
+                    value={emailPassword}
+                    onChange={(e) => setEmailPassword(e.target.value)}
+                    placeholder="Tu contraseña actual"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500/50 transition-colors"
+                  />
+                </div>
+
+                <AnimatePresence>
+                  {emailSuccess && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="flex items-center gap-2 text-green-400 text-xs font-bold bg-green-500/10 px-4 py-2.5 rounded-xl"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      {emailSuccess}
+                    </motion.div>
+                  )}
+                  {emailError && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="flex items-center gap-2 text-red-400 text-xs font-bold bg-red-500/10 px-4 py-2.5 rounded-xl"
+                    >
+                      <AlertTriangle className="w-4 h-4" />
+                      {emailError}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <button
+                  onClick={handleChangeEmail}
+                  disabled={savingEmail}
+                  className="w-full bg-white/5 border border-white/10 text-white font-bold py-3 rounded-xl hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {savingEmail ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Mail className="w-4 h-4" />
+                  )}
+                  {savingEmail ? 'Cambiando...' : 'Cambiar email'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* ────────── SECCIÓN 3: CAMBIAR CONTRASEÑA ────────── */}
+          <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center">
+                <Lock className="w-5 h-5 text-purple-400" />
+              </div>
+              <div>
+                <h2 className="font-bold text-lg">Contraseña</h2>
+                <p className="text-xs text-zinc-500">Cambiá tu contraseña de acceso</p>
+              </div>
+            </div>
+
+            {isGoogleUser && !isEmailUser ? (
+              <div className="flex items-start gap-3 bg-purple-500/5 border border-purple-500/10 rounded-xl p-4">
+                <AlertTriangle className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-purple-300 font-bold">Cuenta de Google</p>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    Tu contraseña se gestiona desde Google. Para cambiarla, andá a la configuración de seguridad de tu cuenta de Google.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Contraseña actual */}
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 block mb-1.5">
+                    Contraseña actual
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showCurrentPass ? 'text' : 'password'}
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Tu contraseña actual"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none focus:border-purple-500/50 transition-colors"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPass(!showCurrentPass)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                    >
+                      {showCurrentPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Nueva contraseña */}
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 block mb-1.5">
+                    Nueva contraseña
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showNewPass ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Mínimo 6 caracteres"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none focus:border-purple-500/50 transition-colors"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPass(!showNewPass)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                    >
+                      {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {newPassword && newPassword.length < 6 && (
+                    <p className="text-[10px] text-red-400 mt-1">Mínimo 6 caracteres</p>
+                  )}
+                  {newPassword && newPassword.length >= 6 && (
+                    <p className="text-[10px] text-green-400 mt-1">Contraseña válida</p>
+                  )}
+                </div>
+
+                {/* Confirmar contraseña */}
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 block mb-1.5">
+                    Confirmar nueva contraseña
+                  </label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Repetí la nueva contraseña"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500/50 transition-colors"
+                  />
+                  {confirmPassword && confirmPassword !== newPassword && (
+                    <p className="text-[10px] text-red-400 mt-1">Las contraseñas no coinciden</p>
+                  )}
+                  {confirmPassword && confirmPassword === newPassword && newPassword.length >= 6 && (
+                    <p className="text-[10px] text-green-400 mt-1">Las contraseñas coinciden</p>
+                  )}
+                </div>
+
+                <AnimatePresence>
+                  {passwordSuccess && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="flex items-center gap-2 text-green-400 text-xs font-bold bg-green-500/10 px-4 py-2.5 rounded-xl"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      {passwordSuccess}
+                    </motion.div>
+                  )}
+                  {passwordError && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="flex items-center gap-2 text-red-400 text-xs font-bold bg-red-500/10 px-4 py-2.5 rounded-xl"
+                    >
+                      <AlertTriangle className="w-4 h-4" />
+                      {passwordError}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <button
+                  onClick={handleChangePassword}
+                  disabled={savingPassword}
+                  className="w-full bg-white/5 border border-white/10 text-white font-bold py-3 rounded-xl hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {savingPassword ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Lock className="w-4 h-4" />
+                  )}
+                  {savingPassword ? 'Cambiando...' : 'Cambiar contraseña'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* ────────── SECCIÓN 4: INFO DE LA CUENTA ────────── */}
+          <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-zinc-500/10 rounded-xl flex items-center justify-center">
+                <ShieldCheck className="w-5 h-5 text-zinc-400" />
+              </div>
+              <div>
+                <h2 className="font-bold text-lg">Información de la cuenta</h2>
+                <p className="text-xs text-zinc-500">Datos de solo lectura</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between py-2 border-b border-white/5">
+                <span className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Email</span>
+                <span className="text-sm text-zinc-300">{user.email}</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-white/5">
+                <span className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Proveedor</span>
+                <span className="text-sm text-zinc-300">
+                  {isGoogleUser && isEmailUser
+                    ? 'Google + Email'
+                    : isGoogleUser
+                    ? 'Google'
+                    : 'Email y contraseña'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-white/5">
+                <span className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Rol</span>
+                <span className={`text-sm font-bold ${
+                  profile?.role === 'superadmin' ? 'text-red-400' :
+                  profile?.role === 'admin' ? 'text-orange-400' :
+                  profile?.role === 'organizer' ? 'text-blue-400' :
+                  'text-zinc-300'
+                }`}>
+                  {profile?.role === 'superadmin' ? 'Super Admin' :
+                   profile?.role === 'admin' ? 'Administrador' :
+                   profile?.role === 'organizer' ? 'Organizador' :
+                   'Comprador'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-white/5">
+                <span className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Email verificado</span>
+                <span className={`text-sm font-bold ${user.emailVerified ? 'text-green-400' : 'text-yellow-400'}`}>
+                  {user.emailVerified ? 'Sí' : 'No'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <span className="text-xs text-zinc-500 font-bold uppercase tracking-widest">UID</span>
+                <span className="text-xs text-zinc-600 font-mono">{user.uid.substring(0, 16)}...</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ────────── SECCIÓN 5: CERRAR SESIÓN ────────── */}
+          <button
+            onClick={handleLogout}
+            className="w-full bg-red-500/10 border border-red-500/20 text-red-400 font-bold py-4 rounded-2xl hover:bg-red-500/20 transition-all flex items-center justify-center gap-2"
+          >
+            <LogOut className="w-5 h-5" />
+            Cerrar sesión
+          </button>
+        </motion.div>
+      )}
+
       {transferringTicket && (
         <TransferTicketModal
           ticket={transferringTicket}
@@ -704,14 +1365,9 @@ export default function Profile() {
           currentUser={user}
           onClose={() => {
             setTransferringTicket(null);
-            // Al cerrar el modal (botón "Listo" o X), refrescamos los tickets
-            // para que aparezca el badge "Transferencia pendiente"
             if (typeof loadUserData === 'function') loadUserData();
           }}
-          onTransferCreated={() => {
-            // NO cerrar el modal acá. Dejar que el usuario vea el paso 3 (Éxito).
-            // El refetch de tickets se hace en onClose.
-          }}
+          onTransferCreated={() => {}}
         />
       )}
     </div>

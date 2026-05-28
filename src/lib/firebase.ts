@@ -1,13 +1,22 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, collection, query, where, onSnapshot, addDoc, updateDoc, getDocFromServer, Timestamp, getDocs, orderBy, limit, deleteDoc } from 'firebase/firestore';
+import { initializeFirestore, doc, getDoc, setDoc, collection, query, where, onSnapshot, addDoc, updateDoc, getDocFromServer, Timestamp, getDocs, orderBy, limit, deleteDoc } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
+// Use current hostname as authDomain so Google OAuth popup
+// always redirects back to the same origin where the app runs.
+// This makes login work on any domain: AI Studio, Vercel, entratickets.com, localhost.
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+
+// Initialize Firestore with experimental long-polling to prevent connection blocking in proxy/iframe environments
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true
+}, firebaseConfig.firestoreDatabaseId || '(default)');
+
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 // Error Handling Helper
 export enum OperationType {
@@ -61,7 +70,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
-// Connection Test
+// Connection Test - Defer to allow browser sandboxed environment to establish network routes and DNS resolve first
 async function testConnection() {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
@@ -71,6 +80,9 @@ async function testConnection() {
     }
   }
 }
-testConnection();
+
+setTimeout(() => {
+  testConnection();
+}, 4000);
 
 export { Timestamp };

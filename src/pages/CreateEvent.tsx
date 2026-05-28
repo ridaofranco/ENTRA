@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card } from '@/src/components/ui/card';
 import { Button } from '@/src/components/ui/button';
@@ -18,17 +18,22 @@ import {
   Sparkles,
   Info
 } from 'lucide-react';
-import { collection, addDoc, doc, getDoc, Timestamp } from 'firebase/firestore';
+import { collection, setDoc, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { useAuth } from '@/src/context/AuthContext';
 import { logAction } from '@/src/services/auditService';
+import { formatCurrency } from '@/src/lib/utils';
 
 export default function CreateEvent() {
   const navigate = useNavigate();
-  const { user, profile, login, updateRole } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [ticketToDelete, setTicketToDelete] = useState<number | null>(null);
-  
+
+  const [isDateProximamente, setIsDateProximamente] = useState(false);
+  const [isTimeProximamente, setIsTimeProximamente] = useState(false);
+  const [isVenueProximamente, setIsVenueProximamente] = useState(false);
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -43,26 +48,65 @@ export default function CreateEvent() {
   });
 
   const [tickets, setTickets] = useState([
-    { type: 'General', price: 0, available: 100 }
+    { type: 'General', price: '' as any, available: '' as any, isEarlyBird: false }
   ]);
 
-  if (!user) {
+  // =================== CUSTOM FIELDS STATE ===================
+  const [customFields, setCustomFields] = useState<Array<{
+    id: string;
+    label: string;
+    type: 'text' | 'number' | 'select' | 'textarea';
+    required: boolean;
+    placeholder: string;
+    options: string[];
+  }>>([]);
+  const [customFieldToDelete, setCustomFieldToDelete] = useState<number | null>(null);
+
+  // If still loading auth/profile, show a clear loading indicator
+  if (authLoading) {
+    return (
+      <div className="pt-40 pb-20 px-6 text-center max-w-xl mx-auto flex flex-col items-center justify-center">
+        <Sparkles className="w-12 h-12 text-primary animate-pulse mb-4" />
+        <p className="text-zinc-500 font-bold uppercase tracking-widest text-sm">Verificando cuenta...</p>
+      </div>
+    );
+  }
+  
+  const isAuthorized = user && profile && (profile.role === 'organizer' || profile.role === 'admin' || profile.role === 'superadmin');
+
+  if (!isAuthorized) {
     return (
       <div className="pt-40 pb-20 px-6 text-center max-w-xl mx-auto">
         <div className="w-20 h-20 bg-primary/10 text-primary rounded-3xl flex items-center justify-center mx-auto mb-8">
           <Sparkles className="w-10 h-10" />
         </div>
-        <h1 className="text-4xl font-heading font-black tracking-tighter mb-4 uppercase">Empezá a vender hoy</h1>
-        <p className="text-muted-foreground mb-8">Para crear y gestionar tus eventos en ENTRÁ, primero necesitás iniciar sesión con tu cuenta.</p>
-        <Button onClick={login} className="h-14 px-12 orange-gradient border-none font-bold text-lg rounded-2xl shadow-xl shadow-primary/20">
-          Iniciar Sesión con Google
-        </Button>
+        <h1 className="text-4xl font-heading font-black tracking-tighter mb-4 uppercase">
+          {user ? "Solicitá tu cuenta" : "Empezá a vender hoy"}
+        </h1>
+        <p className="text-muted-foreground mb-8">
+          {user 
+            ? "Para crear eventos en ENTRÁ, tu cuenta debe ser habilitada como Organizador. Contactanos para solicitar el alta."
+            : "Para crear y gestionar tus eventos en ENTRÁ, primero necesitás iniciar sesión con tu cuenta."}
+        </p>
+        {!user ? (
+          <Link to="/auth/login?redirect=/crear-evento">
+            <Button className="h-14 px-12 orange-gradient border-none font-bold text-lg rounded-2xl shadow-xl shadow-primary/20">
+              Iniciar Sesión
+            </Button>
+          </Link>
+        ) : (
+          <Link to="/contacto">
+            <Button className="h-14 px-12 bg-white/5 border border-white/10 font-bold text-lg rounded-2xl">
+              Contactar Soporte
+            </Button>
+          </Link>
+        )}
       </div>
     );
   }
 
   const addTicketType = () => {
-    setTickets([...tickets, { type: '', price: 0, available: 0 }]);
+    setTickets([...tickets, { type: '', price: '' as any, available: '' as any, isEarlyBird: false }]);
   };
 
   const removeTicketType = (index: number) => {
@@ -75,6 +119,42 @@ export default function CreateEvent() {
     setTicketToDelete(null);
   };
 
+  // =================== CUSTOM FIELD HELPERS ===================
+  const generateFieldId = () => Math.random().toString(36).substring(2, 10);
+
+  const addCustomField = () => {
+    setCustomFields([
+      ...customFields,
+      {
+        id: generateFieldId(),
+        label: '',
+        type: 'text',
+        required: false,
+        placeholder: '',
+        options: [],
+      },
+    ]);
+  };
+
+  const updateCustomField = (index: number, updates: Partial<typeof customFields[0]>) => {
+    const updated = [...customFields];
+    updated[index] = { ...updated[index], ...updates };
+    setCustomFields(updated);
+  };
+
+  const confirmRemoveCustomField = () => {
+    if (customFieldToDelete !== null) {
+      setCustomFields(customFields.filter((_, i) => i !== customFieldToDelete));
+      setCustomFieldToDelete(null);
+    }
+  };
+
+  const handleOptionsChange = (index: number, optionsStr: string) => {
+    // El organizador escribe las opciones separadas por coma: "S, M, L, XL"
+    const opts = optionsStr.split(',').map(o => o.trim()).filter(Boolean);
+    updateCustomField(index, { options: opts });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -85,44 +165,76 @@ export default function CreateEvent() {
       
       const configSnap = await getDoc(doc(db, 'platform_config', 'settings'));
       const tiers = configSnap.exists() ? configSnap.data().commissionTiers : null;
-      const commissionRate = (tiers && tiers[userPlan]) ? tiers[userPlan] : 3.5;
+      const commissionRate = 8; // Comisión única del 8% para el nuevo modelo ENTRÁ
 
-      const eventDate = new Date(`${formData.date}T${formData.time}`);
+      let eventDate: Date;
+      if (isDateProximamente) {
+        // We use a far-future placeholder date (e.g. 2100-01-01) but store isDateTBD flag as true
+        eventDate = new Date('2100-01-01T00:00:00');
+      } else {
+        const timeVal = isTimeProximamente ? '00:00' : (formData.time || '00:00');
+        eventDate = new Date(`${formData.date}T${timeVal}`);
+      }
+
       // Create a copy of formData without the 'time' field which is not needed in Firestore
       const { time, ...restFormData } = formData;
+      if (isVenueProximamente) {
+        restFormData.venue = 'Por definir';
+      }
       
       // Calculate minimum price from tickets
-      const minPrice = tickets.length > 0 ? Math.min(...tickets.map(t => t.price)) : 0;
+      const minPrice = tickets.length > 0 ? Math.min(...tickets.map(t => Number(t.price) || 0)) : 0;
       
+      // We generate the ID first so we can include it in the document and use a single write
+      const eventRef = doc(collection(db, 'events'));
+      const eventId = eventRef.id;
+
       const eventData = {
         ...restFormData,
+        id: eventId,
         price: minPrice,
         date: Timestamp.fromDate(eventDate),
-        tickets,
+        isDateTBD: isDateProximamente,
+        isTimeTBD: isTimeProximamente || isDateProximamente,
+        isVenueTBD: isVenueProximamente,
+        tickets: tickets.map(t => ({
+          ...t,
+          price: Number(t.price) || 0,
+          available: Number(t.available) || 0
+        })),
+        customFields: customFields.filter(cf => cf.label.trim() !== ''), // solo guardamos los que tengan label
         organizerId: user.uid,
         organizerEmail: user.email || '',
-        organizerName: user.displayName || profile?.displayName || '',
+        organizerName: profile?.displayName || user.displayName || 'Organizador',
         organizerPlan: userPlan, // Snapshot del plan al crear
         commissionRate: commissionRate, // Snapshot de la tasa al crear
         ticketsSold: 0,
         totalRevenue: 0,
-        status: 'active',
+        status: 'pending',
+        officialSaleLaunched: false,
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       };
       
-      const docRef = await addDoc(collection(db, 'events'), eventData);
+      await setDoc(eventRef, eventData);
       
       // Log the action
-      await logAction('CREATE_EVENT', 'events', docRef.id, { title: eventData.title });
+      await logAction('CREATE_EVENT_PENDING', 'events', eventId, { title: eventData.title });
       
-      // If user is still a buyer, upgrade them to organizer automatically
-      if (profile?.role === 'buyer') {
-        await updateRole('organizer');
-      }
-      
+      alert('Evento enviado a revisión. Un administrador lo revisará pronto.');
       navigate('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Error creating event:", error);
+      let errorMsg = 'No se pudo enviar el evento a revisión.';
+      try {
+        const parsed = JSON.parse(error.message);
+        if (parsed.error.includes('permissions')) {
+          errorMsg = 'Error de permisos: Tu cuenta no tiene habilitada la creación de eventos. Contactá a soporte.';
+        }
+      } catch {
+        errorMsg = error.message || errorMsg;
+      }
+      alert(errorMsg);
       handleFirestoreError(error, OperationType.CREATE, 'events');
     } finally {
       setLoading(false);
@@ -158,22 +270,57 @@ export default function CreateEvent() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Fecha</label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground font-sans">Fecha</label>
+                  <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                    <input 
+                      type="checkbox" 
+                      className="accent-primary rounded border-white/10 bg-white/5 w-3.5 h-3.5"
+                      checked={isDateProximamente}
+                      onChange={e => {
+                        setIsDateProximamente(e.target.checked);
+                        if (e.target.checked) {
+                          setFormData(prev => ({ ...prev, date: '' }));
+                        }
+                      }}
+                    />
+                    <span className="text-[10px] uppercase font-bold text-primary tracking-wide">Próximamente / TBD</span>
+                  </label>
+                </div>
                 <Input 
-                  required
+                  required={!isDateProximamente}
+                  disabled={isDateProximamente}
                   type="date" 
-                  className="bg-white/5 border-white/10 h-14 rounded-2xl"
-                  value={formData.date}
+                  className="bg-white/5 border-white/10 h-14 rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed text-white"
+                  value={isDateProximamente ? "" : formData.date}
                   onChange={e => setFormData({...formData, date: e.target.value})}
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Hora</label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground font-sans">Hora</label>
+                  <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                    <input 
+                      type="checkbox" 
+                      className="accent-primary rounded border-white/10 bg-white/5 w-3.5 h-3.5 disabled:opacity-40"
+                      checked={isTimeProximamente || isDateProximamente}
+                      disabled={isDateProximamente}
+                      onChange={e => {
+                        setIsTimeProximamente(e.target.checked);
+                        if (e.target.checked) {
+                          setFormData(prev => ({ ...prev, time: '' }));
+                        }
+                      }}
+                    />
+                    <span className="text-[10px] uppercase font-bold text-primary tracking-wide">Próximamente / TBD</span>
+                  </label>
+                </div>
                 <Input 
-                  required
+                  required={!isTimeProximamente && !isDateProximamente}
+                  disabled={isTimeProximamente || isDateProximamente}
                   type="time" 
-                  className="bg-white/5 border-white/10 h-14 rounded-2xl"
-                  value={formData.time}
+                  className="bg-white/5 border-white/10 h-14 rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed text-white"
+                  value={(isTimeProximamente || isDateProximamente) ? "" : formData.time}
                   onChange={e => setFormData({...formData, time: e.target.value})}
                 />
               </div>
@@ -200,21 +347,42 @@ export default function CreateEvent() {
           <Card className="glass p-8 rounded-[2.5rem] border-white/5 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Nombre del Lugar</label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground font-sans">Nombre del Lugar</label>
+                  <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                    <input 
+                      type="checkbox" 
+                      className="accent-primary rounded border-white/10 bg-white/5 w-3.5 h-3.5"
+                      checked={isVenueProximamente}
+                      onChange={e => {
+                        setIsVenueProximamente(e.target.checked);
+                        if (e.target.checked) {
+                          setFormData(prev => ({ ...prev, venue: 'Por definir' }));
+                        } else {
+                          setFormData(prev => ({ ...prev, venue: '' }));
+                        }
+                      }}
+                    />
+                    <span className="text-[10px] uppercase font-bold text-primary tracking-wide">Próximamente / TBD</span>
+                  </label>
+                </div>
                 <Input 
-                  required
-                  placeholder="Ej: Estadio Obras" 
-                  className="bg-white/5 border-white/10 h-14 rounded-2xl"
-                  value={formData.venue}
+                  required={!isVenueProximamente}
+                  disabled={isVenueProximamente}
+                  placeholder={isVenueProximamente ? "Por definir" : "Ej: Estadio Obras"} 
+                  className="bg-white/5 border-white/10 h-14 rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed text-white"
+                  value={isVenueProximamente ? "Por definir" : formData.venue}
                   onChange={e => setFormData({...formData, venue: e.target.value})}
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Ciudad / Zona</label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 font-sans">Ciudad / Zona</label>
+                </div>
                 <Input 
                   required
                   placeholder="Ej: CABA, Buenos Aires" 
-                  className="bg-white/5 border-white/10 h-14 rounded-2xl"
+                  className="bg-white/5 border-white/10 h-14 rounded-2xl text-white"
                   value={formData.location}
                   onChange={e => setFormData({...formData, location: e.target.value})}
                 />
@@ -245,59 +413,93 @@ export default function CreateEvent() {
           </div>
           <Card className="glass p-8 rounded-[2.5rem] border-white/5 space-y-6">
             {tickets.map((ticket, index) => (
-              <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-white/5 p-6 rounded-3xl border border-white/5">
-                <div className="md:col-span-2 space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Tipo de Entrada</label>
-                  <Input 
-                    placeholder="Ej: General, VIP, Early Bird" 
-                    className="bg-background/50 border-white/10 h-12 rounded-xl"
-                    value={ticket.type}
-                    onChange={e => {
-                      const newTickets = [...tickets];
-                      newTickets[index].type = e.target.value;
-                      setTickets(newTickets);
-                    }}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Precio ($)</label>
-                  <Input 
-                    type="number"
-                    className="bg-background/50 border-white/10 h-12 rounded-xl"
-                    value={ticket.price}
-                    onChange={e => {
-                      const newTickets = [...tickets];
-                      newTickets[index].price = Number(e.target.value);
-                      setTickets(newTickets);
-                    }}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <div className="flex-grow space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Cupo</label>
+              <div key={index} className="bg-white/5 border border-white/10 p-5 rounded-[2rem] relative group mb-6 transition-all hover:border-primary/20">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                  {/* Nombre del Ticket - col-span-4 */}
+                  <div className="space-y-1.5 md:col-span-4">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Tipo de Entrada</label>
                     <Input 
-                      type="number"
-                      className="bg-background/50 border-white/10 h-12 rounded-xl"
-                      value={ticket.available}
+                      placeholder="Ej: General, VIP, Early Bird" 
+                      className="bg-zinc-900/50 border-white/10 h-11 rounded-xl text-sm font-bold focus:ring-primary/20 shadow-inner"
+                      value={ticket.type}
                       onChange={e => {
                         const newTickets = [...tickets];
-                        newTickets[index].available = Number(e.target.value);
+                        newTickets[index].type = e.target.value;
                         setTickets(newTickets);
                       }}
                     />
                   </div>
-                  {tickets.length > 1 && (
-                    <Button 
+
+                  {/* Precio - col-span-3 */}
+                  <div className="space-y-1.5 md:col-span-3">
+                    <div className="flex justify-between items-center px-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Precio ($)</label>
+                      {ticket.price && Number(ticket.price) > 0 && (
+                        <span className="text-[10px] font-black text-primary animate-in fade-in slide-in-from-right-1">{formatCurrency(Number(ticket.price))}</span>
+                      )}
+                    </div>
+                    <Input 
+                      type="number"
+                      placeholder="0"
+                      className="bg-zinc-900/50 border-white/10 h-11 rounded-xl text-sm font-bold shadow-inner"
+                      value={ticket.price === 0 ? '' : ticket.price}
+                      onChange={e => {
+                        const newTickets = [...tickets];
+                        newTickets[index].price = e.target.value === '' ? '' : Number(e.target.value);
+                        setTickets(newTickets);
+                      }}
+                    />
+                  </div>
+
+                  {/* Cupo - col-span-3 */}
+                  <div className="space-y-1.5 md:col-span-3">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Cupo (Disponibles)</label>
+                    <Input 
+                      type="number"
+                      placeholder="100"
+                      className="bg-zinc-900/50 border-white/10 h-11 rounded-xl text-sm font-bold shadow-inner"
+                      value={ticket.available === 0 ? '' : ticket.available}
+                      onChange={e => {
+                        const newTickets = [...tickets];
+                        newTickets[index].available = e.target.value === '' ? '' : Number(e.target.value);
+                        setTickets(newTickets);
+                      }}
+                    />
+                  </div>
+
+                  {/* Early Bird - col-span-2 */}
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Early Bird</label>
+                    <button
                       type="button"
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => removeTicketType(index)}
-                      className="text-red-500 hover:bg-red-500/10 h-12 w-12 rounded-xl"
+                      onClick={() => {
+                        const newTickets = [...tickets];
+                        newTickets[index].isEarlyBird = !newTickets[index].isEarlyBird;
+                        setTickets(newTickets);
+                      }}
+                      className={`w-full h-11 rounded-xl border flex items-center justify-center transition-all ${
+                        ticket.isEarlyBird 
+                          ? "bg-orange-500/10 border-orange-500/30 text-orange-400" 
+                          : "bg-zinc-900/50 border-white/10 text-zinc-500"
+                      }`}
                     >
-                      <Trash2 className="w-5 h-5" />
-                    </Button>
-                  )}
+                      <Sparkles className={`w-3.5 h-3.5 mr-2 ${ticket.isEarlyBird ? "animate-pulse" : ""}`} />
+                      <span className="text-[10px] font-black uppercase">{ticket.isEarlyBird ? "SÍ" : "NO"}</span>
+                    </button>
+                  </div>
                 </div>
+
+                {tickets.length > 1 && (
+                  <Button 
+                    type="button"
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => removeTicketType(index)}
+                    className="absolute -right-3 -top-3 w-8 h-8 rounded-full bg-red-500/10 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity border border-red-500/20 hover:bg-red-500/20 hover:text-red-300 z-10"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             ))}
             <Button 
@@ -311,6 +513,152 @@ export default function CreateEvent() {
             </Button>
           </Card>
         </section>
+
+        {/* ==================== CUSTOM FIELDS ==================== */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-white/5 rounded-3xl border border-white/10 p-6"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-heading font-bold text-lg">Campos personalizados</h3>
+              <p className="text-xs text-zinc-500 mt-1">
+                Agregá preguntas extras que los compradores deben completar al comprar (ej: talle, restricciones alimentarias, empresa).
+                {customFields.length === 0 && ' Esto es opcional.'}
+              </p>
+            </div>
+          </div>
+
+          {customFields.length > 0 && (
+            <div className="space-y-4 mb-4">
+              {customFields.map((field, index) => (
+                <div key={field.id} className="bg-white/5 rounded-2xl border border-white/10 p-4 space-y-3">
+                  {/* Row 1: Label + Type + Required + Delete */}
+                  <div className="grid grid-cols-12 gap-3 items-end">
+                    {/* Label */}
+                    <div className="col-span-12 md:col-span-5">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 block mb-1">
+                        Nombre del campo
+                      </label>
+                      <input
+                        type="text"
+                        value={field.label}
+                        onChange={(e) => updateCustomField(index, { label: e.target.value })}
+                        placeholder="Ej: Talle de remera"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50"
+                      />
+                    </div>
+
+                    {/* Type */}
+                    <div className="col-span-6 md:col-span-3">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 block mb-1">
+                        Tipo
+                      </label>
+                      <select
+                        value={field.type}
+                        onChange={(e) =>
+                          updateCustomField(index, {
+                            type: e.target.value as 'text' | 'number' | 'select' | 'textarea',
+                            // Limpiamos options si cambian de select a otro tipo
+                            options: e.target.value === 'select' ? field.options : [],
+                          })
+                        }
+                        className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500/50 appearance-none"
+                      >
+                        <option value="text" className="bg-zinc-900 text-white">Texto</option>
+                        <option value="number" className="bg-zinc-900 text-white">Número</option>
+                        <option value="select" className="bg-zinc-900 text-white">Lista de opciones</option>
+                        <option value="textarea" className="bg-zinc-900 text-white">Texto largo</option>
+                      </select>
+                    </div>
+
+                    {/* Required toggle */}
+                    <div className="col-span-4 md:col-span-3">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 block mb-1">
+                        ¿Obligatorio?
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => updateCustomField(index, { required: !field.required })}
+                        className={`w-full px-3 py-2 rounded-xl text-sm font-bold border transition ${
+                          field.required
+                            ? 'bg-orange-500/20 border-orange-500/40 text-orange-400'
+                            : 'bg-white/5 border-white/10 text-zinc-400'
+                        }`}
+                      >
+                        {field.required ? 'Sí' : 'No'}
+                      </button>
+                    </div>
+
+                    {/* Delete */}
+                    <div className="col-span-2 md:col-span-1 flex items-end justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setCustomFieldToDelete(index)}
+                        className="p-2 rounded-xl bg-white/5 border border-white/10 hover:border-red-500/30 hover:text-red-400 transition"
+                        title="Eliminar campo"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Row 2: Placeholder */}
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 block mb-1">
+                      Placeholder (texto de ayuda)
+                    </label>
+                    <input
+                      type="text"
+                      value={field.placeholder}
+                      onChange={(e) => updateCustomField(index, { placeholder: e.target.value })}
+                      placeholder="Ej: Ingresá tu talle (S, M, L, XL)"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50"
+                    />
+                  </div>
+
+                  {/* Row 3: Options (only for select type) */}
+                  {field.type === 'select' && (
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 block mb-1">
+                        Opciones (separadas por coma)
+                      </label>
+                      <input
+                        type="text"
+                        value={field.options.join(', ')}
+                        onChange={(e) => handleOptionsChange(index, e.target.value)}
+                        placeholder="S, M, L, XL"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50"
+                      />
+                      {field.options.length > 0 && (
+                        <div className="flex gap-1.5 mt-2 flex-wrap">
+                          {field.options.map((opt, oi) => (
+                            <span
+                              key={oi}
+                              className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400"
+                            >
+                              {opt}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={addCustomField}
+            className="w-full border-2 border-dashed border-white/10 rounded-2xl py-3 text-sm font-bold text-zinc-500 hover:text-orange-400 hover:border-orange-500/30 transition"
+          >
+            + Agregar campo personalizado
+          </button>
+        </motion.div>
 
         {/* Toggle: permitir transferencia */}
         <div className="flex items-center justify-between p-6 rounded-[2rem] bg-white/5 border border-white/10">
@@ -341,7 +689,7 @@ export default function CreateEvent() {
           disabled={loading}
           className="w-full h-20 orange-gradient border-none font-black text-2xl rounded-[2rem] shadow-2xl shadow-primary/30 hover:scale-[1.02] transition-all"
         >
-          {loading ? "Publicando..." : "Publicar Evento"}
+          {loading ? "Enviando..." : "Enviar a revisión"}
         </Button>
       </form>
 
@@ -369,6 +717,41 @@ export default function CreateEvent() {
               <button
                 onClick={confirmRemoveTicket}
                 className="flex-1 px-6 py-3 rounded-2xl bg-red-600 text-white font-bold transition"
+              >
+                Eliminar
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Delete Custom Field Confirmation */}
+      {customFieldToDelete !== null && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-zinc-900 rounded-3xl border border-white/10 p-6 max-w-sm w-full"
+          >
+            <h3 className="font-bold text-lg mb-2">Eliminar campo</h3>
+            <p className="text-sm text-zinc-400 mb-6">
+              ¿Estás seguro de que querés eliminar el campo
+              <strong className="text-white">
+                {' '}
+                {customFields[customFieldToDelete]?.label || '(sin nombre)'}
+              </strong>
+              ? Si ya hay compradores que lo completaron, sus respuestas seguirán en los tickets, pero el campo no se mostrará más en Checkout.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCustomFieldToDelete(null)}
+                className="flex-1 px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 font-bold text-sm transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmRemoveCustomField}
+                className="flex-1 px-4 py-2.5 rounded-2xl bg-red-500/20 text-red-400 hover:bg-red-500/30 font-bold text-sm transition"
               >
                 Eliminar
               </button>

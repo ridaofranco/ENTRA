@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Users, Calendar, Ticket, TrendingUp, Loader, ChevronDown,
+  Users, Calendar, Ticket, TrendingUp, Loader, ChevronDown, Clock,
   Edit3, Trash2, RotateCcw, Eye, X, Plus, AlertTriangle, BarChart3, Search, Percent, Save, RefreshCw, Check
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -12,6 +12,7 @@ import { Card } from '@/src/components/ui/card';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { handleFirestoreError, OperationType } from '@/src/lib/firebase';
+import { formatCurrency } from '@/src/lib/utils';
 
 interface UserData {
   id: string;
@@ -66,7 +67,7 @@ export default function AdminDashboard() {
   const [confirmDelete, setConfirmDelete] = useState<{ type: 'user' | 'event'; id: string; title?: string } | null>(null);
   const [editingEvent, setEditingEvent] = useState<EventData | null>(null);
   const [savingEvent, setSavingEvent] = useState(false);
-  const [eventFilter, setEventFilter] = useState<'all' | 'active' | 'paused' | 'scheduled' | 'deleted'>('all');
+  const [eventFilter, setEventFilter] = useState<'all' | 'pending' | 'active' | 'paused' | 'scheduled' | 'deleted'>('all');
   // Commission tiers (migrated from PlatformConfig.tsx)
   const [commissions, setCommissions] = useState({ starter: 3.5, pro: 2.5, enterprise: 1.9 });
   const [commissionsInput, setCommissionsInput] = useState({ starter: '3.5', pro: '2.5', enterprise: '1.9' });
@@ -100,6 +101,12 @@ export default function AdminDashboard() {
       // 2. Events listener
       const unsubEvents = onSnapshot(collection(db, 'events'), (snap) => {
         const eventsData = snap.docs.map(d => ({ id: d.id, ...d.data() } as EventData));
+        // Sort in memory (newest first by creation date)
+        eventsData.sort((a, b) => {
+          const aTime = (a as any).createdAt?.seconds || 0;
+          const bTime = (b as any).createdAt?.seconds || 0;
+          return bTime - aTime;
+        });
         setEvents(eventsData);
       }, (error) => {
         console.error('[AdminDashboard] Events listener error:', error);
@@ -279,8 +286,9 @@ export default function AdminDashboard() {
   const statCards = [
     { label: 'Usuarios', value: users.length, icon: Users, color: 'from-blue-500/20 to-blue-600/20', textColor: 'text-blue-400' },
     { label: 'Eventos', value: events.length, icon: Calendar, color: 'from-purple-500/20 to-purple-600/20', textColor: 'text-purple-400' },
-    { label: 'Tickets Vendidos', value: totalTicketsSold || 0, icon: Ticket, color: 'from-orange-500/20 to-orange-600/20', textColor: 'text-orange-400' },
-    { label: 'Ingresos (ARS)', value: `$${(Number(totalRevenue) || 0).toLocaleString('es-AR')}`, icon: TrendingUp, color: 'from-green-500/20 to-green-600/20', textColor: 'text-green-400' },
+    { label: 'Pendientes', value: countsByStatus.pending || 0, icon: Clock, color: 'from-orange-500/20 to-orange-600/20', textColor: 'text-orange-400' },
+    { label: 'Tickets Vendidos', value: totalTicketsSold || 0, icon: Ticket, color: 'from-yellow-500/20 to-yellow-600/20', textColor: 'text-yellow-400' },
+    { label: 'Ingresos (ARS)', value: formatCurrency(Number(totalRevenue) || 0), icon: TrendingUp, color: 'from-green-500/20 to-green-600/20', textColor: 'text-green-400' },
   ];
 
   // ==================== HANDLERS ====================
@@ -432,6 +440,7 @@ export default function AdminDashboard() {
   const statusBadge = (status: string) => {
     switch (status) {
       case 'active': return { label: 'Activo', cls: 'bg-green-500/20 text-green-400 border-green-500/30' };
+      case 'pending': return { label: 'Pendiente', cls: 'bg-orange-500/20 text-orange-400 border-orange-500/30' };
       case 'paused': return { label: 'Pausado', cls: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' };
       case 'scheduled': return { label: 'Programado', cls: 'bg-blue-500/20 text-blue-400 border-blue-500/30' };
       case 'deleted': return { label: 'Eliminado', cls: 'bg-red-500/20 text-red-400 border-red-500/30' };
@@ -515,7 +524,7 @@ export default function AdminDashboard() {
       )}
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-10">
         {statCards.map((stat, idx) => {
           const Icon = stat.icon;
           return (
@@ -769,6 +778,7 @@ export default function AdminDashboard() {
             <div className="flex gap-1.5">
               {([
                 { key: 'all', label: `Todos (${events.length})` },
+                { key: 'pending', label: `Pendientes (${countsByStatus.pending || 0})` },
                 { key: 'active', label: `Activos (${countsByStatus.active || 0})` },
                 { key: 'paused', label: `Pausados (${countsByStatus.paused || 0})` },
                 { key: 'scheduled', label: `Programados (${countsByStatus.scheduled || 0})` },
@@ -826,11 +836,11 @@ export default function AdminDashboard() {
                             )}
                             <div>
                               <p className="text-zinc-200 font-medium">{e.title}</p>
-                              <p className="text-xs text-zinc-500">{e.venue || '—'}{e.location ? `, ${e.location}` : ''}</p>
+                              <p className="text-xs text-zinc-500">{e.isVenueTBD ? 'Lugar por confirmar' : (e.venue || '—')}{e.location ? `, ${e.location}` : ''}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-zinc-500 text-xs">{formatDate(e.date)}</td>
+                        <td className="py-3 px-4 text-zinc-500 text-xs">{e.isDateTBD ? 'PRÓXIMAMENTE' : formatDate(e.date)}</td>
                         <td className="py-3 px-4 text-zinc-400 text-xs">
                           {(e.tickets || []).length > 0 ? (
                             <span>{totalAvailable} disponibles</span>
@@ -845,7 +855,7 @@ export default function AdminDashboard() {
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex flex-col">
-                            <span className="text-zinc-200 font-bold text-xs">{e.commissionRate || '3.5'}%</span>
+                            <span className="text-zinc-200 font-bold text-xs">{e.commissionRate || '8'}%</span>
                             <span className="text-[9px] text-zinc-500 uppercase tracking-tighter">{e.organizerPlan || 'starter'}</span>
                           </div>
                         </td>
@@ -880,7 +890,14 @@ export default function AdminDashboard() {
                             )}
                             {!isDeleted && (
                               <>
-                                {e.status === 'active' ? (
+                                {e.status === 'pending' ? (
+                                  <button
+                                    onClick={() => handleEventStatusChange(e.id, 'active')}
+                                    className="px-3 py-1.5 rounded-xl bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/40 text-orange-400 text-xs font-bold transition flex items-center gap-1 shadow-lg shadow-orange-500/10"
+                                  >
+                                    <Check className="w-3.5 h-3.5" /> Publicar
+                                  </button>
+                                ) : e.status === 'active' ? (
                                   <button
                                     onClick={() => handleEventStatusChange(e.id, 'paused')}
                                     className="px-3 py-1.5 rounded-xl bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 text-xs font-bold transition"
@@ -1141,7 +1158,7 @@ function EditEventModal({
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Estado</label>
             <div className="flex gap-2 flex-wrap">
-              {(['active', 'paused', 'scheduled', 'deleted'] as const).map(s => (
+              {(['pending', 'active', 'paused', 'scheduled', 'deleted'] as const).map(s => (
                 <button
                   key={s}
                   onClick={() => setForm({ ...form, status: s })}
@@ -1151,7 +1168,7 @@ function EditEventModal({
                       : 'bg-white/5 border border-white/10 text-muted-foreground hover:text-white'
                   }`}
                 >
-                  {s === 'active' ? 'Activo' : s === 'paused' ? 'Pausado' : s === 'scheduled' ? 'Programado' : 'Eliminado'}
+                  {s === 'pending' ? 'Pendiente' : s === 'active' ? 'Activo' : s === 'paused' ? 'Pausado' : s === 'scheduled' ? 'Programado' : 'Eliminado'}
                 </button>
               ))}
             </div>
@@ -1172,33 +1189,52 @@ function EditEventModal({
               <p className="text-xs text-muted-foreground italic">Este evento no tiene entradas configuradas.</p>
             )}
             {(form.tickets || []).map((t, idx) => (
-              <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-white/5 border border-white/10 rounded-2xl p-3">
-                <Input
-                  placeholder="Tipo"
-                  value={t.type}
-                  onChange={e => updateTicket(idx, 'type', e.target.value)}
-                  className="col-span-5 bg-white/5 border-white/10 h-10 rounded-xl text-sm"
-                />
-                <Input
-                  type="number"
-                  placeholder="Precio"
-                  value={t.price}
-                  onChange={e => updateTicket(idx, 'price', Number(e.target.value))}
-                  className="col-span-3 bg-white/5 border-white/10 h-10 rounded-xl text-sm"
-                />
-                <Input
-                  type="number"
-                  placeholder="Disp."
-                  value={t.available}
-                  onChange={e => updateTicket(idx, 'available', Number(e.target.value))}
-                  className="col-span-3 bg-white/5 border-white/10 h-10 rounded-xl text-sm"
-                />
-                <button
-                  onClick={() => removeTicketType(idx)}
-                  className="col-span-1 w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 flex items-center justify-center"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+              <div key={idx} className="space-y-2 bg-white/5 border border-white/10 rounded-2xl p-4">
+                <div className="grid grid-cols-12 gap-2 items-center">
+                  <div className="col-span-11">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 block mb-1">Nombre del sector/entrada</label>
+                    <Input
+                      placeholder="Ej: General, VIP..."
+                      value={t.type}
+                      onChange={e => updateTicket(idx, 'type', e.target.value)}
+                      className="bg-white/5 border-white/10 h-10 rounded-xl text-sm"
+                    />
+                  </div>
+                  <div className="col-span-1 flex justify-end items-end h-full">
+                    <button
+                      onClick={() => removeTicketType(idx)}
+                      className="w-10 h-10 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 flex items-center justify-center transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center px-1">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Precio ($)</label>
+                      {t.price > 0 && <span className="text-[10px] font-black text-primary">{formatCurrency(t.price)}</span>}
+                    </div>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={t.price === 0 ? '' : t.price}
+                      onChange={e => updateTicket(idx, 'price', e.target.value === '' ? '' : Number(e.target.value))}
+                      className="bg-white/5 border-white/10 h-10 rounded-xl text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 block px-1">Disponibles</label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={t.available === 0 ? '' : t.available}
+                      onChange={e => updateTicket(idx, 'available', e.target.value === '' ? '' : Number(e.target.value))}
+                      className="bg-white/5 border-white/10 h-10 rounded-xl text-sm"
+                    />
+                  </div>
+                </div>
               </div>
             ))}
           </div>

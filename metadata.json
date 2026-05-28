@@ -1,5 +1,6 @@
 {
-  "name": "ENTRÁ by DER",
+  "name": "ENTRÁ - Tu Ticketera",
   "description": "La mejor plataforma de ticketing del mercado argentino. Premium, moderna y eficiente.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

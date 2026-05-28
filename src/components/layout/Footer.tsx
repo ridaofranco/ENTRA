@@ -1,72 +1,36 @@
 import { Link } from 'react-router-dom';
-import { useAuth } from '@/src/context/AuthContext';
 
 export function Footer() {
-  const { profile } = useAuth();
-  const isOrganizer = profile?.role === 'organizer' || profile?.role === 'admin' || profile?.role === 'superadmin';
-  const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin';
-
   return (
-    <footer className="bg-background border-t border-white/5 pt-20 pb-10 px-6">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-        <div className="space-y-6">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-black text-lg">
-              E
-            </div>
-            <span className="font-heading font-black text-xl tracking-tighter">
-              ENTR<span className="text-primary">Á</span>
-            </span>
-          </Link>
-          <p className="text-muted-foreground text-sm leading-relaxed max-w-xs">
-            La ticketera que Argentina merecía. Comisiones justas, tecnología de punta y la mejor experiencia para tus asistentes.
-          </p>
-          <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
-            <div className="w-5 h-5 bg-primary rounded flex items-center justify-center text-[10px] text-white">D</div>
+    <footer className="bg-[#09090b] border-t border-white/5 py-16 px-6 font-sans">
+      <div className="max-w-7xl mx-auto flex flex-col items-center text-center space-y-8">
+        {/* Brand & Power Line */}
+        <div className="flex items-center gap-3">
+          <span className="font-heading font-black text-2xl tracking-tighter uppercase text-white">
+            ENTR<span className="text-primary">Á</span>
+          </span>
+          <span className="text-white/20">|</span>
+          <span className="text-xs uppercase tracking-widest text-muted-foreground font-bold">
             Powered by Somos DER
-          </div>
+          </span>
         </div>
 
-        <div>
-          <h4 className="font-heading font-bold text-primary text-sm uppercase tracking-widest mb-6">Producto</h4>
-          <ul className="space-y-4 text-sm text-muted-foreground">
-            <li><Link to="/eventos" className="hover:text-primary transition-colors">Explorar Eventos</Link></li>
-            <li><Link to="/crear-evento" className="hover:text-primary transition-colors">Vender Entradas</Link></li>
-            {isOrganizer && (
-              <li><Link to="/dashboard" className="hover:text-primary transition-colors">Dashboard</Link></li>
-            )}
-            <li><Link to="/perfil" className="hover:text-primary transition-colors">Mi Perfil</Link></li>
-            {isAdmin && (
-              <li><Link to="/admin/dashboard" className="hover:text-primary transition-colors">Panel Admin</Link></li>
-            )}
-            <li><a href="#" className="hover:text-primary transition-colors">White Label</a></li>
-          </ul>
+        {/* Links */}
+        <div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-4 text-xs uppercase tracking-wider text-muted-foreground font-bold">
+          <Link to="/eventos" className="hover:text-primary transition-colors">Eventos</Link>
+          <Link to="/productores" className="hover:text-primary transition-colors">Productores</Link>
+          <Link to="/ayuda" className="hover:text-primary transition-colors">Ayuda</Link>
+          <Link to="/contacto" className="hover:text-primary transition-colors">Sobre Nosotros</Link>
+          <Link to="/contacto" className="hover:text-border hover:text-white transition-colors">Términos</Link>
+          <Link to="/contacto" className="hover:text-border hover:text-white transition-colors">Privacidad</Link>
         </div>
 
-        <div>
-          <h4 className="font-heading font-bold text-primary text-sm uppercase tracking-widest mb-6">Empresa</h4>
-          <ul className="space-y-4 text-sm text-muted-foreground">
-            <li><a href="#" className="hover:text-primary transition-colors">Sobre Nosotros</a></li>
-            <li><a href="https://somosder.ar" target="_blank" className="hover:text-primary transition-colors">Somos DER</a></li>
-            <li><a href="#" className="hover:text-primary transition-colors">Blog</a></li>
-            <li><Link to="/contacto" className="hover:text-primary transition-colors">Contacto</Link></li>
-          </ul>
-        </div>
-
-        <div>
-          <h4 className="font-heading font-bold text-primary text-sm uppercase tracking-widest mb-6">Legal</h4>
-          <ul className="space-y-4 text-sm text-muted-foreground">
-            <li><a href="#" className="hover:text-primary transition-colors">Términos y Condiciones</a></li>
-            <li><a href="#" className="hover:text-primary transition-colors">Privacidad</a></li>
-            <li><a href="#" className="hover:text-primary transition-colors">Política de Cookies</a></li>
-          </ul>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-muted-foreground">
-        <p>© 2026 ENTRÁ by Somos DER. Todos los derechos reservados.</p>
-        <div className="flex items-center gap-6">
-          <a href="mailto:contacto@somosder.com.ar" className="hover:text-primary transition-colors">contacto@somosder.com.ar</a>
+        {/* Contacts */}
+        <div className="pt-4 border-t border-white/5 w-full max-w-md flex flex-col sm:flex-row justify-center items-center gap-x-6 gap-y-2 text-xs text-muted-foreground font-mono">
+          <a href="mailto:contacto@somosder.com.ar" className="hover:text-primary transition-colors">
+            contacto@somosder.com.ar
+          </a>
+          <span className="hidden sm:inline text-white/5">•</span>
           <span>+54 9 11 7154-0675</span>
         </div>
       </div>

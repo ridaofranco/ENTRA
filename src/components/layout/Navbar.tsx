@@ -7,7 +7,7 @@ import { useAuth } from '@/src/context/AuthContext';
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
-  const { user, profile, login, logout } = useAuth();
+  const { user, profile, logout } = useAuth();
   const isOrganizer = profile?.role === 'organizer' || profile?.role === 'admin' || profile?.role === 'superadmin';
   const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin';
 
@@ -25,38 +25,35 @@ export function Navbar() {
       isScrolled ? "bg-background/80 backdrop-blur-xl border-b border-white/5" : "bg-transparent"
     )}>
       <Link to="/" className="flex items-center gap-2 group">
-        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform">
-          E
-        </div>
         <span className="font-heading font-black text-2xl tracking-tighter">
           ENTR<span className="text-primary">Á</span>
         </span>
       </Link>
 
       <div className="hidden md:flex items-center gap-6">
-        <Link to="/eventos" className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-[0.2em]">Eventos</Link>
+        <Link to="/eventos" className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-[0.2em] font-sans">Eventos</Link>
+        <Link to="/productores" className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-[0.2em] font-sans">Productores</Link>
+        <Link to="/ayuda" className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-[0.2em] font-sans">Ayuda</Link>
 
-        {isOrganizer ? (
-          <Link to="/dashboard" className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-[0.2em]">Dashboard</Link>
-        ) : (
-          <Link to="/contacto" className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-[0.2em]">Vender</Link>
+        {isOrganizer && (
+          <Link to="/dashboard" className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-[0.2em] font-sans">Dashboard</Link>
         )}
 
         {isOrganizer && (
-          <Link to="/crear-evento" className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-[0.2em]">Crear Evento</Link>
+          <Link to="/crear-evento" className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-[0.2em] font-sans">Crear Evento</Link>
         )}
 
         {isAdmin && (
-          <Link to="/admin/dashboard" className="text-[10px] font-bold text-primary hover:text-primary/80 transition-colors uppercase tracking-[0.2em]">Admin</Link>
+          <Link to="/admin/dashboard" className="text-[10px] font-bold text-primary hover:text-primary/80 transition-colors uppercase tracking-[0.2em] font-sans">Admin</Link>
         )}
-
-        <Link to="/contacto" className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-[0.2em]">Contacto</Link>
       </div>
 
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" className="hidden sm:flex text-muted-foreground hover:text-primary">
-          <Search className="w-5 h-5" />
-        </Button>
+        <Link to="/eventos">
+          <Button variant="ghost" size="icon" className="hidden sm:flex text-muted-foreground hover:text-primary">
+            <Search className="w-5 h-5" />
+          </Button>
+        </Link>
 
         {user ? (
           <div className="flex items-center gap-4">
@@ -68,21 +65,17 @@ export function Navbar() {
                   <User className="w-4 h-4 text-muted-foreground" />
                 </div>
               )}
-              <span className="text-sm font-bold hidden lg:inline-block">{user.displayName}</span>
+              <span className="text-sm font-bold hidden lg:inline-block font-sans">{user.displayName}</span>
             </Link>
             <Button variant="ghost" size="icon" onClick={logout} className="text-muted-foreground hover:text-red-500">
               <LogOut className="w-5 h-5" />
             </Button>
           </div>
-        ) : (
-          <Button variant="ghost" onClick={login} className="hidden sm:flex font-semibold hover:text-primary">
-            Iniciar Sesión
-          </Button>
-        )}
+        ) : null}
 
-        <Link to="/eventos">
-          <Button className="orange-gradient border-none font-bold px-6 shadow-lg shadow-primary/20 hover:scale-105 transition-transform">
-            Comprar Entradas
+        <Link to={user ? "/perfil" : "/auth/login"}>
+          <Button className="orange-gradient border-none font-bold px-8 py-5 text-sm uppercase tracking-wider rounded-xl shadow-lg shadow-primary/20 hover:scale-105 transition-transform font-sans">
+            ENTRÁ
           </Button>
         </Link>
         <Button variant="ghost" size="icon" className="md:hidden">

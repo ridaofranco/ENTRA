@@ -8,7 +8,7 @@ import { Navbar } from '@/src/components/layout/Navbar';
 import { Footer } from '@/src/components/layout/Footer';
 import { ProtectedRoute } from '@/src/components/auth/ProtectedRoute';
 import Landing from '@/src/pages/Landing';
-import Catalog from '@/src/pages/Catalog';
+import Comprar from '@/src/pages/Comprar';
 import EventDetail from '@/src/pages/EventDetail';
 import Checkout from '@/src/pages/Checkout';
 import Dashboard from '@/src/pages/Dashboard';
@@ -20,6 +20,8 @@ import Profile from '@/src/pages/Profile';
 import AdminDashboard from '@/src/pages/AdminDashboard';
 import EventDashboard from '@/src/pages/EventDashboard';
 import ClaimTicket from '@/src/pages/ClaimTicket';
+import Productores from '@/src/pages/Productores';
+import Ayuda from '@/src/pages/Ayuda';
 
 export default function App() {
   return (
@@ -29,10 +31,14 @@ export default function App() {
         <main className="flex-grow">
           <Routes>
             <Route path="/" element={<Landing />} />
-            <Route path="/eventos" element={<Catalog />} />
+            <Route path="/comprar" element={<Comprar />} />
+            <Route path="/eventos" element={<Comprar />} />
+            <Route path="/productores" element={<Productores />} />
+            <Route path="/ayuda" element={<Ayuda />} />
             <Route path="/evento/:id" element={<EventDetail />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/auth/login" element={<Auth />} />
+            <Route path="/entrar" element={<Auth />} />
             <Route path="/claim/:token" element={<ClaimTicket />} />
             <Route path="/contacto" element={<Contact />} />
             

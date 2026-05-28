@@ -8,7 +8,7 @@ import { ArrowLeft, CheckCircle2, ShieldCheck, Ticket as TicketIcon, Calendar, M
 import { Link } from 'react-router-dom';
 import { collection, addDoc, Timestamp, doc, getDoc, updateDoc, query, where, getDocs, increment } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/src/lib/utils';
 import { useAuth } from '@/src/context/AuthContext';
 
 interface SelectedTicket {
@@ -38,8 +38,10 @@ interface TicketData {
   eventId: string;
   buyerId: string;
   buyerEmail: string;
+  buyerPhone?: string;
   ticketType: string;
   price: number;
+  finalPricePaid?: number;
   status: 'valid';
   qrCode: string;
   createdAt: any;
@@ -81,7 +83,9 @@ export default function Checkout() {
     name: user?.displayName || '',
     email: user?.email || '',
     dni: '',
+    phone: '',
   });
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [successState, setSuccessState] = useState<SuccessState | null>(null);
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -106,6 +110,31 @@ export default function Checkout() {
     }
   }, [toast]);
 
+  // =================== LOAD USER PROFILE DATA ===================
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!user) return;
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          setBuyerInfo((prev) => ({
+            ...prev,
+            name: prev.name || data.displayName || '',
+            email: prev.email || data.email || '',
+            dni: data.dni || '',
+            phone: data.phone || '',
+          }));
+        }
+        setProfileLoaded(true);
+      } catch (err) {
+        console.error('Error loading profile:', err);
+        setProfileLoaded(true);
+      }
+    };
+    loadProfile();
+  }, [user]);
+
   if (!event || !selectedTickets) {
     return null;
   }
@@ -119,10 +148,18 @@ export default function Checkout() {
   const discountAmount = appliedDiscount?.amount || 0;
   const subtotal = Math.max(0, subtotalOriginal - discountAmount);
 
-  // Usar la comisión snapshoteada en el evento. Fallback a 3.5% para eventos viejos.
-  const eventCommission = Number(event.commissionRate) || 3.5;
-  const platformFee = Math.round(subtotal * (eventCommission / 100));
-  const total = subtotal + platformFee;
+  // Nuevo modelo de comisiones ENTRÁ:
+  // 8% + IVA de service fee sobre el precio del ticket, cobrado al comprador.
+  // El comprador también absorbe el costo del procesador de pagos (4.99%).
+  // El organizador recibe el 100% de su ticket (subtotal).
+  const feeEntra = subtotal > 0 ? (subtotal * 0.08) : 0;
+  const feeEntraConIva = subtotal > 0 ? Math.round(feeEntra * 1.21) : 0;
+  const processorRate = 0.0499;
+
+  // Fórmula Gross-up: total_comprador = (subtotal + fee_entra_con_iva) / (1 - tasa_procesador_pago)
+  const total = subtotal > 0 ? Math.round((subtotal + feeEntraConIva) / (1 - processorRate)) : 0;
+  const processorFee = subtotal > 0 ? Math.max(0, total - subtotal - feeEntraConIva) : 0;
+  const platformFee = subtotal > 0 ? (total - subtotal) : 0; // La diferencia total que abona el comprador y retiene la ticketera/procesador
 
   const handleApplyDiscount = async () => {
     if (!discountCodeInput.trim()) return;
@@ -210,6 +247,7 @@ export default function Checkout() {
         buyerEmail: buyerInfo.email,
         buyerName: buyerInfo.name,
         buyerDni: buyerInfo.dni,
+        buyerPhone: buyerInfo.phone,
         eventId: event.id,
         eventTitle: event.title,
         items: selectedTickets,
@@ -245,6 +283,16 @@ export default function Checkout() {
       // Create ticket documents
       const createdTickets: Array<{ id: string; qrCode: string; type: string }> = [];
       for (const selectedTicket of selectedTickets) {
+        const basePrice = Number(selectedTicket.price) || 0;
+        let discountedPrice = basePrice;
+        if (subtotalOriginal > 0 && discountAmount > 0) {
+          const discountProportion = discountAmount / subtotalOriginal;
+          discountedPrice = Math.max(0, basePrice * (1 - discountProportion));
+        }
+        const fee = discountedPrice * 0.08;
+        const feeConIva = Math.round(fee * 1.21);
+        const finalPricePaid = discountedPrice > 0 ? Math.round((discountedPrice + feeConIva) / (1 - 0.0499)) : 0;
+
         for (let i = 0; i < selectedTicket.quantity; i++) {
           const qrCode = generateUUID();
           const ticketData: TicketData = {
@@ -252,8 +300,10 @@ export default function Checkout() {
             eventId: event.id,
             buyerId,
             buyerEmail: buyerInfo.email,
+            buyerPhone: buyerInfo.phone || '',
             ticketType: selectedTicket.type,
             price: selectedTicket.price,
+            finalPricePaid,
             status: 'valid',
             qrCode,
             createdAt: Timestamp.now(),
@@ -301,6 +351,24 @@ export default function Checkout() {
         }
       } catch (stockError) {
         console.error('Error updating ticket availability:', stockError);
+      }
+
+      // ==================== SAVE BUYER DATA TO PROFILE ====================
+      // Si el usuario está logueado, guardamos dni y phone en su perfil
+      // para que no tenga que ingresarlos de vuelta en su próxima compra.
+      if (user?.uid && (buyerInfo.dni || buyerInfo.phone)) {
+        try {
+          const userRef = doc(db, 'users', user.uid);
+          const updateData: any = { updatedAt: Timestamp.now() };
+          if (buyerInfo.dni) updateData.dni = buyerInfo.dni;
+          if (buyerInfo.phone) updateData.phone = buyerInfo.phone;
+          if (buyerInfo.name) updateData.displayName = buyerInfo.name;
+          await updateDoc(userRef, updateData);
+          console.log('Profile updated with buyer data');
+        } catch (profileError) {
+          console.error('Error updating profile with buyer data:', profileError);
+          // No abortamos la compra por esto
+        }
       }
 
       // Set success state and move to confirmation step
@@ -587,7 +655,7 @@ ${successState.tickets.map((ticket, i) => `
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
               Email
@@ -609,6 +677,19 @@ ${successState.tickets.map((ticket, i) => `
               value={buyerInfo.dni}
               onChange={(e) => setBuyerInfo({ ...buyerInfo, dni: e.target.value })}
               placeholder="Sin puntos ni espacios"
+              className="bg-white/5 border-white/10 h-12 rounded-2xl"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+              Teléfono
+            </label>
+            <Input
+              type="tel"
+              value={buyerInfo.phone}
+              onChange={(e) => setBuyerInfo({ ...buyerInfo, phone: e.target.value })}
+              placeholder="Ej: 1155443322"
               className="bg-white/5 border-white/10 h-12 rounded-2xl"
             />
           </div>
@@ -674,7 +755,7 @@ ${successState.tickets.map((ticket, i) => `
                   {ticket.quantity}x {ticket.type}
                 </span>
                 <span className="font-bold">
-                  ${(Number(ticket.quantity || 0) * Number(ticket.price || 0)).toLocaleString('es-AR')}
+                  {formatCurrency(Number(ticket.quantity || 0) * Number(ticket.price || 0))}
                 </span>
               </div>
             ))}
@@ -939,22 +1020,39 @@ ${successState.tickets.map((ticket, i) => `
 
               <div className="border-t border-white/5" />
 
-              {/* Tickets Summary */}
+               {/* Tickets Summary */}
               <div className="space-y-3">
                 <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                   Entradas
                 </h4>
-                <div className="space-y-2">
-                  {selectedTickets.map((ticket: SelectedTicket, i: number) => (
-                    <div key={i} className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        {ticket.quantity}x {ticket.type}
-                      </span>
-                      <span className="font-bold">
-                        ${((Number(ticket.quantity) || 0) * (Number(ticket.price) || 0)).toLocaleString('es-AR')}
-                      </span>
-                    </div>
-                  ))}
+                <div className="space-y-3">
+                  {selectedTickets.map((ticket: SelectedTicket, i: number) => {
+                    const basePrice = Number(ticket.price) || 0;
+                    let discountedPrice = basePrice;
+                    if (subtotalOriginal > 0 && discountAmount > 0) {
+                      const discountProportion = discountAmount / subtotalOriginal;
+                      discountedPrice = Math.max(0, basePrice * (1 - discountProportion));
+                    }
+                    const feeVal = discountedPrice * 0.08;
+                    const feeConIva = Math.round(feeVal * 1.21);
+                    const finalTicketPrice = discountedPrice > 0 ? Math.round((discountedPrice + feeConIva) / (1 - 0.0499)) : 0;
+                    return (
+                      <div key={i} className="space-y-1 border-b border-white/5 pb-2.5 last:border-none last:pb-0">
+                        <div className="flex justify-between text-sm">
+                          <span className="font-bold text-white">
+                            {ticket.quantity}x {ticket.type}
+                          </span>
+                          <span className="font-bold text-white font-sans">
+                            {formatCurrency(finalTicketPrice * ticket.quantity)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-[10px] text-muted-foreground/80 font-sans">
+                          <span>Precio base: {formatCurrency(basePrice)} c/u</span>
+                          <span className="font-medium">Final con cargos: {formatCurrency(finalTicketPrice)} c/u</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1022,10 +1120,10 @@ ${successState.tickets.map((ticket, i) => `
                     <div className="text-right">
                       {appliedDiscount && (
                         <p className="text-xs text-muted-foreground line-through opacity-50">
-                          ${subtotalOriginal.toLocaleString('es-AR')}
+                          {formatCurrency(subtotalOriginal)}
                         </p>
                       )}
-                      <p className="font-bold">${subtotal.toLocaleString('es-AR')}</p>
+                      <p className="font-bold">{formatCurrency(subtotal)}</p>
                     </div>
                   </div>
 
@@ -1035,23 +1133,38 @@ ${successState.tickets.map((ticket, i) => `
                         <Tag className="w-3 h-3" />
                         Descuento ({appliedDiscount.type === 'percentage' ? `${appliedDiscount.value}%` : 'Fijo'})
                       </span>
-                      <span className="font-bold">-${discountAmount.toLocaleString('es-AR')}</span>
+                      <span className="font-bold">-{formatCurrency(discountAmount)}</span>
                     </div>
                   )}
 
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Comisión ({eventCommission}%)</span>
-                    <span className="font-bold">
-                      ${platformFee.toLocaleString('es-AR')}
-                    </span>
-                  </div>
+                  {subtotal > 0 ? (
+                    <>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Cargo por Servicio ENTRÁ (8% + IVA)</span>
+                        <span className="font-bold">
+                          {formatCurrency(feeEntraConIva)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Costo de Procesamiento (4.99%)</span>
+                        <span className="font-bold">
+                          {formatCurrency(processorFee)}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Comisión ENTRÁ</span>
+                      <span className="font-bold text-green-500 uppercase tracking-widest text-xs">Gratis</span>
+                    </div>
+                  )}
 
                   <div className="border-t border-white/5 pt-3 flex justify-between items-end">
                     <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                       Total
                     </span>
                     <span className="text-3xl font-heading font-black orange-text-gradient">
-                      ${total.toLocaleString('es-AR')}
+                      {formatCurrency(total)}
                     </span>
                   </div>
                 </div>

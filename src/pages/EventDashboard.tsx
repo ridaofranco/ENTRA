@@ -4,7 +4,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, BarChart3, Calendar, Clock, DollarSign, Download,
   Edit, Gift, Loader2, MapPin, Minus, Plus, Save, Search, Send, Ticket,
-  Trash, Users, Eye, Copy, Check, RotateCcw, AlertTriangle, Tag, Percent
+  Trash, Users, Eye, Copy, Check, RotateCcw, AlertTriangle, Tag, Percent, Sparkles
 } from 'lucide-react';
 import { 
   doc, 
@@ -23,12 +23,14 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { useAuth } from '@/src/context/AuthContext';
 import { logAction } from '@/src/services/auditService';
+import { formatCurrency } from '@/src/lib/utils';
 
 interface TicketType {
   type: string;
   price: number;
   available: number;
   description?: string;
+  isEarlyBird?: boolean;
 }
 
 interface EventData {
@@ -44,6 +46,7 @@ interface EventData {
   ticketsSold: number;
   totalRevenue: number;
   organizerEmail: string;
+  officialSaleLaunched?: boolean;
 }
 
 interface OrderData {
@@ -158,7 +161,7 @@ export default function EventDashboard() {
   const [saleStatusFilter, setSaleStatusFilter] = useState<'all' | 'confirmed' | 'pending' | 'cancelled'>('all');
 
   // New sector form state
-  const [newSector, setNewSector] = useState({ type: '', price: 0, available: 0 });
+  const [newSector, setNewSector] = useState({ type: '', price: '' as any, available: '' as any });
 
   // Refund bulk confirmation state
   const [bulkRefundConfirm, setBulkRefundConfirm] = useState('');
@@ -398,16 +401,20 @@ export default function EventDashboard() {
       return;
     }
 
-    const newTickets = [...(event.tickets || []), { ...newSector }];
-    
-    try {
-      setIsSaving(true);
-      await updateDoc(doc(db, 'events', event.id), {
-        tickets: newTickets,
-        updatedAt: Timestamp.now()
-      });
-      setNewSector({ type: '', price: 0, available: 0 });
-    } catch (error) {
+      const newTickets = [...(event.tickets || []), { 
+        ...newSector,
+        price: Number(newSector.price) || 0,
+        available: Number(newSector.available) || 0
+      }];
+      
+      try {
+        setIsSaving(true);
+        await updateDoc(doc(db, 'events', event.id), {
+          tickets: newTickets,
+          updatedAt: Timestamp.now()
+        });
+        setNewSector({ type: '', price: '' as any, available: '' as any });
+      } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `events/${event.id}`);
     } finally {
       setIsSaving(false);
@@ -647,7 +654,7 @@ export default function EventDashboard() {
     const body =
 `Hola ${buyerName},
 
-Te confirmamos que tu devolución por la entrada de "${eventTitle}" ${ticketType ? `(${ticketType})` : ''} ${price > 0 ? `por un total de $${price.toLocaleString('es-AR')}` : ''} está en proceso.
+Te confirmamos que tu devolución por la entrada de "${eventTitle}" ${ticketType ? `(${ticketType})` : ''} ${price > 0 ? `por un total de ${formatCurrency(price)}` : ''} está en proceso.
 
 El monto será reintegrado al mismo medio de pago que utilizaste al momento de la compra. Tené en cuenta que los tiempos de acreditación dependen de tu banco o tarjeta y, según el medio de pago, pueden variar entre 5 y 15 días hábiles.
 
@@ -952,6 +959,30 @@ El equipo de ENTRÁ`;
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            {!event.officialSaleLaunched && event.status === 'active' && (
+              <button
+                onClick={async () => {
+                  if (confirm('¿Estás seguro de lanzar la venta oficial? Esto habilitará todos los tickets para el público.')) {
+                    try {
+                      setIsSaving(true);
+                      await updateDoc(doc(db, 'events', event.id), {
+                        officialSaleLaunched: true,
+                        updatedAt: Timestamp.now()
+                      });
+                      await logAction('LAUNCH_OFFICIAL_SALE', 'events', event.id);
+                    } catch (error) {
+                      handleFirestoreError(error, OperationType.UPDATE, `events/${event.id}`);
+                    } finally {
+                      setIsSaving(false);
+                    }
+                  }
+                }}
+                disabled={isSaving}
+                className="flex items-center gap-2 orange-gradient text-white shadow-lg shadow-orange-500/20 text-sm font-black px-5 py-2.5 rounded-xl hover:scale-[1.02] transition-all"
+              >
+                <Sparkles className="w-4 h-4" /> Lanzar Venta Oficial
+              </button>
+            )}
             <button
               onClick={() => setIsEditingEvent(true)}
               className="flex items-center gap-2 bg-white/5 border border-white/10 text-sm font-bold px-4 py-2.5 rounded-xl hover:border-blue-500/30 transition-all text-blue-400"
@@ -980,7 +1011,7 @@ El equipo de ENTRÁ`;
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
           { label: 'Tickets Vendidos', value: `${realTicketsSold} / ${totalCap}`, sub: `${totalCap > 0 ? Math.round((realTicketsSold / totalCap) * 100) : 0}% vendido`, icon: Ticket, color: 'text-orange-500', bg: 'bg-orange-500/10' },
-          { label: 'Ingresos', value: `$${realTotalRevenue.toLocaleString('es-AR')}`, sub: `$${refundedRevenue.toLocaleString('es-AR')} devueltos · ${orders.filter(o => o.status === 'confirmed').length} transacciones`, icon: DollarSign, color: 'text-green-500', bg: 'bg-green-500/10' },
+          { label: 'Ingresos', value: formatCurrency(realTotalRevenue), sub: `${formatCurrency(refundedRevenue)} devueltos · ${orders.filter(o => o.status === 'confirmed').length} transacciones`, icon: DollarSign, color: 'text-green-500', bg: 'bg-green-500/10' },
           { label: 'Cortesías', value: totalCourtesies.toString(), sub: `${totalCourtesies} tickets emitidos`, icon: Gift, color: 'text-purple-500', bg: 'bg-purple-500/10' },
           { label: 'Check-ins', value: activeTickets.filter(t => t.status === 'used').length.toString(), sub: 'Asistentes en el lugar', icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
         ].map((stat, i) => (
@@ -1031,7 +1062,7 @@ El equipo de ENTRÁ`;
                     <div className="flex justify-between items-center">
                       <div>
                         <span className="font-bold text-sm">{ticket.type}</span>
-                        <span className="text-xs text-zinc-500 ml-2">(${(Number(ticket.price) || 0).toLocaleString('es-AR')} c/u)</span>
+                        <span className="text-xs text-zinc-500 ml-2">({formatCurrency(Number(ticket.price) || 0)} c/u)</span>
                       </div>
                       <span className="text-xs font-bold">{(Number(ticketSold) || 0)}/{(Number(ticketTotal) || 0)}</span>
                     </div>
@@ -1058,7 +1089,7 @@ El equipo de ENTRÁ`;
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold">${order.total?.toLocaleString('es-AR')}</p>
+                    <p className="text-sm font-bold">{formatCurrency(order.total || 0)}</p>
                     <p className="text-[10px] text-zinc-500">{formatShortDate(order.createdAt)}</p>
                   </div>
                 </div>
@@ -1106,25 +1137,32 @@ El equipo de ENTRÁ`;
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <label className="text-xs text-zinc-500 block mb-1">Precio ($)</label>
-                        <input 
-                          type="number" 
-                          value={ticket.price || 0} 
-                          onChange={e => handleUpdateTicket(i, 'price', Number(e.target.value))}
-                          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" 
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-zinc-500 block mb-1">Capacidad total</label>
-                        <input 
-                          type="number" 
-                          value={ticketTotal || 0} 
-                          onChange={e => handleUpdateTicket(i, 'available', Number(e.target.value) - ticketSold)}
-                          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" 
-                        />
-                        <p className="text-[10px] text-zinc-500 mt-1">{(Number(ticketSold) || 0)} vendidos</p>
-                      </div>
+      <div>
+        <div className="flex justify-between items-center mb-1">
+          <label className="text-xs text-zinc-500 block">Precio ($)</label>
+          {ticket.price && Number(ticket.price) > 0 && (
+            <span className="text-[10px] font-black text-primary">{formatCurrency(Number(ticket.price))}</span>
+          )}
+        </div>
+        <input 
+          type="number" 
+          placeholder="0"
+          value={ticket.price === 0 ? '' : ticket.price} 
+          onChange={e => handleUpdateTicket(i, 'price', e.target.value === '' ? '' : Number(e.target.value))}
+          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" 
+        />
+      </div>
+      <div>
+        <label className="text-xs text-zinc-500 block mb-1">Capacidad total</label>
+        <input 
+          type="number" 
+          placeholder="0"
+          value={ticketTotal === 0 ? '' : ticketTotal} 
+          onChange={e => handleUpdateTicket(i, 'available', (e.target.value === '' ? 0 : Number(e.target.value)) - ticketSold)}
+          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" 
+        />
+        <p className="text-[10px] text-zinc-500 mt-1">{(Number(ticketSold) || 0)} vendidos</p>
+      </div>
                       <div>
                         <label className="text-xs text-zinc-500 block mb-1">Disponibles</label>
                         <div className="flex items-center gap-2 h-10">
@@ -1157,12 +1195,17 @@ El equipo de ENTRÁ`;
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-zinc-500 block mb-1">Precio ($)</label>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-xs text-zinc-500 block">Precio ($)</label>
+                    {newSector.price && Number(newSector.price) > 0 && (
+                      <span className="text-[10px] font-black text-primary">{formatCurrency(Number(newSector.price))}</span>
+                    )}
+                  </div>
                   <input 
                     type="number" 
-                    placeholder="Ej: 5000" 
-                    value={newSector.price}
-                    onChange={e => setNewSector({...newSector, price: Number(e.target.value)})}
+                    placeholder="0" 
+                    value={newSector.price || ''}
+                    onChange={e => setNewSector({...newSector, price: e.target.value === '' ? '' : Number(e.target.value)})}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" 
                   />
                 </div>
@@ -1170,9 +1213,9 @@ El equipo de ENTRÁ`;
                   <label className="text-xs text-zinc-500 block mb-1">Cantidad disponible</label>
                   <input 
                     type="number" 
-                    placeholder="Ej: 100" 
-                    value={newSector.available}
-                    onChange={e => setNewSector({...newSector, available: Number(e.target.value)})}
+                    placeholder="0" 
+                    value={newSector.available || ''}
+                    onChange={e => setNewSector({...newSector, available: e.target.value === '' ? '' : Number(e.target.value)})}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" 
                   />
                 </div>
@@ -1244,10 +1287,13 @@ El equipo de ENTRÁ`;
                 </div>
                 <div>
                   <label className="text-xs text-zinc-500 block mb-1">Tipo de ticket</label>
-                  <select value={courtesyType} onChange={e => setCourtesyType(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50 appearance-none">
-                    <option value="">Seleccioná el tipo</option>
-                    {(event.tickets || []).map((t, i) => <option key={i} value={t.type}>{t.type}</option>)}
+                  <select 
+                    value={courtesyType} 
+                    onChange={e => setCourtesyType(e.target.value)}
+                    className="w-full bg-zinc-900 text-white border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50 appearance-none shadow-xl"
+                  >
+                    <option value="" className="bg-zinc-900">Seleccioná el tipo</option>
+                    {(event.tickets || []).map((t, i) => <option key={i} value={t.type} className="bg-zinc-900">{t.type}</option>)}
                   </select>
                 </div>
                 <div>
@@ -1441,7 +1487,7 @@ El equipo de ENTRÁ`;
                       <td className="p-2 font-mono text-xs text-zinc-400">{order.id.slice(0, 8)}</td>
                       <td className="p-2 font-bold">{order.buyerName}</td>
                       <td className="p-2 text-zinc-400">{order.items?.map(it => `${it.type} x${it.quantity}`).join(', ')}</td>
-                      <td className="p-2 font-bold">${order.total?.toLocaleString('es-AR')}</td>
+                      <td className="p-2 font-bold">{formatCurrency(order.total || 0)}</td>
                       <td className="p-2 text-zinc-400">{formatShortDate(order.createdAt)}</td>
                       <td className="p-2">
                         <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
@@ -1676,7 +1722,7 @@ El equipo de ENTRÁ`;
                           </td>
                           <td className="p-2">
                             <span className="font-bold">
-                              {d.type === 'percentage' ? `${d.value}%` : `$${d.value.toLocaleString('es-AR')}`}
+                              {d.type === 'percentage' ? `${d.value}%` : formatCurrency(d.value)}
                             </span>
                           </td>
                           <td className="p-2">
@@ -1872,7 +1918,7 @@ El equipo de ENTRÁ`;
                 {!ticketToRefund.isCourtesy && (
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-500">Precio:</span>
-                    <span className="font-bold text-orange-400">${(ticketToRefund.price || 0).toLocaleString('es-AR')}</span>
+                    <span className="font-bold text-orange-400">{formatCurrency(ticketToRefund.price || 0)}</span>
                   </div>
                 )}
               </div>

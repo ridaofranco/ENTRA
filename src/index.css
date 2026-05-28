@@ -98,6 +98,15 @@
   }
 }
 
+/* Fix native select background and option contrast in dark mode */
+select {
+  @apply bg-background text-foreground;
+}
+
+option {
+  @apply bg-card text-foreground;
+}
+
 .glass {
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(12px);

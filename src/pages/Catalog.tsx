@@ -11,6 +11,7 @@ import {
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
 import { useAuth } from '@/src/context/AuthContext';
+import { formatCurrency } from '@/src/lib/utils';
 
 interface TicketType {
   type: string;
@@ -31,6 +32,8 @@ interface Event {
   status?: string;
   tickets?: TicketType[];
   scheduledPublishAt?: any;
+  isDateTBD?: boolean;
+  isVenueTBD?: boolean;
 }
 
 export default function Catalog() {
@@ -113,13 +116,13 @@ export default function Catalog() {
   };
 
   // Visibility rules:
-  // - Normal users: only active + paused (hide deleted + scheduled)
+  // - Normal users: only active + paused (hide deleted + scheduled + pending)
   // - Admin with toggle off: same as normal users
-  // - Admin with toggle on: show EVERYTHING including deleted + scheduled
+  // - Admin with toggle on: show EVERYTHING including deleted + scheduled + pending
   const visibleEvents = events.filter(event => {
     const status = event.status || 'active'; // treat missing status as active (for legacy events)
     if (isAdmin && showHiddenAdmin) return true; // admin sees all
-    return status !== 'deleted' && status !== 'scheduled';
+    return status === 'active' || status === 'paused';
   });
 
   // Unique categories from visible events
@@ -318,6 +321,7 @@ export default function Catalog() {
               const isDeleted = status === 'deleted';
               const isScheduled = status === 'scheduled';
               const isPaused = status === 'paused';
+              const isPending = status === 'pending';
 
               return (
                 <motion.div
@@ -329,7 +333,7 @@ export default function Catalog() {
                   <Link to={`/evento/${event.id}`}>
                     <Card
                       className={`glass rounded-3xl border-white/10 overflow-hidden hover:border-primary/30 transition-all group cursor-pointer h-full flex flex-col ${
-                        soldOut || isDeleted ? 'opacity-75' : ''
+                        soldOut || isDeleted || isPending ? 'opacity-75' : ''
                       }`}
                     >
                       <div className="relative h-52 overflow-hidden flex-shrink-0">
@@ -337,7 +341,7 @@ export default function Catalog() {
                           src={event.image || undefined}
                           alt={event.title}
                           className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${
-                            soldOut || isDeleted ? 'grayscale' : ''
+                            soldOut || isDeleted || isPending ? 'grayscale' : ''
                           }`}
                           referrerPolicy="no-referrer"
                         />
@@ -345,7 +349,7 @@ export default function Catalog() {
                           {event.category || 'Evento'}
                         </Badge>
 
-                        {/* Status overlays (priority: deleted > scheduled > sold out > paused) */}
+                        {/* Status overlays (priority: deleted > pending > scheduled > sold out > paused) */}
                         {isDeleted && (
                           <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
                             <div className="text-center">
@@ -362,7 +366,21 @@ export default function Catalog() {
                           </div>
                         )}
 
-                        {isScheduled && !isDeleted && (
+                        {isPending && !isDeleted && (
+                          <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                            <div className="text-center">
+                              <Clock className="w-10 h-10 text-orange-500 mx-auto mb-2 animate-pulse" />
+                              <span className="text-lg font-heading font-black text-orange-500 uppercase tracking-widest">
+                                Pendiente
+                              </span>
+                              <p className="text-[10px] text-white/70 mt-1 uppercase tracking-widest">
+                                Revisión Admin
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {isScheduled && !isDeleted && !isPending && (
                           <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                             <div className="text-center px-4">
                               <Clock className="w-10 h-10 text-blue-400 mx-auto mb-2" />
@@ -404,18 +422,20 @@ export default function Catalog() {
                       <div className="p-5 space-y-3 flex-grow flex flex-col">
                         <div className="flex items-center gap-2 text-xs text-primary font-bold uppercase tracking-widest">
                           <Calendar className="w-3.5 h-3.5" />
-                          {formatDate(event.date)}
+                          {event.isDateTBD ? "PROXIMAMENTE" : formatDate(event.date)}
                         </div>
                         <h3 className="text-lg font-heading font-bold group-hover:text-primary transition-colors">
                           {event.title}
                         </h3>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <MapPin className="w-3.5 h-3.5" />
-                          {event.venue}{event.location ? `, ${event.location}` : ''}
+                          {event.isVenueTBD ? "LUGAR POR CONFIRMAR" : `${event.venue}${event.location ? `, ${event.location}` : ''}`}
                         </div>
                         <div className="flex items-center justify-between pt-3 border-t border-white/5 mt-auto">
                           {isDeleted ? (
                             <span className="text-sm font-bold text-red-500 uppercase tracking-widest">Eliminado</span>
+                          ) : isPending ? (
+                            <span className="text-sm font-bold text-orange-500 uppercase tracking-widest animate-pulse">Pendiente</span>
                           ) : isScheduled ? (
                             <span className="text-sm font-bold text-blue-400 uppercase tracking-widest">Programado</span>
                           ) : soldOut ? (
@@ -426,7 +446,7 @@ export default function Catalog() {
                             <>
                               <span className="text-xs text-muted-foreground uppercase tracking-widest font-bold">Desde</span>
                               <span className="text-lg font-heading font-black text-primary">
-                                ${event.price ? (Number(event.price) || 0).toLocaleString('es-AR') : '0'}
+                                {event.price ? formatCurrency(Number(event.price) || 0) : formatCurrency(0)}
                               </span>
                             </>
                           )}

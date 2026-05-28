@@ -28,6 +28,9 @@
         "image": { "type": "string", "format": "uri", "description": "Event flyer image URL" },
         "category": { "type": "string", "description": "Event category (Música, Deportes, etc.)" },
         "organizerId": { "type": "string", "description": "UID of the organizer who created the event" },
+        "isDateTBD": { "type": "boolean", "description": "Flag indicating if the date is TBD / Proximamente" },
+        "isTimeTBD": { "type": "boolean", "description": "Flag indicating if the time is TBD / Proximamente" },
+        "isVenueTBD": { "type": "boolean", "description": "Flag indicating if the venue is TBD / Proximamente" },
         "tickets": {
           "type": "array",
           "description": "Available ticket types and prices"

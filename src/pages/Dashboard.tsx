@@ -3,12 +3,13 @@ import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Plus, DollarSign, Ticket, Calendar, Users, TrendingUp,
-  MapPin, BarChart3, Loader2, Eye, Settings, ChevronRight, Search, Percent
+  MapPin, BarChart3, Loader2, Eye, Settings, ChevronRight, Search, Percent, Clock
 } from 'lucide-react';
-import { collection, query, where, getDocs, doc, getDoc, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, orderBy, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '@/src/lib/firebase';
 import { useAuth } from '@/src/context/AuthContext';
+import { formatCurrency } from '@/src/lib/utils';
 
 interface EventData {
   id: string;
@@ -23,6 +24,10 @@ interface EventData {
   ticketsSold: number;
   totalRevenue: number;
   organizerEmail: string;
+  createdAt?: any;
+  isDateTBD?: boolean;
+  isTimeTBD?: boolean;
+  isVenueTBD?: boolean;
 }
 
 interface OrderData {
@@ -63,52 +68,68 @@ export default function Dashboard() {
     return () => unsubscribe();
   }, [navigate]);
 
-  // Load data
+  // Sync data with real-time listeners
   useEffect(() => {
-    if (user) loadDashboardData();
-  }, [user]);
-
-  const loadDashboardData = async () => {
     if (!user) return;
+    
     setLoading(true);
-    try {
-      let eventsQuery;
-      const isSuperAdmin = user.email === 'ridaofrancorg@gmail.com';
+    const isSuperAdmin = profile?.role === 'superadmin' || profile?.role === 'admin' || user.email === 'ridaofrancorg@gmail.com';
+    
+    let eventsQuery;
+    if (isSuperAdmin) {
+      eventsQuery = query(collection(db, 'events'));
+    } else {
+      eventsQuery = query(collection(db, 'events'), where('organizerEmail', '==', user.email));
+    }
 
-      if (isSuperAdmin) {
-        eventsQuery = query(collection(db, 'events'));
-      } else {
-        eventsQuery = query(collection(db, 'events'), where('organizerEmail', '==', user.email));
-      }
+    const unsubEvents = onSnapshot(eventsQuery, (snap) => {
+      let eventsList: EventData[] = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as EventData));
+      
+      // Sort in memory to avoid index requirements
+      eventsList.sort((a, b) => {
+        const aTime = a.createdAt?.seconds || 0;
+        const bTime = b.createdAt?.seconds || 0;
+        return bTime - aTime;
+      });
 
-      const eventsSnap = await getDocs(eventsQuery);
-      const eventsList: EventData[] = eventsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as EventData));
       setEvents(eventsList);
-
-      const eventIds = eventsList.map(e => e.id);
-      if (eventIds.length > 0) {
-        // Firestore 'in' supports max 30 values
-        const batchIds = eventIds.slice(0, 30);
-        const ordersQuery = query(
-          collection(db, 'orders'),
-          where('eventId', 'in', batchIds)
-        );
-        const ordersSnap = await getDocs(ordersQuery);
-        const ordersList: OrderData[] = ordersSnap.docs.map(d => ({ id: d.id, ...d.data() } as OrderData));
-
-        ordersList.sort((a, b) => {
-          const aTime = a.createdAt?.seconds || 0;
-          const bTime = b.createdAt?.seconds || 0;
-          return bTime - aTime;
-        });
-
-        setAllOrders(ordersList);
-        setRecentOrders(ordersList.slice(0, 20));
-      }
-    } catch (error) {
-      console.error('Dashboard load error:', error);
-    } finally {
       setLoading(false);
+
+      // Trigger orders fetch when events change
+      if (eventsList.length > 0) {
+        loadOrders(eventsList.map(e => e.id));
+      } else {
+        setAllOrders([]);
+        setRecentOrders([]);
+      }
+    }, (error) => {
+      console.error('Events sync error:', error);
+      setLoading(false);
+    });
+
+    return () => unsubEvents();
+  }, [user, profile]);
+
+  const loadOrders = async (eventIds: string[]) => {
+    try {
+      const batchIds = eventIds.slice(0, 30);
+      const ordersQuery = query(
+        collection(db, 'orders'),
+        where('eventId', 'in', batchIds)
+      );
+      const ordersSnap = await getDocs(ordersQuery);
+      const ordersList: OrderData[] = ordersSnap.docs.map(d => ({ id: d.id, ...d.data() } as OrderData));
+
+      ordersList.sort((a, b) => {
+        const aTime = a.createdAt?.seconds || 0;
+        const bTime = b.createdAt?.seconds || 0;
+        return bTime - aTime;
+      });
+
+      setAllOrders(ordersList);
+      setRecentOrders(ordersList.slice(0, 20));
+    } catch (error) {
+      console.error('Orders load error:', error);
     }
   };
 
@@ -187,9 +208,37 @@ export default function Dashboard() {
     );
   }
 
+  const hasPendingEvents = isSuperAdmin && events.some(e => e.status === 'pending');
+
   // ==================== RENDER ====================
   return (
-    <div className="pt-32 pb-20 px-6 max-w-6xl mx-auto">
+    <div className="pt-32 pb-20 px-6 max-w-6xl mx-auto space-y-6">
+      {/* Admin Pending Alert */}
+      {hasPendingEvents && (
+        <motion.div 
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          className="overflow-hidden"
+        >
+          <Link to="/admin/dashboard" className="block">
+            <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-4 flex items-center justify-between group hover:bg-orange-500/20 transition-all cursor-pointer">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-orange-500/20 text-orange-500 rounded-xl flex items-center justify-center animate-pulse">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-orange-400 font-bold text-sm">Eventos pendientes de revisión</p>
+                  <p className="text-orange-400/60 text-xs">Tenés {events.filter(e => e.status === 'pending').length} eventos esperando aprobación.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-orange-400 font-bold text-[10px] uppercase tracking-widest group-hover:translate-x-1 transition-transform">
+                Ir al Panel Admin
+              </div>
+            </div>
+          </Link>
+        </motion.div>
+      )}
+
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between mb-10">
         <div>
@@ -209,7 +258,7 @@ export default function Dashboard() {
         {[
           {
             label: 'Ingresos Totales',
-            value: `$${(Number(totalRevenue) || 0).toLocaleString('es-AR')}`,
+            value: formatCurrency(Number(totalRevenue) || 0),
             icon: DollarSign,
             color: 'text-green-500',
             bg: 'bg-green-500/10',
@@ -391,10 +440,14 @@ export default function Dashboard() {
                             <Calendar className="w-10 h-10 text-orange-500/50" />
                           </div>
                         )}
-                        <span className={`absolute top-3 right-3 text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full backdrop-blur-sm ${
-                          event.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-zinc-500/20 text-zinc-400'
+                        <span className={`absolute top-3 right-3 text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full backdrop-blur-sm border shadow-lg ${
+                          event.status === 'active' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 
+                          event.status === 'pending' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30 shadow-orange-500/10' :
+                          'bg-zinc-500/20 text-zinc-400 border-zinc-500/30'
                         }`}>
-                          {event.status === 'active' ? 'Activo' : event.status}
+                          {event.status === 'active' ? 'Activo' : 
+                           event.status === 'pending' ? 'Pendiente' : 
+                           event.status}
                         </span>
                       </div>
 
@@ -403,12 +456,12 @@ export default function Dashboard() {
                           <h3 className="font-bold text-sm truncate">{event.title}</h3>
                           <div className="flex items-center gap-2 mt-1 text-xs text-zinc-400">
                             <Calendar className="w-3 h-3" />
-                            <span>{formatDate(event.date)}</span>
+                            <span>{event.isDateTBD ? "PROXIMAMENTE" : formatDate(event.date)}</span>
                           </div>
-                          {event.venue && (
+                          {(event.venue || event.isVenueTBD) && (
                             <div className="flex items-center gap-2 mt-0.5 text-xs text-zinc-400">
                               <MapPin className="w-3 h-3" />
-                              <span>{event.venue}</span>
+                              <span>{event.isVenueTBD ? "LUGAR POR CONFIRMAR" : event.venue}</span>
                             </div>
                           )}
                         </div>
@@ -432,7 +485,7 @@ export default function Dashboard() {
                           <div>
                             <p className="text-xs text-zinc-500">Ingresos</p>
                             <p className="font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">
-                              ${(Number(eventRevenue) || 0).toLocaleString('es-AR')}
+                               {formatCurrency(Number(eventRevenue) || 0)}
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
@@ -483,7 +536,7 @@ export default function Dashboard() {
                   </div>
 
                   <div className="flex-shrink-0 text-right">
-                    <p className="font-black text-sm">${order.total?.toLocaleString('es-AR')}</p>
+                    <p className="font-black text-sm">{formatCurrency(order.total || 0)}</p>
                     <p className="text-[10px] text-zinc-500">{formatShortDate(order.createdAt)}</p>
                   </div>
 
@@ -511,7 +564,7 @@ export default function Dashboard() {
               </div>
             </div>
             <p className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">
-              ${totalCommissions.toLocaleString('es-AR')}
+              {formatCurrency(totalCommissions || 0)}
             </p>
             <p className="text-xs text-zinc-500 mt-2">
               Total acumulado por comisiones sobre ventas confirmadas. Los refunds NO devuelven la comisión — ENTRÁ se la queda.
@@ -539,13 +592,13 @@ export default function Dashboard() {
                     <div className="min-w-0 flex-grow">
                       <p className="font-bold text-sm truncate">{row.title}</p>
                       <p className="text-xs text-zinc-500 mt-0.5">
-                        {row.sales} venta{row.sales === 1 ? '' : 's'} · Neto organizador: ${row.net.toLocaleString('es-AR')}
+                        {row.sales} venta{row.sales === 1 ? '' : 's'} · Neto organizador: {formatCurrency(row.net || 0)}
                       </p>
                     </div>
                     <div className="flex-shrink-0 text-right">
                       <p className="text-xs text-zinc-500">Comisión ENTRÁ</p>
                       <p className="font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">
-                        ${row.commission.toLocaleString('es-AR')}
+                        {formatCurrency(row.commission || 0)}
                       </p>
                     </div>
                     <Link to={`/dashboard/evento/${row.id}`}>
