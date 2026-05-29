@@ -322,41 +322,11 @@ export default async function handler(req: any, res: any) {
 
     const attachments: any[] = [];
 
-    // Logo embebido inline (CID) para que cargue al instante en el mail
-    // (sin esperar a traerlo de internet). Si falla, usamos la URL remota.
-    let logoSrc = LOGO_DARK;
-    const logoData = await fetchPngDataUrl(LOGO_DARK);
-    if (logoData) {
-      attachments.push({
-        filename: 'entra-logo.png',
-        content: Buffer.from(logoData.split(',')[1], 'base64'),
-        contentType: 'image/png',
-        cid: 'entralogo',
-        contentDisposition: 'inline',
-      });
-      logoSrc = 'cid:entralogo';
-    }
-
-    // QR embebidos inline (CID): el mail queda 100% autocontenido, sin imágenes
-    // remotas -> Apple Mail/Gmail los muestran al instante, sin "tap para cargar".
-    const qrSrcs: string[] = [];
-    for (let i = 0; i < body.tickets.length; i++) {
-      try {
-        const qrBuf = await QRCode.toBuffer(body.tickets[i].qrCode, { width: 320, margin: 1 });
-        const cid = `qr${i}`;
-        attachments.push({
-          filename: `qr-${i}.png`,
-          content: qrBuf,
-          contentType: 'image/png',
-          cid,
-          contentDisposition: 'inline',
-        });
-        qrSrcs.push(`cid:${cid}`);
-      } catch (qrErr) {
-        console.error('[send-ticket-email] No se pudo generar QR inline:', qrErr);
-        qrSrcs.push(qrImageUrl(body.tickets[i].qrCode, 190));
-      }
-    }
+    // Imágenes REMOTAS por URL: es lo que mejor renderiza en Gmail y lo que
+    // Apple Mail (con Mail Privacy Protection) precarga sin pedir "tap".
+    // Tamaños fijos en el HTML evitan el "flash gigante".
+    const logoSrc = LOGO_DARK;
+    const qrSrcs: string[] = body.tickets.map((t) => qrImageUrl(t.qrCode, 320));
 
     // PDF adjunto (oscuro, de marca). Si falla, igual mandamos el mail.
     try {
