@@ -65,14 +65,14 @@ export default function Productores() {
               Cobrás el 100% de cada entrada, validás en la puerta en tiempo real y tu data es tuya. Sin intermediarios ni trabas de setup.
             </p>
 
-            <div className="flex flex-wrap gap-4 mt-8">
-              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-                <Button className="h-14 px-10 orange-gradient border-none text-white text-base rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
+            <div className="flex flex-col sm:flex-row gap-3 mt-8">
+              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto h-14 px-10 orange-gradient border-none text-white text-base rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
                   Producir con ENTRÁ
                 </Button>
               </a>
-              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" className="h-14 px-10 rounded-xl bg-white/[0.03] border border-white/10 text-white text-base hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide gap-2.5">
+              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full sm:w-auto h-14 px-10 rounded-xl bg-white/[0.03] border border-white/10 text-white text-base hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide gap-2.5">
                   <WhatsAppIcon className="w-5 h-5" />
                   Hablar por WhatsApp
                 </Button>
@@ -107,14 +107,15 @@ export default function Productores() {
               {/* Dynamic checkins logs feed */}
               <div className="space-y-3">
                 <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-mono font-bold mb-1">Registro en vivo:</p>
-                <div className="divide-y divide-white/5 font-mono text-xs">
+                <div className="divide-y divide-white/5 font-mono text-xs h-[232px] overflow-hidden">
                   <AnimatePresence initial={false}>
                     {logs.map((log) => (
                       <motion.div
                         key={log.id}
-                        initial={{ opacity: 0, height: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, height: 'auto', scale: 1 }}
-                        exit={{ opacity: 0, height: 0 }}
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.3 }}
                         className="py-3 flex items-center justify-between"
                       >
                         <div className="flex items-center gap-2.5">
@@ -310,14 +311,14 @@ export default function Productores() {
           <p className="text-muted-foreground font-sans text-sm max-w-md mx-auto leading-relaxed mt-6">
             Te creamos tu cuenta de organizador sin costo. Cobrás el 100% neto de cada entrada desde el primer día.
           </p>
-          <div className="flex flex-wrap justify-center gap-4 mt-10">
-            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-              <Button className="h-16 px-10 orange-gradient border-none text-white text-lg rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap justify-center gap-3 mt-10 max-w-md mx-auto sm:max-w-none">
+            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto h-16 px-10 orange-gradient border-none text-white text-lg rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
                 Quiero vender entradas
               </Button>
             </a>
-            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" className="h-16 px-10 rounded-xl bg-white/[0.03] border border-white/10 text-white text-lg hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide gap-2.5">
+            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+              <Button variant="outline" className="w-full sm:w-auto h-16 px-10 rounded-xl bg-white/[0.03] border border-white/10 text-white text-lg hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide gap-2.5">
                 <WhatsAppIcon className="w-5 h-5" />
                 Hablar por WhatsApp
               </Button>

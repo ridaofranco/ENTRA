@@ -43,25 +43,25 @@ export default function Ayuda() {
       <div className="max-w-4xl mx-auto px-6 relative z-10">
         
         {/* Hero Section */}
-        <div className="text-center space-y-6 mb-20">
-          <span className="text-[10px] font-sans font-bold tracking-[0.3em] uppercase text-primary">
+        <div className="text-center mb-20">
+          <span className="block text-[10px] font-sans font-bold tracking-[0.3em] uppercase text-primary">
             SOPORTE OFICIAL · ENTRÁ
           </span>
-          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-[5.5rem] font-heading font-black tracking-tighter leading-none uppercase">
+          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-[5.5rem] font-heading font-black tracking-tighter uppercase mt-6" style={{ lineHeight: '1.05' }}>
             Resolución <span className="orange-text-gradient">al toque.</span>
           </h1>
-          <p className="text-lg text-muted-foreground/80 font-sans max-w-xl mx-auto leading-relaxed">
+          <p className="text-lg text-muted-foreground/80 font-sans max-w-xl mx-auto leading-relaxed mt-8">
             Sin bots automáticos que repiten lo mismo sin entender nada. Detrás de ENTRÁ hay personas reales listas para resolver tus consultas sobre accesos.
           </p>
-          <div className="pt-4 flex flex-col sm:flex-row gap-4 justify-center">
-            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-block">
-              <Button className="h-14 px-8 orange-gradient border-none text-white font-heading font-black text-xs uppercase tracking-wide rounded-xl transition-all hover:brightness-110 flex items-center justify-center gap-2.5">
+          <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
+            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto h-14 px-8 orange-gradient border-none text-white font-heading font-black text-xs uppercase tracking-wide rounded-xl transition-all hover:brightness-110 flex items-center justify-center gap-2.5">
                 <WhatsAppIcon className="w-4 h-4" />
                 WhatsApp Directo
               </Button>
             </a>
-            <a href="mailto:soporte@entra.com.ar" className="inline-block">
-              <Button variant="outline" className="h-14 px-8 bg-white/[0.03] border border-white/10 hover:border-white/20 hover:bg-white/[0.06] text-white font-heading font-black text-xs uppercase tracking-wide rounded-xl transition-all flex items-center justify-center gap-2.5">
+            <a href="mailto:soporte@entra.com.ar" className="w-full sm:w-auto">
+              <Button variant="outline" className="w-full sm:w-auto h-14 px-8 bg-white/[0.03] border border-white/10 hover:border-white/20 hover:bg-white/[0.06] text-white font-heading font-black text-xs uppercase tracking-wide rounded-xl transition-all flex items-center justify-center gap-2.5">
                 <Mail className="w-4 h-4 text-primary" />
                 Soporte por Mail
               </Button>
