@@ -117,8 +117,8 @@ export default function EventDetail() {
   const eventDate = event.date?.toDate();
 
   return (
-    <div className="pb-20">
-      {/* Banner */}
+    <div className="pb-20 pt-20">
+      {/* Banner — arranca debajo del navbar (h-20), no por detrás */}
       <div className="relative h-[60vh] overflow-hidden">
         <img 
           src={event.image || undefined} 
