@@ -975,7 +975,7 @@ El equipo de ENTRÁ`;
               {event.venue && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {event.venue}</span>}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 [&_button]:w-full sm:[&_button]:w-auto [&_button]:justify-center">
             {!event.officialSaleLaunched && event.status === 'active' && (
               <button
                 onClick={async () => {

@@ -156,39 +156,42 @@ export default function AccessControl() {
     setCameraError(null);
     
     // Tiny delay to ensure DOM element is mounted
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       const qrReaderElement = document.getElementById("qr-reader-element");
       if (!qrReaderElement) return;
+
+      const config = {
+        fps: 15,
+        qrbox: (width: number, height: number) => {
+          const size = Math.min(width, height) * 0.7;
+          return { width: size, height: size };
+        },
+      };
+      const onScan = (decodedText: string) => {
+        if (!isCooldown.current) processTicket(decodedText);
+      };
 
       try {
         const html5QrCode = new Html5Qrcode("qr-reader-element");
         html5QrCodeRef.current = html5QrCode;
 
-        html5QrCode.start(
-          { facingMode: "environment" },
-          {
-            fps: 15,
-            qrbox: (width, height) => {
-              const size = Math.min(width, height) * 0.7;
-              return { width: size, height: size };
-            }
-          },
-          (decodedText) => {
-            if (!isCooldown.current) {
-              processTicket(decodedText);
-            }
-          },
-          () => {
-            // Noise parser callback (ignored to keep console spam free)
+        // Elegir cámara: preferimos la trasera (celular); si no hay, usamos la
+        // que haya (webcam de PC). Así funciona tanto en teléfono como en compu.
+        let camera: any = { facingMode: "environment" };
+        try {
+          const cams = await Html5Qrcode.getCameras();
+          if (cams && cams.length > 0) {
+            const back = cams.find((c) => /back|rear|environment|tras/i.test(c.label || ''));
+            camera = (back || cams[cams.length - 1]).id;
           }
-        ).catch((err) => {
-          console.error("Camera start failed:", err);
-          setCameraError("No se pudo acceder a la cámara trasera. Asegurate de dar permisos de cámara.");
-          setCameraActive(false);
-        });
+        } catch {
+          /* sin permiso de enumerar: usamos facingMode como fallback */
+        }
+
+        await html5QrCode.start(camera, config, onScan, () => {});
       } catch (err) {
-        console.error("Scanner exception:", err);
-        setCameraError("Error al iniciar el módulo de escaneo.");
+        console.error("Camera start failed:", err);
+        setCameraError("No se pudo iniciar la cámara en este dispositivo. Si estás en la compu, validá con el buscador por persona (apellido, DNI o mail) más abajo.");
         setCameraActive(false);
       }
     }, 150);
