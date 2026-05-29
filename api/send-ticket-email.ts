@@ -1,6 +1,21 @@
 import nodemailer from 'nodemailer';
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
+import { JOST_BLACK_B64, JOST_MEDIUM_B64 } from './_fonts';
+
+// Registra la fuente Jost (la de la marca) dentro del documento PDF.
+function registerJost(doc: jsPDF) {
+  try {
+    doc.addFileToVFS('Jost-Black.ttf', JOST_BLACK_B64);
+    doc.addFont('Jost-Black.ttf', 'Jost', 'bold');
+    doc.addFileToVFS('Jost-Medium.ttf', JOST_MEDIUM_B64);
+    doc.addFont('Jost-Medium.ttf', 'Jost', 'normal');
+    return true;
+  } catch (e) {
+    console.error('[send-ticket-email] No se pudo registrar Jost en el PDF:', e);
+    return false;
+  }
+}
 
 // ============================================================
 // Vercel Serverless Function — Envío de mail de confirmación
@@ -47,7 +62,7 @@ function escapeHtml(str: string): string {
 // ============================================================
 // EMAIL HTML — CLARO PREMIUM
 // ============================================================
-function buildConfirmationHTML(data: RequestBody): string {
+function buildConfirmationHTML(data: RequestBody, logoSrc: string): string {
   const venueLine = [data.eventVenue, data.eventLocation].filter(Boolean).map(escapeHtml).join(' &middot; ');
   const orderShort = (data.orderId || '').substring(0, 8).toUpperCase();
   const firstName = escapeHtml((data.buyerName || '').split(' ')[0] || '');
@@ -103,7 +118,7 @@ function buildConfirmationHTML(data: RequestBody): string {
         <tr>
           <td bgcolor="#FFFFFF" style="background-color:#FFFFFF;padding:26px 32px 22px 32px;border-bottom:3px solid #FF5C00;">
             <table width="100%" cellpadding="0" cellspacing="0" role="presentation"><tr>
-              <td style="vertical-align:middle;"><img src="${LOGO_DARK}" width="108" height="36" alt="ENTR&Aacute;" style="display:block;border:0;height:36px;width:auto;" /></td>
+              <td style="vertical-align:middle;"><img src="${logoSrc}" width="108" height="36" alt="ENTR&Aacute;" style="display:block;border:0;height:36px;width:auto;" /></td>
               <td align="right" style="vertical-align:middle;"><span style="font-size:10px;color:#A1A1AA;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">Tu entrada digital<br/>entratickets.com</span></td>
             </tr></table>
           </td>
@@ -160,7 +175,7 @@ function buildConfirmationHTML(data: RequestBody): string {
           <td bgcolor="#F7F7F8" style="background-color:#F7F7F8;padding:26px 32px;text-align:center;border-top:1px solid #ECECEE;">
             <p style="margin:0;font-size:12px;color:#71717A;">&iquest;Algo no cierra? Respond&eacute; este mail o escrib&iacute;nos:</p>
             <p style="margin:6px 0 0 0;"><a href="mailto:tuticket@entratickets.com" style="color:#EA580C;font-size:13px;font-weight:700;text-decoration:none;">tuticket@entratickets.com</a></p>
-            <img src="${LOGO_DARK}" width="84" height="28" alt="ENTR&Aacute;" style="display:block;margin:18px auto 0 auto;border:0;height:28px;width:auto;opacity:0.9;" />
+            <img src="${logoSrc}" width="84" height="28" alt="ENTR&Aacute;" style="display:block;margin:18px auto 0 auto;border:0;height:28px;width:auto;opacity:0.9;" />
             <p style="margin:8px 0 0 0;font-size:10px;color:#A1A1AA;letter-spacing:0.5px;">entratickets.com &mdash; Plataforma de ticketing digital</p>
           </td>
         </tr>
@@ -186,11 +201,14 @@ async function fetchPngDataUrl(url: string): Promise<string | null> {
   }
 }
 
-async function generateTicketsPDF(data: RequestBody): Promise<Buffer> {
+export async function generateTicketsPDF(data: RequestBody): Promise<Buffer> {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const W = doc.internal.pageSize.getWidth();   // ~595
   const H = doc.internal.pageSize.getHeight();  // ~842
   const M = 44;
+
+  const hasJost = registerJost(doc);
+  const FF = hasJost ? 'Jost' : 'helvetica'; // tipografía de la marca
 
   const logo = await fetchPngDataUrl(LOGO_LIGHT);
 
@@ -206,23 +224,23 @@ async function generateTicketsPDF(data: RequestBody): Promise<Buffer> {
     if (logo) {
       doc.addImage(logo, 'PNG', M, 44, 122, 41); // ratio ~2.97
     } else {
-      doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(26);
+      doc.setTextColor(255, 255, 255); doc.setFont(FF, 'bold'); doc.setFontSize(26);
       doc.text('ENTRA', M, 74);
     }
     doc.setDrawColor(255, 92, 0); doc.setLineWidth(2); doc.line(M, 102, W - M, 102);
 
     // Etiqueta
-    doc.setTextColor(255, 92, 0); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+    doc.setTextColor(255, 92, 0); doc.setFont(FF, 'bold'); doc.setFontSize(9);
     doc.text('TU ENTRADA', M, 132);
 
     // Título del evento
-    doc.setTextColor(250, 250, 250); doc.setFont('helvetica', 'bold'); doc.setFontSize(22);
+    doc.setTextColor(250, 250, 250); doc.setFont(FF, 'bold'); doc.setFontSize(22);
     const titleLines = doc.splitTextToSize((data.eventTitle || '').toUpperCase(), W - M * 2);
     doc.text(titleLines.slice(0, 2), M, 158);
     let y = 158 + Math.min(titleLines.length, 2) * 24 + 6;
 
     // Fecha / lugar
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(12); doc.setTextColor(161, 161, 170);
+    doc.setFont(FF, 'normal'); doc.setFontSize(12); doc.setTextColor(161, 161, 170);
     if (data.eventDate) { doc.text(data.eventDate, M, y); y += 18; }
     const venue = [data.eventVenue, data.eventLocation].filter(Boolean).join('  ·  ');
     if (venue) { doc.text(venue, M, y); y += 18; }
@@ -230,7 +248,7 @@ async function generateTicketsPDF(data: RequestBody): Promise<Buffer> {
     // Tipo de entrada (pill)
     y += 10;
     doc.setFillColor(40, 22, 8); doc.roundedRect(M, y - 13, 70 + (t.type.length * 7), 22, 11, 11, 'F');
-    doc.setTextColor(255, 140, 60); doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+    doc.setTextColor(255, 140, 60); doc.setFont(FF, 'bold'); doc.setFontSize(11);
     doc.text((t.type || '').toUpperCase(), M + 14, y + 2);
     y += 36;
 
@@ -249,22 +267,22 @@ async function generateTicketsPDF(data: RequestBody): Promise<Buffer> {
 
     // Asistente / DNI
     let yb = py + panel + 48;
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(113, 113, 122);
+    doc.setFont(FF, 'bold'); doc.setFontSize(9); doc.setTextColor(113, 113, 122);
     doc.text('ASISTENTE', M, yb);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(250, 250, 250);
+    doc.setFont(FF, 'bold'); doc.setFontSize(15); doc.setTextColor(250, 250, 250);
     doc.text(data.buyerName || '—', M, yb + 18);
     if (data.buyerDni) {
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(113, 113, 122);
+      doc.setFont(FF, 'bold'); doc.setFontSize(9); doc.setTextColor(113, 113, 122);
       doc.text('DNI', W - M, yb, { align: 'right' });
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(14); doc.setTextColor(228, 228, 231);
+      doc.setFont(FF, 'normal'); doc.setFontSize(14); doc.setTextColor(228, 228, 231);
       doc.text(String(data.buyerDni), W - M, yb + 18, { align: 'right' });
     }
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(113, 113, 122);
+    doc.setFont(FF, 'normal'); doc.setFontSize(10); doc.setTextColor(113, 113, 122);
     doc.text(`Entrada ${i + 1} de ${data.tickets.length}`, M, yb + 40);
 
     // Footer
     doc.setDrawColor(38, 38, 43); doc.setLineWidth(1); doc.line(M, H - 70, W - M, H - 70);
-    doc.setTextColor(120, 120, 128); doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+    doc.setTextColor(120, 120, 128); doc.setFont(FF, 'normal'); doc.setFontSize(9);
     doc.text('ENTRA  —  entratickets.com  —  Plataforma de ticketing digital', W / 2, H - 48, { align: 'center' });
     if (data.orderId) {
       doc.setFont('courier', 'normal'); doc.setFontSize(8); doc.setTextColor(82, 82, 91);
@@ -300,32 +318,51 @@ export default async function handler(req: any, res: any) {
       auth: { user: SMTP_USER, pass: SMTP_PASS },
     });
 
+    const attachments: any[] = [];
+
+    // Logo embebido inline (CID) para que cargue al instante en el mail
+    // (sin esperar a traerlo de internet). Si falla, usamos la URL remota.
+    let logoSrc = LOGO_DARK;
+    const logoData = await fetchPngDataUrl(LOGO_DARK);
+    if (logoData) {
+      attachments.push({
+        filename: 'entra-logo.png',
+        content: Buffer.from(logoData.split(',')[1], 'base64'),
+        contentType: 'image/png',
+        cid: 'entralogo',
+        contentDisposition: 'inline',
+      });
+      logoSrc = 'cid:entralogo';
+    }
+
     // PDF adjunto (oscuro, de marca). Si falla, igual mandamos el mail.
-    let attachments: any[] = [];
     try {
       const pdf = await generateTicketsPDF(body);
-      attachments = [{
+      attachments.push({
         filename: `ENTRA-entradas-${(body.orderId || '').substring(0, 8)}.pdf`,
         content: pdf,
         contentType: 'application/pdf',
-      }];
+        contentDisposition: 'attachment',
+      });
     } catch (pdfErr) {
       console.error('[send-ticket-email] No se pudo generar el PDF:', pdfErr);
     }
+
+    const hasPdf = attachments.some((a) => a.contentType === 'application/pdf');
 
     const info = await transporter.sendMail({
       from: { name: 'ENTRÁ Tickets', address: SMTP_USER },
       to: body.buyerEmail,
       subject: `Tu entrada para ${body.eventTitle} — ENTRÁ`,
-      html: buildConfirmationHTML(body),
+      html: buildConfirmationHTML(body, logoSrc),
       attachments,
     });
 
     console.log(
-      `[send-ticket-email] OK → to=${body.buyerEmail} | orden=${body.orderId} | tickets=${body.tickets.length} | pdf=${attachments.length > 0} | messageId=${info.messageId}`
+      `[send-ticket-email] OK → to=${body.buyerEmail} | orden=${body.orderId} | tickets=${body.tickets.length} | pdf=${hasPdf} | messageId=${info.messageId}`
     );
 
-    return res.status(200).json({ ok: true, to: body.buyerEmail, messageId: info.messageId, pdf: attachments.length > 0 });
+    return res.status(200).json({ ok: true, to: body.buyerEmail, messageId: info.messageId, pdf: hasPdf });
   } catch (error) {
     console.error('[send-ticket-email] Error enviando el mail:', error);
     return res.status(500).json({ ok: false, error: 'No se pudo enviar el email.' });
