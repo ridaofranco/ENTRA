@@ -75,20 +75,31 @@ function buildConfirmationHTML(data: RequestBody): string {
 
   return `<!DOCTYPE html>
 <html lang="es">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Tu entrada para ${escapeHtml(data.eventTitle)}</title></head>
-<body style="margin:0;padding:0;background-color:#09090B;font-family:'Helvetica Neue',Arial,sans-serif;color:#FAFAFA;-webkit-font-smoothing:antialiased;">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tu entrada para ${escapeHtml(data.eventTitle)}</title>
+  <!-- Jost = misma tipografía que la web. La cargan Apple Mail / iOS Mail (iPhone);
+       en clientes que no soportan webfonts cae a un sans-serif similar. -->
+  <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700;800;900&display=swap');
+    body, table, td, p, span, a, div { font-family: 'Jost', 'Helvetica Neue', Arial, sans-serif; }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#09090B;font-family:'Jost','Helvetica Neue',Arial,sans-serif;color:#FAFAFA;-webkit-font-smoothing:antialiased;">
   <!-- preheader oculto -->
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;">Tu entrada para ${escapeHtml(data.eventTitle)} ya est&aacute; lista. Presentá el QR en la puerta.</div>
   <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color:#09090B;padding:24px 12px;">
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" role="presentation" style="max-width:600px;width:100%;border-radius:24px;overflow:hidden;border:1px solid #1F1F23;">
 
-        <!-- HEADER -->
+        <!-- HEADER (wordmark idéntico a la web: ENTR + Á naranja sobre oscuro) -->
         <tr>
-          <td style="background:linear-gradient(135deg,#FF5C00 0%,#FF8C00 100%);background-color:#FF6B00;padding:28px 32px;">
+          <td style="background-color:#0C0C0E;padding:30px 32px 22px 32px;border-bottom:2px solid #FF5C00;">
             <table width="100%" cellpadding="0" cellspacing="0" role="presentation"><tr>
-              <td style="vertical-align:middle;"><span style="font-size:30px;font-weight:900;color:#FFFFFF;letter-spacing:-1px;">ENTR&Aacute;</span></td>
-              <td align="right" style="vertical-align:middle;"><span style="font-size:11px;color:#FFFFFF;opacity:0.92;font-weight:600;letter-spacing:0.5px;">TU ENTRADA DIGITAL<br/>entratickets.com</span></td>
+              <td style="vertical-align:middle;"><span style="font-family:'Jost','Helvetica Neue',Arial,sans-serif;font-size:32px;font-weight:900;color:#FFFFFF;letter-spacing:-1.5px;">ENTR<span style="color:#FF5C00;">&Aacute;</span></span></td>
+              <td align="right" style="vertical-align:middle;"><span style="font-size:10px;color:#71717A;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">Tu entrada digital<br/>entratickets.com</span></td>
             </tr></table>
           </td>
         </tr>
@@ -97,7 +108,7 @@ function buildConfirmationHTML(data: RequestBody): string {
         <tr>
           <td style="background-color:#101013;padding:36px 32px 8px 32px;text-align:center;">
             <div style="display:inline-block;background-color:rgba(34,197,94,0.12);color:#4ADE80;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;padding:6px 16px;border-radius:999px;">&#10003; Compra confirmada</div>
-            <p style="margin:20px 0 0 0;font-size:30px;font-weight:900;color:#FFFFFF;letter-spacing:-0.5px;line-height:1.1;">&iexcl;Est&aacute;s adentro, ${escapeHtml((data.buyerName || '').split(' ')[0] || '')}!</p>
+            <p style="margin:20px 0 0 0;font-family:'Jost','Helvetica Neue',Arial,sans-serif;font-size:32px;font-weight:900;color:#FFFFFF;letter-spacing:-1px;line-height:1.05;text-transform:uppercase;">&iexcl;Est&aacute;s adentro, ${escapeHtml((data.buyerName || '').split(' ')[0] || '')}!</p>
             <p style="margin:12px 0 0 0;font-size:15px;color:#A1A1AA;line-height:1.6;">
               ${data.tickets.length === 1 ? 'Tu entrada ya est&aacute; lista' : `Tus ${data.tickets.length} entradas ya est&aacute;n listas`}. Mostrá el QR en la puerta y list&iacute;simo.
             </p>
@@ -110,7 +121,7 @@ function buildConfirmationHTML(data: RequestBody): string {
             <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-radius:16px;border:1px solid #26262B;border-left:4px solid #F97316;">
               <tr><td style="padding:20px 22px;">
                 <p style="margin:0;font-size:10px;font-weight:800;color:#F97316;letter-spacing:2px;text-transform:uppercase;">Evento</p>
-                <p style="margin:8px 0 0 0;font-size:21px;font-weight:900;color:#FAFAFA;line-height:1.2;">${escapeHtml(data.eventTitle)}</p>
+                <p style="margin:8px 0 0 0;font-family:'Jost','Helvetica Neue',Arial,sans-serif;font-size:22px;font-weight:900;color:#FAFAFA;line-height:1.2;text-transform:uppercase;letter-spacing:-0.3px;">${escapeHtml(data.eventTitle)}</p>
                 ${data.eventDate ? `<p style="margin:10px 0 0 0;font-size:13px;color:#A1A1AA;">&#128197;&nbsp; ${escapeHtml(data.eventDate)}</p>` : ''}
                 ${venueLine ? `<p style="margin:5px 0 0 0;font-size:13px;color:#A1A1AA;">&#128205;&nbsp; ${venueLine}</p>` : ''}
               </td></tr>
@@ -144,8 +155,8 @@ function buildConfirmationHTML(data: RequestBody): string {
           <td style="background-color:#161619;padding:26px 32px;text-align:center;border-top:1px solid #26262B;">
             <p style="margin:0;font-size:12px;color:#71717A;">&iquest;Algo no cierra? Respond&eacute; este mail o escrib&iacute;nos:</p>
             <p style="margin:6px 0 0 0;"><a href="mailto:tuticket@entratickets.com" style="color:#F97316;font-size:13px;font-weight:700;text-decoration:none;">tuticket@entratickets.com</a></p>
-            <p style="margin:18px 0 0 0;font-size:18px;font-weight:900;color:#3F3F46;letter-spacing:-0.5px;">ENTR&Aacute;</p>
-            <p style="margin:4px 0 0 0;font-size:10px;color:#3F3F46;letter-spacing:0.5px;">entratickets.com &mdash; Plataforma de ticketing digital</p>
+            <p style="margin:18px 0 0 0;font-family:'Jost','Helvetica Neue',Arial,sans-serif;font-size:20px;font-weight:900;color:#FAFAFA;letter-spacing:-0.8px;">ENTR<span style="color:#FF5C00;">&Aacute;</span></p>
+            <p style="margin:4px 0 0 0;font-size:10px;color:#52525B;letter-spacing:0.5px;">entratickets.com &mdash; Plataforma de ticketing digital</p>
           </td>
         </tr>
 
