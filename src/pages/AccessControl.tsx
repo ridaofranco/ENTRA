@@ -69,7 +69,7 @@ export default function AccessControl() {
   useEffect(() => {
     if (!user) return;
 
-    const isSuperAdmin = profile?.role === 'superadmin' || profile?.role === 'suberadmin' || profile?.role === 'admin';
+    const isSuperAdmin = profile?.role === 'superadmin' || profile?.role === 'admin';
     let q;
     
     if (isSuperAdmin) {
@@ -263,7 +263,7 @@ export default function AccessControl() {
         return;
       }
 
-      if (ticketData.status === 'cancelled') {
+      if (ticketData.status === 'cancelled' || ticketData.status === 'refunded') {
         triggerFeedback('error', 'Ticket cancelado / devuelto', buyerName, ticketType);
         return;
       }
@@ -523,9 +523,9 @@ export default function AccessControl() {
               <div className="lg:col-span-7 space-y-6">
                 
                 {/* Stats Widget cards */}
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-2 sm:gap-4">
                   {[
-                    { label: 'INGRESARON', value: stats.ingresados, icon: Users, color: 'text-primary' },
+                    { label: 'INGRESARON', value: stats.ingresaron, icon: Users, color: 'text-primary' },
                     { label: 'VENDIDOS', value: stats.vendidos, icon: Ticket, color: 'text-sky-400' },
                     { label: 'RESTANTES', value: stats.faltan, icon: BarChart, color: 'text-emerald-400' },
                   ].map((s, idx) => (
@@ -713,7 +713,7 @@ export default function AccessControl() {
                 <Card className="glass p-6 rounded-[2rem] border-white/5 flex flex-col min-h-[460px]">
                   <h3 className="text-base font-heading font-bold text-white mb-4 flex items-center gap-2 uppercase tracking-wide">
                     <Scan className="w-4.5 h-4.5 text-primary" />
-                    Historial de Ingresos ({stats.ingresados})
+                    Historial de Ingresos ({stats.ingresaron})
                   </h3>
 
                   <div className="space-y-3 overflow-y-auto max-h-[400px] flex-grow pr-1">

@@ -1251,7 +1251,7 @@ ${successState.tickets.map((ticket, i) => `
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 50 }}
-          className={`fixed bottom-8 right-8 px-6 py-4 rounded-2xl shadow-2xl z-50 flex items-center gap-3 ${
+          className={`fixed bottom-4 left-4 right-4 sm:left-auto sm:bottom-8 sm:right-8 sm:max-w-md px-6 py-4 rounded-2xl shadow-2xl z-50 flex items-center gap-3 ${
             toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
           } text-white font-bold`}
         >
