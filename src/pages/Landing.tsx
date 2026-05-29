@@ -155,7 +155,7 @@ export default function Landing() {
                         <img
                           src={event.image}
                           alt={event.title}
-                          className="w-full h-full object-cover md:grayscale md:opacity-80 md:group-hover:grayscale-0 md:group-hover:opacity-100 transition-all duration-500"
+                          className="w-full h-full object-cover transition duration-500"
                           referrerPolicy="no-referrer"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/10 to-transparent opacity-80" />
@@ -272,7 +272,7 @@ export default function Landing() {
               <img
                 src={img.url}
                 alt={img.caption}
-                className="w-full h-full object-cover md:grayscale md:brightness-50 group-hover:grayscale-0 md:group-hover:brightness-90 brightness-90 transition-all duration-500"
+                className="w-full h-full object-cover transition duration-500"
                 referrerPolicy="no-referrer"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
