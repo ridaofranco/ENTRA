@@ -50,7 +50,7 @@ function buildConfirmationHTML(data: RequestBody): string {
       <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:18px;border-radius:18px;overflow:hidden;border:1px solid #2A2A2E;">
         <tr>
           <!-- Lado info -->
-          <td style="background-color:#1C1C1F;padding:22px 22px;vertical-align:top;width:56%;">
+          <td bgcolor="#1C1C1F" style="background-color:#1C1C1F;padding:22px 22px;vertical-align:top;width:56%;">
             <span style="display:inline-block;background-color:rgba(249,115,22,0.12);color:#F97316;font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;padding:5px 12px;border-radius:999px;">${escapeHtml(t.type)}</span>
             <p style="margin:18px 0 0 0;font-size:9px;font-weight:800;color:#52525B;letter-spacing:2px;">ASISTENTE</p>
             <p style="margin:3px 0 0 0;font-size:15px;font-weight:700;color:#FAFAFA;">${escapeHtml(data.buyerName)}</p>
@@ -60,9 +60,9 @@ function buildConfirmationHTML(data: RequestBody): string {
             <p style="margin:3px 0 0 0;font-size:13px;color:#D4D4D8;">${i + 1} de ${data.tickets.length}</p>
           </td>
           <!-- Perforación -->
-          <td style="background-color:#1C1C1F;width:1px;padding:0;border-left:2px dashed #3F3F46;"></td>
+          <td bgcolor="#1C1C1F" style="background-color:#1C1C1F;width:1px;padding:0;border-left:2px dashed #3F3F46;"></td>
           <!-- Lado QR -->
-          <td style="background-color:#1C1C1F;padding:22px;vertical-align:middle;text-align:center;width:44%;">
+          <td bgcolor="#1C1C1F" style="background-color:#1C1C1F;padding:22px;vertical-align:middle;text-align:center;width:44%;">
             <div style="background-color:#FFFFFF;border-radius:14px;padding:12px;display:inline-block;">
               <img src="${qrImageUrl(t.qrCode, 190)}" alt="C&oacute;digo QR de la entrada" width="160" height="160" style="display:block;border-radius:4px;" />
             </div>
@@ -73,32 +73,34 @@ function buildConfirmationHTML(data: RequestBody): string {
     )
     .join('');
 
+  const LOGO = 'https://entratickets.com/entra-logo.png';
+
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <meta name="supported-color-schemes" content="dark">
   <title>Tu entrada para ${escapeHtml(data.eventTitle)}</title>
-  <!-- Jost = misma tipografía que la web. La cargan Apple Mail / iOS Mail (iPhone);
-       en clientes que no soportan webfonts cae a un sans-serif similar. -->
   <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700;800;900&display=swap');
     body, table, td, p, span, a, div { font-family: 'Jost', 'Helvetica Neue', Arial, sans-serif; }
+    :root { color-scheme: dark; supported-color-schemes: dark; }
   </style>
 </head>
-<body style="margin:0;padding:0;background-color:#09090B;font-family:'Jost','Helvetica Neue',Arial,sans-serif;color:#FAFAFA;-webkit-font-smoothing:antialiased;">
-  <!-- preheader oculto -->
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">Tu entrada para ${escapeHtml(data.eventTitle)} ya est&aacute; lista. Presentá el QR en la puerta.</div>
-  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color:#09090B;padding:24px 12px;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" role="presentation" style="max-width:600px;width:100%;border-radius:24px;overflow:hidden;border:1px solid #1F1F23;">
+<body bgcolor="#09090B" style="margin:0;padding:0;background-color:#09090B;font-family:'Jost','Helvetica Neue',Arial,sans-serif;color:#FAFAFA;-webkit-font-smoothing:antialiased;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">Tu entrada para ${escapeHtml(data.eventTitle)} ya est&aacute; lista. Mostr&aacute; el QR en la puerta.</div>
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" bgcolor="#09090B" style="background-color:#09090B;padding:24px 12px;">
+    <tr><td align="center" bgcolor="#09090B" style="background-color:#09090B;">
+      <table width="600" cellpadding="0" cellspacing="0" role="presentation" bgcolor="#101013" style="max-width:600px;width:100%;background-color:#101013;border-radius:24px;overflow:hidden;border:1px solid #1F1F23;">
 
-        <!-- HEADER (wordmark idéntico a la web: ENTR + Á naranja sobre oscuro) -->
+        <!-- HEADER: logo como imagen (idéntico en todos los clientes) -->
         <tr>
-          <td style="background-color:#0C0C0E;padding:30px 32px 22px 32px;border-bottom:2px solid #FF5C00;">
+          <td bgcolor="#0C0C0E" style="background-color:#0C0C0E;padding:28px 32px 22px 32px;border-bottom:2px solid #FF5C00;">
             <table width="100%" cellpadding="0" cellspacing="0" role="presentation"><tr>
-              <td style="vertical-align:middle;"><span style="font-family:'Jost','Helvetica Neue',Arial,sans-serif;font-size:32px;font-weight:900;color:#FFFFFF;letter-spacing:-1.5px;">ENTR<span style="color:#FF5C00;">&Aacute;</span></span></td>
+              <td style="vertical-align:middle;"><img src="${LOGO}" width="113" height="38" alt="ENTR&Aacute;" style="display:block;border:0;outline:none;text-decoration:none;height:38px;width:auto;" /></td>
               <td align="right" style="vertical-align:middle;"><span style="font-size:10px;color:#71717A;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">Tu entrada digital<br/>entratickets.com</span></td>
             </tr></table>
           </td>
@@ -106,19 +108,19 @@ function buildConfirmationHTML(data: RequestBody): string {
 
         <!-- HERO -->
         <tr>
-          <td style="background-color:#101013;padding:36px 32px 8px 32px;text-align:center;">
-            <div style="display:inline-block;background-color:rgba(34,197,94,0.12);color:#4ADE80;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;padding:6px 16px;border-radius:999px;">&#10003; Compra confirmada</div>
-            <p style="margin:20px 0 0 0;font-family:'Jost','Helvetica Neue',Arial,sans-serif;font-size:32px;font-weight:900;color:#FFFFFF;letter-spacing:-1px;line-height:1.05;text-transform:uppercase;">&iexcl;Est&aacute;s adentro, ${escapeHtml((data.buyerName || '').split(' ')[0] || '')}!</p>
+          <td bgcolor="#101013" style="background-color:#101013;padding:36px 32px 8px 32px;text-align:center;">
+            <div style="display:inline-block;background-color:#0E2C18;color:#4ADE80;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;padding:6px 16px;border-radius:999px;">&#10003; Compra confirmada</div>
+            <p style="margin:20px 0 0 0;font-family:'Jost','Helvetica Neue',Arial,sans-serif;font-size:30px;font-weight:900;color:#FFFFFF;letter-spacing:-1px;line-height:1.05;text-transform:uppercase;">&iexcl;Est&aacute;s adentro, ${escapeHtml((data.buyerName || '').split(' ')[0] || '')}!</p>
             <p style="margin:12px 0 0 0;font-size:15px;color:#A1A1AA;line-height:1.6;">
-              ${data.tickets.length === 1 ? 'Tu entrada ya est&aacute; lista' : `Tus ${data.tickets.length} entradas ya est&aacute;n listas`}. Mostrá el QR en la puerta y list&iacute;simo.
+              ${data.tickets.length === 1 ? 'Tu entrada ya est&aacute; lista' : `Tus ${data.tickets.length} entradas ya est&aacute;n listas`}. Mostr&aacute; el QR en la puerta y list&iacute;simo.
             </p>
           </td>
         </tr>
 
         <!-- EVENT CARD -->
         <tr>
-          <td style="background-color:#101013;padding:24px 32px 8px 32px;">
-            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-radius:16px;border:1px solid #26262B;border-left:4px solid #F97316;">
+          <td bgcolor="#101013" style="background-color:#101013;padding:24px 32px 8px 32px;">
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" bgcolor="#161619" style="background-color:#161619;border-radius:16px;border:1px solid #26262B;border-left:4px solid #F97316;">
               <tr><td style="padding:20px 22px;">
                 <p style="margin:0;font-size:10px;font-weight:800;color:#F97316;letter-spacing:2px;text-transform:uppercase;">Evento</p>
                 <p style="margin:8px 0 0 0;font-family:'Jost','Helvetica Neue',Arial,sans-serif;font-size:22px;font-weight:900;color:#FAFAFA;line-height:1.2;text-transform:uppercase;letter-spacing:-0.3px;">${escapeHtml(data.eventTitle)}</p>
@@ -130,15 +132,15 @@ function buildConfirmationHTML(data: RequestBody): string {
         </tr>
 
         <!-- TICKETS -->
-        <tr><td style="background-color:#101013;padding:20px 32px 8px 32px;">
+        <tr><td bgcolor="#101013" style="background-color:#101013;padding:20px 32px 8px 32px;">
           <p style="margin:0 0 14px 0;font-size:10px;font-weight:800;color:#52525B;letter-spacing:2px;text-transform:uppercase;">${data.tickets.length === 1 ? 'Tu entrada' : 'Tus entradas'}</p>
           ${ticketCards}
         </td></tr>
 
         <!-- INSTRUCCIONES -->
         <tr>
-          <td style="background-color:#101013;padding:8px 32px 28px 32px;">
-            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color:#161619;border-radius:14px;">
+          <td bgcolor="#101013" style="background-color:#101013;padding:8px 32px 28px 32px;">
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" bgcolor="#161619" style="background-color:#161619;border-radius:14px;">
               <tr><td style="padding:18px 20px;">
                 <p style="margin:0 0 10px 0;font-size:11px;font-weight:800;color:#A1A1AA;letter-spacing:1.5px;text-transform:uppercase;">Antes del evento</p>
                 <p style="margin:0 0 7px 0;font-size:13px;color:#8B8B92;line-height:1.5;">&#8226;&nbsp; Present&aacute; el QR desde el celular o impreso.</p>
@@ -152,11 +154,11 @@ function buildConfirmationHTML(data: RequestBody): string {
 
         <!-- FOOTER -->
         <tr>
-          <td style="background-color:#161619;padding:26px 32px;text-align:center;border-top:1px solid #26262B;">
+          <td bgcolor="#161619" style="background-color:#161619;padding:26px 32px;text-align:center;border-top:1px solid #26262B;">
             <p style="margin:0;font-size:12px;color:#71717A;">&iquest;Algo no cierra? Respond&eacute; este mail o escrib&iacute;nos:</p>
             <p style="margin:6px 0 0 0;"><a href="mailto:tuticket@entratickets.com" style="color:#F97316;font-size:13px;font-weight:700;text-decoration:none;">tuticket@entratickets.com</a></p>
-            <p style="margin:18px 0 0 0;font-family:'Jost','Helvetica Neue',Arial,sans-serif;font-size:20px;font-weight:900;color:#FAFAFA;letter-spacing:-0.8px;">ENTR<span style="color:#FF5C00;">&Aacute;</span></p>
-            <p style="margin:4px 0 0 0;font-size:10px;color:#52525B;letter-spacing:0.5px;">entratickets.com &mdash; Plataforma de ticketing digital</p>
+            <img src="${LOGO}" width="89" height="30" alt="ENTR&Aacute;" style="display:block;margin:18px auto 0 auto;border:0;outline:none;height:30px;width:auto;opacity:0.85;" />
+            <p style="margin:8px 0 0 0;font-size:10px;color:#52525B;letter-spacing:0.5px;">entratickets.com &mdash; Plataforma de ticketing digital</p>
           </td>
         </tr>
 
