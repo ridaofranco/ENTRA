@@ -53,7 +53,14 @@ export default function AccessControl() {
     message: string;
     name?: string;
     ticketType?: string;
+    sub?: string;
   } | null>(null);
+
+  // Buscador por persona (apellido / DNI / mail)
+  const [personQuery, setPersonQuery] = useState('');
+  const [personResults, setPersonResults] = useState<any[]>([]);
+  const [searchingPerson, setSearchingPerson] = useState(false);
+  const [personSearched, setPersonSearched] = useState(false);
 
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [stats, setStats] = useState({
@@ -223,14 +230,32 @@ export default function AccessControl() {
     }
   };
 
+  // Tiempo transcurrido legible (para "usado hace X")
+  const timeAgo = (ts: any): string => {
+    try {
+      const then = ts?.toDate ? ts.toDate() : (ts?.seconds ? new Date(ts.seconds * 1000) : null);
+      if (!then) return '';
+      const mins = Math.floor((Date.now() - then.getTime()) / 60000);
+      if (mins < 1) return 'hace instantes';
+      if (mins < 60) return `hace ${mins} min`;
+      const hrs = Math.floor(mins / 60);
+      const rem = mins % 60;
+      if (hrs < 24) return `hace ${hrs}h${rem ? ` ${rem}min` : ''}`;
+      return `hace ${Math.floor(hrs / 24)} día(s)`;
+    } catch {
+      return '';
+    }
+  };
+
   // Helper trigger for visual result and haptic feedback
   const triggerFeedback = (
     type: 'success' | 'warning' | 'error',
     message: string,
     name?: string,
-    ticketType?: string
+    ticketType?: string,
+    sub?: string
   ) => {
-    setScanFeedback({ type, message, name, ticketType });
+    setScanFeedback({ type, message, name, ticketType, sub });
     triggerVibration(type);
   };
 
@@ -269,7 +294,25 @@ export default function AccessControl() {
       }
 
       if (ticketData.status === 'used') {
-        triggerFeedback('warning', 'Ticket ya utilizado / duplicado', buyerName, ticketType);
+        const usedAgo = timeAgo(ticketData.usedAt);
+        triggerFeedback(
+          'error',
+          'DENEGADO · YA UTILIZADO',
+          buyerName,
+          ticketType,
+          usedAgo ? `Ingresó ${usedAgo}` : undefined
+        );
+        // Registrar el intento de reingreso denegado en el historial
+        try {
+          await addDoc(collection(db, 'checkins'), {
+            ticketId: ticketDoc.id,
+            attendeeName: buyerName,
+            ticketType: ticketType,
+            timestamp: Timestamp.now(),
+            status: 'error',
+            eventId: selectedEvent.id,
+          });
+        } catch { /* no bloqueamos por el log */ }
         return;
       }
 
@@ -308,6 +351,41 @@ export default function AccessControl() {
   const handleManualCodeSubmit = () => {
     if (!manualTicketCode.trim()) return;
     processTicket(manualTicketCode);
+  };
+
+  // Buscar la compra por apellido / DNI / mail (para cuando no tienen el QR)
+  const handlePersonSearch = async () => {
+    if (!selectedEvent || !personQuery.trim()) return;
+    setSearchingPerson(true);
+    setPersonSearched(true);
+    try {
+      const snap = await getDocs(query(collection(db, 'tickets'), where('eventId', '==', selectedEvent.id)));
+      const q = personQuery.trim().toLowerCase();
+      const results = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() } as any))
+        .filter(
+          (t) =>
+            (t.buyerName || '').toLowerCase().includes(q) ||
+            (t.buyerEmail || '').toLowerCase().includes(q) ||
+            String(t.buyerDni || '').toLowerCase().includes(q)
+        )
+        .sort((a, b) => (a.status === 'used' ? 1 : 0) - (b.status === 'used' ? 1 : 0))
+        .slice(0, 20);
+      setPersonResults(results);
+    } catch (e) {
+      console.error('Error buscando persona:', e);
+      setPersonResults([]);
+    } finally {
+      setSearchingPerson(false);
+    }
+  };
+
+  // Validar (quemar) una entrada encontrada en la búsqueda por persona
+  const handleValidateResult = async (t: any) => {
+    isCooldown.current = false; // permitir validar desde la búsqueda aunque venga de un escaneo reciente
+    await processTicket(t.qrCode);
+    // refrescar resultados para reflejar el nuevo estado (usado / hace cuánto)
+    setTimeout(() => { handlePersonSearch(); }, 500);
   };
 
   const activeEventsList = events.filter(e => 
@@ -598,6 +676,12 @@ export default function AccessControl() {
                           </div>
                         )}
 
+                        {scanFeedback.sub && (
+                          <p className="mt-4 text-base font-black uppercase tracking-wide opacity-95">
+                            {scanFeedback.sub}
+                          </p>
+                        )}
+
                         {/* Cooldown progress bar */}
                         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-48 h-1 bg-black/10 rounded-full overflow-hidden">
                           <motion.div 
@@ -677,30 +761,63 @@ export default function AccessControl() {
                       </div>
                     )}
 
-                    {/* Manual Ticket Fallback Input */}
+                    {/* Buscar persona (sin QR): apellido, DNI o mail */}
                     <div className="w-full max-w-sm border-t border-white/5 pt-6 space-y-3">
                       <div className="text-xs uppercase font-mono tracking-widest text-zinc-500 text-center">
-                        Ingreso Manual (Fallback)
+                        Buscar persona (sin QR)
                       </div>
                       <div className="flex gap-2">
                         <div className="relative flex-grow">
                           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                          <Input 
-                            placeholder="Ej: QR_832bd9b21f..." 
+                          <Input
+                            placeholder="Apellido, DNI o mail..."
                             className="pl-10 h-11 bg-white/5 border-white/10 rounded-xl text-white placeholder:text-zinc-600 text-sm focus:border-primary/50"
-                            value={manualTicketCode}
-                            onChange={(e) => setManualTicketCode(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleManualCodeSubmit()}
-                            disabled={processing}
+                            value={personQuery}
+                            onChange={(e) => setPersonQuery(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handlePersonSearch()}
+                            disabled={searchingPerson}
                           />
                         </div>
                         <Button
-                          onClick={handleManualCodeSubmit}
-                          disabled={processing || !manualTicketCode.trim()}
-                          className="px-5 h-11 orange-gradient border-none font-bold text-xs rounded-xl"
+                          onClick={handlePersonSearch}
+                          disabled={searchingPerson || !personQuery.trim()}
+                          className="px-5 h-11 orange-gradient border-none font-heading font-black text-xs rounded-xl text-white"
                         >
-                          {processing ? '...' : 'Validar'}
+                          {searchingPerson ? '...' : 'Buscar'}
                         </Button>
+                      </div>
+
+                      {/* Resultados de la búsqueda */}
+                      {personSearched && !searchingPerson && personResults.length === 0 && (
+                        <p className="text-zinc-500 text-xs text-center py-2">No se encontró ninguna compra con ese dato.</p>
+                      )}
+                      <div className="space-y-2">
+                        {personResults.map((t) => {
+                          const used = t.status === 'used';
+                          const dead = t.status === 'refunded' || t.status === 'cancelled';
+                          return (
+                            <div key={t.id} className="flex items-center justify-between gap-2 p-3 rounded-xl bg-white/5 border border-white/10 text-left">
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold text-white truncate">{t.buyerName || 'Sin nombre'}</p>
+                                <p className="text-[10px] text-zinc-500 truncate">
+                                  {t.ticketType}{t.buyerDni ? ` · DNI ${t.buyerDni}` : (t.buyerEmail ? ` · ${t.buyerEmail}` : '')}
+                                </p>
+                                {used && <p className="text-[10px] text-red-400 font-bold mt-0.5">Ya ingresó {timeAgo(t.usedAt)}</p>}
+                                {dead && <p className="text-[10px] text-red-400 font-bold mt-0.5">Devuelto / cancelado</p>}
+                              </div>
+                              <Button
+                                onClick={() => handleValidateResult(t)}
+                                disabled={processing || used || dead}
+                                className={cn(
+                                  "px-3 h-9 text-[11px] font-heading font-black rounded-lg shrink-0",
+                                  used || dead ? "bg-white/5 text-zinc-500 border border-white/10" : "orange-gradient text-white"
+                                )}
+                              >
+                                {used ? 'Usado' : dead ? '—' : 'Validar'}
+                              </Button>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
