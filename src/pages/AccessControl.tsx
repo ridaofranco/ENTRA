@@ -390,8 +390,8 @@ export default function AccessControl() {
   };
 
   const activeEventsList = events.filter(e => 
-    e.title.toLowerCase().includes(eventSearch.toLowerCase()) ||
-    e.venue.toLowerCase().includes(eventSearch.toLowerCase())
+    (e.title || '').toLowerCase().includes(eventSearch.toLowerCase()) ||
+    (e.venue || '').toLowerCase().includes(eventSearch.toLowerCase())
   );
 
   // loading view

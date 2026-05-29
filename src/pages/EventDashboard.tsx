@@ -202,17 +202,13 @@ export default function EventDashboard() {
     (profile?.role === 'organizer' && event?.organizerEmail === authUser?.email) ||
     authUser?.email === 'ridaofrancorg@gmail.com';
 
-  // Real-time stats calculation — NET of platform commission AND refunds.
-  // Organizers should only see what they actually earn (total - fee). ENTRÁ keeps the fee.
-  const grossRevenue = orders.filter(o => o.status === 'confirmed').reduce(
-    (sum, o: any) => sum + (Number(o.subtotal) || (Number(o.total) || 0) - (Number(o.fee) || 0)),
-    0
-  );
-  const grossTicketsSold = orders.filter(o => o.status === 'confirmed').reduce((sum, o: any) => {
-    return sum + (o.items || []).reduce((s: number, item: any) => s + (item.quantity || 0), 0);
-  }, 0);
-  const realTotalRevenue = Math.max(0, grossRevenue - refundedRevenue);
-  const realTicketsSold = Math.max(0, grossTicketsSold - refundedCount);
+  // Stats calculados desde la colección de TICKETS (fuente de verdad), no desde
+  // orders, para que las devoluciones se reflejen siempre. El organizador cobra
+  // el precio base de cada ticket válido (no cortesía, no devuelto/cancelado).
+  const paidActiveTickets = activeTickets.filter(t => !t.isCourtesy);
+  const realTicketsSold = paidActiveTickets.length;
+  const realTotalRevenue = paidActiveTickets.reduce((s, t) => s + (Number(t.price) || 0), 0);
+  const validOrdersCount = new Set(paidActiveTickets.map(t => t.orderId).filter(Boolean)).size;
 
   // Filtered attendees
   const filteredAttendees = activeTickets.filter(t => {
@@ -1037,7 +1033,7 @@ El equipo de ENTRÁ`;
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
           { label: 'Tickets Vendidos', value: `${realTicketsSold} / ${totalCap}`, sub: `${totalCap > 0 ? Math.round((realTicketsSold / totalCap) * 100) : 0}% vendido`, icon: Ticket, color: 'text-orange-500', bg: 'bg-orange-500/10' },
-          { label: 'Ingresos', value: formatCurrency(realTotalRevenue), sub: `${formatCurrency(refundedRevenue)} devueltos · ${orders.filter(o => o.status === 'confirmed').length} transacciones`, icon: DollarSign, color: 'text-green-500', bg: 'bg-green-500/10' },
+          { label: 'Ingresos', value: formatCurrency(realTotalRevenue), sub: `${formatCurrency(refundedRevenue)} devueltos · ${validOrdersCount} ventas`, icon: DollarSign, color: 'text-green-500', bg: 'bg-green-500/10' },
           { label: 'Cortesías', value: totalCourtesies.toString(), sub: `${totalCourtesies} tickets emitidos`, icon: Gift, color: 'text-purple-500', bg: 'bg-purple-500/10' },
           { label: 'Check-ins', value: activeTickets.filter(t => t.status === 'used').length.toString(), sub: 'Asistentes en el lugar', icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
         ].map((stat, i) => (
@@ -1047,7 +1043,7 @@ El equipo de ENTRÁ`;
               <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">{stat.label}</span>
               <div className={`${stat.bg} p-2 rounded-xl`}><stat.icon className={`w-4 h-4 ${stat.color}`} /></div>
             </div>
-            <p className="text-xl font-black">{stat.value || '0'}</p>
+            <p className="text-2xl font-heading font-black">{stat.value || '0'}</p>
             <p className="text-xs text-zinc-500 mt-1">{stat.sub || ''}</p>
           </motion.div>
         ))}
