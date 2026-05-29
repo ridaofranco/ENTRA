@@ -4,7 +4,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, BarChart3, Calendar, Clock, DollarSign, Download,
   Edit, Gift, Loader2, MapPin, Minus, Plus, Save, Search, Send, Ticket,
-  Trash, Users, Eye, Copy, Check, RotateCcw, AlertTriangle, Tag, Percent, Sparkles, Mail
+  Trash, Users, Eye, Copy, Check, RotateCcw, AlertTriangle, Tag, Percent, Sparkles, Mail, Scan
 } from 'lucide-react';
 import { 
   doc, 
@@ -1013,6 +1013,11 @@ El equipo de ENTRÁ`;
             <Link to={`/evento/${event.id}`}>
               <button className="flex items-center gap-2 bg-white/5 border border-white/10 text-sm font-heading font-black px-4 py-2.5 rounded-xl hover:border-orange-500/30 transition-all">
                 <Eye className="w-4 h-4" /> Ver página pública
+              </button>
+            </Link>
+            <Link to="/control-acceso">
+              <button className="flex items-center gap-2 orange-gradient text-white text-sm font-heading font-black px-4 py-2.5 rounded-xl hover:brightness-110 transition-all">
+                <Scan className="w-4 h-4" /> Control de Acceso
               </button>
             </Link>
             {canRefund && activeTickets.length > 0 && (

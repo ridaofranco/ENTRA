@@ -26,6 +26,7 @@ export function Navbar() {
     { to: '/ayuda', label: 'Ayuda', show: true, highlight: false },
     { to: '/dashboard', label: 'Dashboard', show: isOrganizer, highlight: false },
     { to: '/crear-evento', label: 'Crear Evento', show: isOrganizer, highlight: false },
+    { to: '/control-acceso', label: 'Control Acceso', show: isOrganizer, highlight: false },
     { to: '/admin/dashboard', label: 'Admin', show: isAdmin, highlight: true },
   ].filter((l) => l.show);
 
