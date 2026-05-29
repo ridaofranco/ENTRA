@@ -73,7 +73,7 @@ function buildConfirmationHTML(data: RequestBody): string {
     )
     .join('');
 
-  const LOGO = 'https://entratickets.com/entra-logo.png';
+  const LOGO = 'https://entra-by-der.vercel.app/entra-logo.png';
 
   return `<!DOCTYPE html>
 <html lang="es">
