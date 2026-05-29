@@ -64,7 +64,7 @@ function escapeHtml(str: string): string {
 // ============================================================
 // EMAIL HTML — CLARO PREMIUM
 // ============================================================
-function buildConfirmationHTML(data: RequestBody, logoSrc: string): string {
+function buildConfirmationHTML(data: RequestBody, logoSrc: string, qrSrcs: string[]): string {
   const venueLine = [data.eventVenue, data.eventLocation].filter(Boolean).map(escapeHtml).join(' &middot; ');
   const orderShort = (data.orderId || '').substring(0, 8).toUpperCase();
   const firstName = escapeHtml((data.buyerName || '').split(' ')[0] || '');
@@ -86,7 +86,7 @@ function buildConfirmationHTML(data: RequestBody, logoSrc: string): string {
           <td bgcolor="#FFFFFF" style="background-color:#FFFFFF;width:1px;padding:0;border-left:2px dashed #D4D4D8;"></td>
           <td bgcolor="#FFFFFF" style="background-color:#FFFFFF;padding:22px;vertical-align:middle;text-align:center;width:44%;">
             <div style="border:1px solid #E4E4E7;border-radius:14px;padding:10px;display:inline-block;">
-              <img src="${qrImageUrl(t.qrCode, 190)}" alt="C&oacute;digo QR" width="158" height="158" style="display:block;" />
+              <img src="${qrSrcs[i] || qrImageUrl(t.qrCode, 190)}" alt="C&oacute;digo QR" width="158" height="158" style="display:block;width:158px;height:158px;border:0;" />
             </div>
             <p style="margin:9px 0 0 0;font-size:8px;color:#A1A1AA;font-family:'Courier New',monospace;word-break:break-all;line-height:1.4;">${escapeHtml(t.qrCode)}</p>
           </td>
@@ -120,7 +120,7 @@ function buildConfirmationHTML(data: RequestBody, logoSrc: string): string {
         <tr>
           <td bgcolor="#FFFFFF" style="background-color:#FFFFFF;padding:26px 32px 22px 32px;border-bottom:3px solid #FF5C00;">
             <table width="100%" cellpadding="0" cellspacing="0" role="presentation"><tr>
-              <td style="vertical-align:middle;"><img src="${logoSrc}" width="108" height="36" alt="ENTR&Aacute;" style="display:block;border:0;height:36px;width:auto;" /></td>
+              <td style="vertical-align:middle;"><img src="${logoSrc}" width="113" height="38" alt="ENTR&Aacute;" style="display:block;border:0;width:113px;height:38px;" /></td>
               <td align="right" style="vertical-align:middle;"><span style="font-size:10px;color:#A1A1AA;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">Tu entrada digital<br/>entratickets.com</span></td>
             </tr></table>
           </td>
@@ -177,7 +177,7 @@ function buildConfirmationHTML(data: RequestBody, logoSrc: string): string {
           <td bgcolor="#F7F7F8" style="background-color:#F7F7F8;padding:26px 32px;text-align:center;border-top:1px solid #ECECEE;">
             <p style="margin:0;font-size:12px;color:#71717A;">&iquest;Algo no cierra? Respond&eacute; este mail o escrib&iacute;nos:</p>
             <p style="margin:6px 0 0 0;"><a href="mailto:tuticket@entratickets.com" style="color:#EA580C;font-size:13px;font-weight:700;text-decoration:none;">tuticket@entratickets.com</a></p>
-            <img src="${logoSrc}" width="84" height="28" alt="ENTR&Aacute;" style="display:block;margin:18px auto 0 auto;border:0;height:28px;width:auto;opacity:0.9;" />
+            <img src="${logoSrc}" width="84" height="28" alt="ENTR&Aacute;" style="display:block;margin:18px auto 0 auto;border:0;width:84px;height:28px;opacity:0.9;" />
             <p style="margin:8px 0 0 0;font-size:10px;color:#A1A1AA;letter-spacing:0.5px;">entratickets.com &mdash; Plataforma de ticketing digital</p>
           </td>
         </tr>
@@ -337,6 +337,27 @@ export default async function handler(req: any, res: any) {
       logoSrc = 'cid:entralogo';
     }
 
+    // QR embebidos inline (CID): el mail queda 100% autocontenido, sin imágenes
+    // remotas -> Apple Mail/Gmail los muestran al instante, sin "tap para cargar".
+    const qrSrcs: string[] = [];
+    for (let i = 0; i < body.tickets.length; i++) {
+      try {
+        const qrBuf = await QRCode.toBuffer(body.tickets[i].qrCode, { width: 320, margin: 1 });
+        const cid = `qr${i}`;
+        attachments.push({
+          filename: `qr-${i}.png`,
+          content: qrBuf,
+          contentType: 'image/png',
+          cid,
+          contentDisposition: 'inline',
+        });
+        qrSrcs.push(`cid:${cid}`);
+      } catch (qrErr) {
+        console.error('[send-ticket-email] No se pudo generar QR inline:', qrErr);
+        qrSrcs.push(qrImageUrl(body.tickets[i].qrCode, 190));
+      }
+    }
+
     // PDF adjunto (oscuro, de marca). Si falla, igual mandamos el mail.
     try {
       const pdf = await generateTicketsPDF(body);
@@ -356,7 +377,7 @@ export default async function handler(req: any, res: any) {
       from: { name: 'ENTRÁ Tickets', address: SMTP_USER },
       to: body.buyerEmail,
       subject: `Tu entrada para ${body.eventTitle} — ENTRÁ`,
-      html: buildConfirmationHTML(body, logoSrc),
+      html: buildConfirmationHTML(body, logoSrc, qrSrcs),
       attachments,
     });
 
