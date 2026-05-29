@@ -235,9 +235,10 @@ export default function AccessControl() {
     try {
       const then = ts?.toDate ? ts.toDate() : (ts?.seconds ? new Date(ts.seconds * 1000) : null);
       if (!then) return '';
-      const mins = Math.floor((Date.now() - then.getTime()) / 60000);
-      if (mins < 1) return 'hace instantes';
-      if (mins < 60) return `hace ${mins} min`;
+      const secs = Math.max(0, Math.floor((Date.now() - then.getTime()) / 1000));
+      if (secs < 60) return `hace ${secs} ${secs === 1 ? 'segundo' : 'segundos'}`;
+      const mins = Math.floor(secs / 60);
+      if (mins < 60) return `hace ${mins} ${mins === 1 ? 'minuto' : 'minutos'}`;
       const hrs = Math.floor(mins / 60);
       const rem = mins % 60;
       if (hrs < 24) return `hace ${hrs}h${rem ? ` ${rem}min` : ''}`;
