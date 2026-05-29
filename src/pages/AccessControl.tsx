@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '@/src/components/ui/card';
 import { Button } from '@/src/components/ui/button';
@@ -39,9 +40,19 @@ interface CheckIn {
 
 export default function AccessControl() {
   const { user, profile, loading: authLoading } = useAuth();
+  const [searchParams] = useSearchParams();
   const [events, setEvents] = useState<EventData[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
   const [eventSearch, setEventSearch] = useState('');
+
+  // Si se entra con ?event=ID (desde el dashboard del evento), preseleccionarlo
+  useEffect(() => {
+    const eid = searchParams.get('event');
+    if (eid && events.length > 0 && !selectedEvent) {
+      const ev = events.find((e) => e.id === eid);
+      if (ev) setSelectedEvent(ev);
+    }
+  }, [searchParams, events, selectedEvent]);
   
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -230,6 +241,20 @@ export default function AccessControl() {
       } catch (err) {
         console.warn("navigator.vibrate is blocked or unsupported.", err);
       }
+    }
+  };
+
+  // Formatea la fecha del evento (puede venir como Timestamp de Firestore o string).
+  // Renderizar un Timestamp directo en JSX crashea React (objeto como hijo).
+  const formatEventDate = (d: any): string => {
+    try {
+      if (!d) return 'Fecha a confirmar';
+      if (typeof d === 'string') return d;
+      const date = d?.toDate ? d.toDate() : (d?.seconds ? new Date(d.seconds * 1000) : null);
+      if (!date) return 'Fecha a confirmar';
+      return date.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch {
+      return 'Fecha a confirmar';
     }
   };
 
@@ -533,7 +558,7 @@ export default function AccessControl() {
                       <div className="mt-6 border-t border-white/5 pt-4 space-y-2">
                         <div className="flex items-center gap-2 text-zinc-400 text-xs">
                           <Calendar className="w-4 h-4 text-primary shrink-0" />
-                          <span>{e.date} {e.time ? `• ${e.time} hs` : ''}</span>
+                          <span>{formatEventDate(e.date)} {e.time ? `• ${e.time} hs` : ''}</span>
                         </div>
                         <div className="flex items-center gap-2 text-zinc-400 text-xs">
                           <MapPin className="w-4 h-4 text-zinc-500 shrink-0" />

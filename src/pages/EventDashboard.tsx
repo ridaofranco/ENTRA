@@ -1011,7 +1011,7 @@ El equipo de ENTRÁ`;
                 <Eye className="w-4 h-4" /> Ver página pública
               </button>
             </Link>
-            <Link to="/control-acceso">
+            <Link to={`/control-acceso?event=${event.id}`}>
               <button className="flex items-center gap-2 orange-gradient text-white text-sm font-heading font-black px-4 py-2.5 rounded-xl hover:brightness-110 transition-all">
                 <Scan className="w-4 h-4" /> Control de Acceso
               </button>
