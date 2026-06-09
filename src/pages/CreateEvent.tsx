@@ -34,6 +34,16 @@ export default function CreateEvent() {
   const [isTimeProximamente, setIsTimeProximamente] = useState(false);
   const [isVenueProximamente, setIsVenueProximamente] = useState(false);
 
+  // =================== EVENTO MULTI-DÍA ===================
+  const [isMultiDay, setIsMultiDay] = useState(false);
+  const [sameSchedule, setSameSchedule] = useState(true);
+  const [commonStart, setCommonStart] = useState('');
+  const [commonEnd, setCommonEnd] = useState('');
+  const [entryMode, setEntryMode] = useState<'per_day' | 'whole_event'>('whole_event');
+  const [days, setDays] = useState<Array<{ date: string; startTime: string; endTime: string }>>([
+    { date: '', startTime: '', endTime: '' },
+  ]);
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -155,6 +165,15 @@ export default function CreateEvent() {
     updateCustomField(index, { options: opts });
   };
 
+  // =================== MULTI-DÍA HELPERS ===================
+  const addDay = () => setDays([...days, { date: '', startTime: '', endTime: '' }]);
+  const removeDay = (i: number) => setDays(days.length > 1 ? days.filter((_, idx) => idx !== i) : days);
+  const updateDay = (i: number, patch: Partial<{ date: string; startTime: string; endTime: string }>) => {
+    const next = [...days];
+    next[i] = { ...next[i], ...patch };
+    setDays(next);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -168,7 +187,23 @@ export default function CreateEvent() {
       const commissionRate = 8; // Comisión única del 8% para el nuevo modelo ENTRÁ
 
       let eventDate: Date;
-      if (isDateProximamente) {
+      let multiDayExtra: any = { isMultiDay: false };
+      if (isMultiDay) {
+        const built = days
+          .filter(d => d.date)
+          .map(d => {
+            const st = (sameSchedule ? commonStart : d.startTime) || '00:00';
+            const et = (sameSchedule ? commonEnd : d.endTime) || '';
+            return { date: Timestamp.fromDate(new Date(`${d.date}T${st}:00`)), startTime: st, endTime: et };
+          })
+          .sort((a, b) => a.date.seconds - b.date.seconds);
+        if (built.length > 0) {
+          eventDate = built[0].date.toDate();
+          multiDayExtra = { isMultiDay: true, days: built, entryMode, endDate: built[built.length - 1].date };
+        } else {
+          eventDate = new Date('2100-01-01T00:00:00');
+        }
+      } else if (isDateProximamente) {
         // We use a far-future placeholder date (e.g. 2100-01-01) but store isDateTBD flag as true
         eventDate = new Date('2100-01-01T00:00:00');
       } else {
@@ -194,8 +229,9 @@ export default function CreateEvent() {
         id: eventId,
         price: minPrice,
         date: Timestamp.fromDate(eventDate),
-        isDateTBD: isDateProximamente,
-        isTimeTBD: isTimeProximamente || isDateProximamente,
+        ...multiDayExtra,
+        isDateTBD: isMultiDay ? false : isDateProximamente,
+        isTimeTBD: isMultiDay ? false : (isTimeProximamente || isDateProximamente),
         isVenueTBD: isVenueProximamente,
         tickets: tickets.map(t => ({
           ...t,
@@ -268,6 +304,23 @@ export default function CreateEvent() {
                 onChange={e => setFormData({...formData, title: e.target.value})}
               />
             </div>
+            {/* Toggle: evento de varios días */}
+            <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-white/5 border border-white/10">
+              <div>
+                <p className="text-sm font-heading font-black uppercase tracking-wide">Evento de varios días</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Para festivales o eventos de más de una jornada (ej: 5 días).</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMultiDay(v => !v)}
+                aria-label="Activar evento multi-día"
+                className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${isMultiDay ? 'bg-primary' : 'bg-white/15'}`}
+              >
+                <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform ${isMultiDay ? 'translate-x-5' : ''}`} />
+              </button>
+            </div>
+
+            {!isMultiDay ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <div className="flex justify-between items-center mb-1">
@@ -325,6 +378,78 @@ export default function CreateEvent() {
                 />
               </div>
             </div>
+            ) : (
+            <div className="space-y-5">
+              {/* Mismo horario para todos los días */}
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" className="accent-primary w-4 h-4" checked={sameSchedule} onChange={e => setSameSchedule(e.target.checked)} />
+                <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Mismo horario todos los días</span>
+              </label>
+
+              {sameSchedule && (
+                <div className="grid grid-cols-2 gap-4 max-w-sm">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Desde</label>
+                    <Input type="time" className="bg-white/5 border-white/10 h-12 rounded-2xl text-white" value={commonStart} onChange={e => setCommonStart(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Hasta</label>
+                    <Input type="time" className="bg-white/5 border-white/10 h-12 rounded-2xl text-white" value={commonEnd} onChange={e => setCommonEnd(e.target.value)} />
+                  </div>
+                </div>
+              )}
+
+              {/* Lista de días */}
+              <div className="space-y-3">
+                {days.map((d, i) => (
+                  <div key={i} className="flex flex-col sm:flex-row sm:items-end gap-3 p-4 rounded-2xl bg-white/5 border border-white/10">
+                    <div className="flex items-center gap-3 sm:block">
+                      <div className="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl bg-primary/15 text-primary font-heading font-black text-sm">{i + 1}</div>
+                    </div>
+                    <div className="flex-grow space-y-2">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Día {i + 1}</label>
+                      <Input type="date" className="bg-white/5 border-white/10 h-12 rounded-2xl text-white w-full" value={d.date} onChange={e => updateDay(i, { date: e.target.value })} />
+                    </div>
+                    {!sameSchedule && (
+                      <div className="flex gap-2">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Desde</label>
+                          <Input type="time" className="bg-white/5 border-white/10 h-12 rounded-2xl text-white" value={d.startTime} onChange={e => updateDay(i, { startTime: e.target.value })} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Hasta</label>
+                          <Input type="time" className="bg-white/5 border-white/10 h-12 rounded-2xl text-white" value={d.endTime} onChange={e => updateDay(i, { endTime: e.target.value })} />
+                        </div>
+                      </div>
+                    )}
+                    {days.length > 1 && (
+                      <button type="button" onClick={() => removeDay(i)} className="h-12 w-12 shrink-0 flex items-center justify-center rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors self-end">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button type="button" onClick={addDay} className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl border-2 border-dashed border-white/10 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors text-sm font-bold">
+                  <Plus className="w-4 h-4" /> Agregar día
+                </button>
+              </div>
+
+              {/* Modalidad de ingreso */}
+              <div className="space-y-2 pt-2">
+                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Modalidad de ingreso (QR)</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button type="button" onClick={() => setEntryMode('whole_event')} className={`text-left p-4 rounded-2xl border transition-all ${entryMode === 'whole_event' ? 'border-primary bg-primary/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}>
+                    <p className="text-sm font-heading font-black">Un QR para todo el evento</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">Entra todos los días con el mismo QR — una vez por día (no se reusa el mismo día).</p>
+                  </button>
+                  <button type="button" onClick={() => setEntryMode('per_day')} className={`text-left p-4 rounded-2xl border transition-all ${entryMode === 'per_day' ? 'border-primary bg-primary/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}>
+                    <p className="text-sm font-heading font-black">Un QR por día</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">Reservan por jornada. Permite cupo distinto por día (ej: día 1 solo invitados).</p>
+                  </button>
+                </div>
+              </div>
+            </div>
+            )}
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Descripción</label>
               <Textarea 

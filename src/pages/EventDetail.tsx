@@ -137,14 +137,25 @@ export default function EventDetail() {
           <div className="flex flex-wrap gap-6 text-sm font-bold uppercase tracking-wider">
             <div className="flex items-center gap-2">
               <Calendar className="w-5 h-5 text-primary" />
-              {event.isDateTBD 
-                ? "PROXIMAMENTE" 
+              {(event as any).isMultiDay && Array.isArray((event as any).days) && (event as any).days.length > 0
+                ? (() => {
+                    const ds = (event as any).days;
+                    const f = (x: any) => {
+                      const dt = x?.date?.toDate ? x.date.toDate() : (x?.date?.seconds ? new Date(x.date.seconds * 1000) : null);
+                      return dt ? dt.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }) : '';
+                    };
+                    return `Del ${f(ds[0])} al ${f(ds[ds.length - 1])}`;
+                  })()
+                : event.isDateTBD
+                ? "PROXIMAMENTE"
                 : eventDate?.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             </div>
             <div className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary" />
-              {event.isTimeTBD || event.isDateTBD
-                ? "PROXIMAMENTE" 
+              {(event as any).isMultiDay
+                ? `${(event as any).days?.length || ''} jornadas`
+                : event.isTimeTBD || event.isDateTBD
+                ? "PROXIMAMENTE"
                 : `${eventDate?.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}hs`}
             </div>
             <div className="flex items-center gap-2">
@@ -169,6 +180,37 @@ export default function EventDetail() {
               {event.description}
             </p>
           </section>
+
+          {(event as any).isMultiDay && Array.isArray((event as any).days) && (event as any).days.length > 0 && (
+            <section>
+              <h2 className="text-2xl font-heading font-black mb-6 uppercase tracking-tight text-white flex items-center gap-3">
+                <Calendar className="w-6 h-6 text-primary" />
+                Jornadas ({(event as any).days.length} días)
+              </h2>
+              <div className="space-y-3">
+                {(event as any).days.map((d: any, i: number) => {
+                  const dt = d?.date?.toDate ? d.date.toDate() : (d?.date?.seconds ? new Date(d.date.seconds * 1000) : null);
+                  return (
+                    <div key={i} className="flex items-center gap-4 glass rounded-2xl border border-white/5 px-5 py-4">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/15 text-primary font-heading font-black shrink-0">
+                        {i + 1}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-heading font-black text-white capitalize leading-tight">
+                          {dt ? dt.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }) : 'Fecha a confirmar'}
+                        </p>
+                        {(d?.startTime || d?.endTime) && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {d.startTime}{d.endTime ? ` a ${d.endTime}` : ''} hs
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
 
           <section>
             <h2 className="text-2xl font-heading font-black mb-6 uppercase tracking-tight text-white">

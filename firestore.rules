@@ -102,7 +102,7 @@ service cloud.firestore {
     }
 
     function isValidEvent(data) {
-      return hasOnlyAllowedFields(['id', 'title', 'description', 'date', 'endDate', 'location', 'venue', 'latitude', 'longitude', 'price', 'image', 'category', 'organizerId', 'organizerEmail', 'organizerName', 'tickets', 'status', 'featured', 'minAge', 'refundPolicy', 'maxPerPurchase', 'createdAt', 'updatedAt', 'deletedAt', 'ticketsSold', 'totalRevenue', 'allowTransfer', 'customFields', 'organizerPlan', 'commissionRate', 'officialSaleLaunched', 'isDateTBD', 'isTimeTBD', 'isVenueTBD']) &&
+      return hasOnlyAllowedFields(['id', 'title', 'description', 'date', 'endDate', 'location', 'venue', 'latitude', 'longitude', 'price', 'image', 'category', 'organizerId', 'organizerEmail', 'organizerName', 'tickets', 'status', 'featured', 'minAge', 'refundPolicy', 'maxPerPurchase', 'createdAt', 'updatedAt', 'deletedAt', 'ticketsSold', 'totalRevenue', 'allowTransfer', 'customFields', 'organizerPlan', 'commissionRate', 'officialSaleLaunched', 'isDateTBD', 'isTimeTBD', 'isVenueTBD', 'isMultiDay', 'days', 'entryMode', 'isFree']) &&
              (!('title' in data) || (data.title is string && data.title.size() < 100)) &&
              (!('venue' in data) || (data.venue is string && data.venue.size() < 100)) &&
              (!('date' in data) || data.date is timestamp) &&
@@ -111,7 +111,10 @@ service cloud.firestore {
              (!('organizerName' in data) || data.organizerName is string) &&
              (!('isDateTBD' in data) || data.isDateTBD is bool) &&
              (!('isTimeTBD' in data) || data.isTimeTBD is bool) &&
-             (!('isVenueTBD' in data) || data.isVenueTBD is bool);
+             (!('isVenueTBD' in data) || data.isVenueTBD is bool) &&
+             (!('isMultiDay' in data) || data.isMultiDay is bool) &&
+             (!('isFree' in data) || data.isFree is bool) &&
+             (!('entryMode' in data) || data.entryMode in ['per_day', 'whole_event']);
     }
 
     function isValidTicket(data) {
