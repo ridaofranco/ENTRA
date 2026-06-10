@@ -180,6 +180,8 @@ export default function EventDashboard() {
 
   // New sector form state
   const [newSector, setNewSector] = useState({ type: '', price: '' as any, available: '' as any });
+  // Aviso de capacidad (no se puede dejar el evento sin entradas a la venta)
+  const [capacityWarning, setCapacityWarning] = useState('');
 
   // Refund bulk confirmation state
   const [bulkRefundConfirm, setBulkRefundConfirm] = useState('');
@@ -498,7 +500,21 @@ export default function EventDashboard() {
     if (!event) return;
     const newTickets = [...(event.tickets || [])];
     newTickets[idx] = { ...newTickets[idx], [field]: value };
-    
+
+    // No permitir que el evento quede sin capacidad: la capacidad total
+    // (disponibles + ya vendidos) debe ser mayor a 1. No bloquea el caso
+    // "agotado" porque ahí los vendidos mantienen la capacidad total alta.
+    if (field === 'available') {
+      const newTotalCap =
+        newTickets.reduce((s, t) => s + (Number(t.available) || 0), 0) +
+        (Number(event.ticketsSold) || 0);
+      if (newTotalCap <= 1) {
+        setCapacityWarning('El evento no puede quedar sin entradas: dejá más de 1 en la capacidad total.');
+        return; // no guardamos este cambio
+      }
+    }
+    setCapacityWarning('');
+
     try {
       await updateDoc(doc(db, 'events', event.id), {
         tickets: newTickets,
@@ -517,7 +533,17 @@ export default function EventDashboard() {
     if (!event || ticketToDelete === null) return;
     
     const newTickets = (event.tickets || []).filter((_, i) => i !== ticketToDelete);
-    
+
+    // No permitir quedarse sin capacidad al eliminar un sector
+    const remainingCap =
+      newTickets.reduce((s, t) => s + (Number(t.available) || 0), 0) +
+      (Number(event.ticketsSold) || 0);
+    if (newTickets.length === 0 || remainingCap <= 1) {
+      alert('No podés eliminar este sector: el evento quedaría sin entradas a la venta. Tiene que haber más de 1 entrada en total.');
+      setTicketToDelete(null);
+      return;
+    }
+
     try {
       setIsSaving(true);
       await updateDoc(doc(db, 'events', event.id), {
@@ -1260,6 +1286,12 @@ El equipo de ENTRÁ`;
                 <p className="text-xs text-zinc-500 mt-1">Editá precios, cantidades y agregá nuevos sectores en cualquier momento</p>
               </div>
             </div>
+
+            {capacityWarning && (
+              <div className="flex items-center gap-2 mb-4 px-4 py-3 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-bold">
+                <AlertTriangle className="w-4 h-4 shrink-0" /> {capacityWarning}
+              </div>
+            )}
 
             <div className="space-y-4">
               {(event.tickets || []).map((ticket, i) => {
