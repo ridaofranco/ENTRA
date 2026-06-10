@@ -7,22 +7,26 @@ import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { Textarea } from '@/src/components/ui/textarea';
 import { Badge } from '@/src/components/ui/badge';
-import { 
-  Calendar, 
-  MapPin, 
-  Image as ImageIcon, 
-  Ticket, 
-  Plus, 
-  Trash2, 
+import {
+  Calendar,
+  MapPin,
+  Image as ImageIcon,
+  Ticket,
+  Plus,
+  Trash2,
   ArrowLeft,
   Sparkles,
-  Info
+  Info,
+  Upload,
+  Loader2,
+  Link as LinkIcon
 } from 'lucide-react';
 import { collection, setDoc, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { useAuth } from '@/src/context/AuthContext';
 import { logAction } from '@/src/services/auditService';
 import { formatCurrency } from '@/src/lib/utils';
+import { compressImageFile } from '@/src/lib/imageUpload';
 
 export default function CreateEvent() {
   const navigate = useNavigate();
@@ -33,6 +37,25 @@ export default function CreateEvent() {
   const [isDateProximamente, setIsDateProximamente] = useState(false);
   const [isTimeProximamente, setIsTimeProximamente] = useState(false);
   const [isVenueProximamente, setIsVenueProximamente] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageError, setImageError] = useState('');
+
+  const handleImageFile = async (
+    file: File | undefined,
+    setImage: (url: string) => void
+  ) => {
+    if (!file) return;
+    setImageError('');
+    setImageUploading(true);
+    try {
+      const { dataUrl } = await compressImageFile(file);
+      setImage(dataUrl);
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : 'No se pudo subir la imagen.');
+    } finally {
+      setImageUploading(false);
+    }
+  };
 
   // =================== GRATIS vs PAGO ===================
   const [isFreeEvent, setIsFreeEvent] = useState(false);
@@ -517,19 +540,56 @@ export default function CreateEvent() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">URL del Flyer (Imagen)</label>
-              <div className="flex gap-4">
-                <Input 
-                  placeholder="https://..." 
-                  className="bg-white/5 border-white/10 h-14 rounded-2xl flex-grow"
-                  value={formData.image}
-                  onChange={e => setFormData({...formData, image: e.target.value})}
-                />
-                <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 overflow-hidden">
-                  {formData.image && formData.image !== "" ? <img src={formData.image} className="w-full h-full object-cover" /> : <ImageIcon className="text-muted-foreground" />}
-                </div>
+            <div className="space-y-3">
+              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Flyer / Imagen del evento</label>
+
+              {/* Preview grande */}
+              <div className="w-full aspect-[16/9] bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 overflow-hidden">
+                {formData.image && formData.image !== "" ? (
+                  <img src={formData.image} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <ImageIcon className="w-8 h-8" />
+                    <span className="text-xs">Subí una imagen o pegá un link</span>
+                  </div>
+                )}
               </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                {/* Subir archivo */}
+                <label className={`flex-1 cursor-pointer flex items-center justify-center gap-2 h-12 rounded-2xl border-2 border-dashed transition-colors text-sm font-bold ${imageUploading ? 'border-primary/40 text-primary' : 'border-white/15 text-muted-foreground hover:border-primary/40 hover:text-primary'}`}>
+                  {imageUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  {imageUploading ? 'Subiendo...' : 'Subir imagen'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={imageUploading}
+                    onChange={e => { handleImageFile(e.target.files?.[0], (url) => setFormData(fd => ({ ...fd, image: url }))); e.target.value = ''; }}
+                  />
+                </label>
+                {formData.image && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData(fd => ({ ...fd, image: '' }))}
+                    className="h-12 px-4 rounded-2xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors text-sm font-bold flex items-center justify-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" /> Quitar
+                  </button>
+                )}
+              </div>
+
+              {/* O pegar link */}
+              <div className="flex items-center gap-2">
+                <LinkIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                <Input
+                  placeholder="...o pegá un link https://..."
+                  className="bg-white/5 border-white/10 h-12 rounded-2xl flex-grow"
+                  value={formData.image.startsWith('data:') ? '' : formData.image}
+                  onChange={e => setFormData({ ...formData, image: e.target.value })}
+                />
+              </div>
+              {imageError && <p className="text-xs text-red-400">{imageError}</p>}
             </div>
           </Card>
         </section>

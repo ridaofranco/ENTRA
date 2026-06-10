@@ -4,7 +4,8 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, BarChart3, Calendar, Clock, DollarSign, Download,
   Edit, Gift, Loader2, MapPin, Minus, Plus, Save, Search, Send, Ticket,
-  Trash, Users, Eye, Copy, Check, RotateCcw, AlertTriangle, Tag, Percent, Sparkles, Mail, Scan
+  Trash, Users, Eye, Copy, Check, RotateCcw, AlertTriangle, Tag, Percent, Sparkles, Mail, Scan,
+  Upload, Image as ImageIcon, Link as LinkIcon, Trash2
 } from 'lucide-react';
 import { 
   doc, 
@@ -24,6 +25,7 @@ import { db, auth, handleFirestoreError, OperationType } from '@/src/lib/firebas
 import { useAuth } from '@/src/context/AuthContext';
 import { logAction } from '@/src/services/auditService';
 import { formatCurrency } from '@/src/lib/utils';
+import { compressImageFile } from '@/src/lib/imageUpload';
 
 interface TicketType {
   type: string;
@@ -36,7 +38,9 @@ interface TicketType {
 interface EventData {
   id: string;
   title: string;
+  description?: string;
   date: any;
+  endDate?: any;
   venue: string;
   location: string;
   image: string;
@@ -47,6 +51,10 @@ interface EventData {
   totalRevenue: number;
   organizerEmail: string;
   officialSaleLaunched?: boolean;
+  isMultiDay?: boolean;
+  days?: Array<{ date: any; startTime?: string; endTime?: string }>;
+  entryMode?: 'per_day' | 'whole_event';
+  isFree?: boolean;
 }
 
 interface OrderData {
@@ -139,6 +147,15 @@ export default function EventDashboard() {
   const [showSavedFeedback, setShowSavedFeedback] = useState(false);
   const [isEditingEvent, setIsEditingEvent] = useState(false);
   const [editForm, setEditForm] = useState<Partial<EventData>>({});
+  // Estado editable de fechas / multi-día / gratis-pago / imagen
+  const [editIsMultiDay, setEditIsMultiDay] = useState(false);
+  const [editIsFree, setEditIsFree] = useState(false);
+  const [editEntryMode, setEditEntryMode] = useState<'per_day' | 'whole_event'>('whole_event');
+  const [editDate, setEditDate] = useState('');
+  const [editTime, setEditTime] = useState('');
+  const [editDays, setEditDays] = useState<Array<{ date: string; startTime: string; endTime: string }>>([]);
+  const [editImageUploading, setEditImageUploading] = useState(false);
+  const [editImageError, setEditImageError] = useState('');
 
   // Discount form state
   const [discountForm, setDiscountForm] = useState({
@@ -316,27 +333,131 @@ export default function EventDashboard() {
     };
   }, [id, user]);
 
+  // No re-poblamos el form mientras se está editando (evita pisar cambios en curso
+  // si llega una actualización en tiempo real del evento).
   useEffect(() => {
-    if (event) {
+    if (event && !isEditingEvent) {
       setEditForm({
         title: event.title,
         description: event.description || '',
         venue: event.venue,
         location: event.location,
         category: event.category,
-        status: event.status
+        status: event.status,
+        image: event.image || ''
       });
     }
-  }, [event]);
+  }, [event, isEditingEvent]);
+
+  // ---- Helpers de fecha ----
+  const pad2 = (n: number) => String(n).padStart(2, '0');
+  const tsToParts = (ts: any): { date: string; time: string } => {
+    const d = ts?.toDate ? ts.toDate() : (ts?.seconds ? new Date(ts.seconds * 1000) : null);
+    if (!d || isNaN(d.getTime())) return { date: '', time: '' };
+    // Año 2100 = "a confirmar", no lo mostramos
+    if (d.getFullYear() >= 2100) return { date: '', time: '' };
+    return {
+      date: `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`,
+      time: `${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+    };
+  };
+
+  // Abre el editor tomando una "foto" del evento actual
+  const openEditor = () => {
+    if (!event) return;
+    setEditImageError('');
+    setEditForm({
+      title: event.title,
+      description: event.description || '',
+      venue: event.venue,
+      location: event.location,
+      category: event.category,
+      status: event.status,
+      image: event.image || ''
+    });
+    setEditIsMultiDay(Boolean(event.isMultiDay));
+    setEditIsFree(Boolean(event.isFree));
+    setEditEntryMode(event.entryMode === 'per_day' ? 'per_day' : 'whole_event');
+    const main = tsToParts(event.date);
+    setEditDate(main.date);
+    setEditTime(main.time);
+    if (event.isMultiDay && Array.isArray(event.days) && event.days.length > 0) {
+      setEditDays(event.days.map((d: any) => {
+        const p = tsToParts(d.date);
+        return { date: p.date, startTime: d.startTime || p.time || '', endTime: d.endTime || '' };
+      }));
+    } else {
+      setEditDays([{ date: main.date, startTime: main.time, endTime: '' }]);
+    }
+    setIsEditingEvent(true);
+  };
+
+  const addEditDay = () => setEditDays(prev => [...prev, { date: '', startTime: '', endTime: '' }]);
+  const removeEditDay = (i: number) => setEditDays(prev => (prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev));
+  const updateEditDay = (i: number, patch: Partial<{ date: string; startTime: string; endTime: string }>) =>
+    setEditDays(prev => prev.map((d, idx) => (idx === i ? { ...d, ...patch } : d)));
+
+  const handleEditImageFile = async (file: File | undefined) => {
+    if (!file) return;
+    setEditImageError('');
+    setEditImageUploading(true);
+    try {
+      const { dataUrl } = await compressImageFile(file);
+      setEditForm(f => ({ ...f, image: dataUrl }));
+    } catch (err) {
+      setEditImageError(err instanceof Error ? err.message : 'No se pudo subir la imagen.');
+    } finally {
+      setEditImageUploading(false);
+    }
+  };
 
   const handleSaveEventDetails = async () => {
     if (!event) return;
     try {
       setIsSaving(true);
-      await updateDoc(doc(db, 'events', event.id), {
-        ...editForm,
+
+      const update: any = {
+        title: editForm.title,
+        description: editForm.description || '',
+        venue: editForm.venue,
+        location: editForm.location,
+        category: editForm.category,
+        status: editForm.status,
+        image: editForm.image || '',
+        isFree: editIsFree,
+        isMultiDay: editIsMultiDay,
         updatedAt: Timestamp.now()
-      });
+      };
+
+      if (editIsMultiDay) {
+        const built = editDays
+          .filter(d => d.date)
+          .map(d => {
+            const st = d.startTime || '00:00';
+            return {
+              date: Timestamp.fromDate(new Date(`${d.date}T${st}:00`)),
+              startTime: st,
+              endTime: d.endTime || ''
+            };
+          })
+          .sort((a, b) => a.date.seconds - b.date.seconds);
+        if (built.length === 0) {
+          setEditImageError('Agregá al menos un día con fecha.');
+          setIsSaving(false);
+          return;
+        }
+        update.days = built;
+        update.date = built[0].date;
+        update.endDate = built[built.length - 1].date;
+        update.entryMode = editEntryMode;
+      } else {
+        if (editDate) {
+          update.date = Timestamp.fromDate(new Date(`${editDate}T${(editTime || '00:00')}:00`));
+        }
+        update.isMultiDay = false;
+      }
+
+      await updateDoc(doc(db, 'events', event.id), update);
       setShowSavedFeedback(true);
       setTimeout(() => {
         setIsEditingEvent(false);
@@ -1001,7 +1122,7 @@ El equipo de ENTRÁ`;
               </button>
             )}
             <button
-              onClick={() => setIsEditingEvent(true)}
+              onClick={openEditor}
               className="flex items-center gap-2 bg-white/5 border border-white/10 text-sm font-heading font-black px-4 py-2.5 rounded-xl hover:border-blue-500/30 transition-all text-blue-400"
             >
               <Edit className="w-4 h-4" /> Editar Info
@@ -1872,27 +1993,176 @@ El equipo de ENTRÁ`;
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
             className="bg-zinc-900 border border-white/10 p-8 rounded-[2.5rem] max-w-lg w-full space-y-6 max-h-[90vh] overflow-y-auto">
             <h3 className="text-2xl font-black">Editar Información del Evento</h3>
-            
+
             <div className="space-y-4">
+              {/* IMAGEN */}
+              <div>
+                <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-2">Flyer / Imagen</label>
+                <div className="w-full aspect-[16/9] bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 overflow-hidden mb-2">
+                  {editForm.image ? (
+                    <img src={editForm.image} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center gap-1.5 text-zinc-500">
+                      <ImageIcon className="w-7 h-7" />
+                      <span className="text-xs">Subí una imagen o pegá un link</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <label className={`flex-1 cursor-pointer flex items-center justify-center gap-2 h-11 rounded-xl border-2 border-dashed transition-colors text-sm font-bold ${editImageUploading ? 'border-orange-500/40 text-orange-400' : 'border-white/15 text-zinc-400 hover:border-orange-500/40 hover:text-orange-400'}`}>
+                    {editImageUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                    {editImageUploading ? 'Subiendo...' : 'Subir imagen'}
+                    <input type="file" accept="image/*" className="hidden" disabled={editImageUploading}
+                      onChange={e => { handleEditImageFile(e.target.files?.[0]); e.target.value = ''; }} />
+                  </label>
+                  {editForm.image && (
+                    <button type="button" onClick={() => setEditForm(f => ({ ...f, image: '' }))}
+                      className="h-11 px-3 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors text-sm font-bold flex items-center gap-1.5">
+                      <Trash2 className="w-4 h-4" /> Quitar
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <LinkIcon className="w-4 h-4 text-zinc-500 shrink-0" />
+                  <input type="text" placeholder="...o pegá un link https://..."
+                    value={editForm.image && editForm.image.startsWith('data:') ? '' : (editForm.image || '')}
+                    onChange={e => setEditForm({ ...editForm, image: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50" />
+                </div>
+                {editImageError && <p className="text-xs text-red-400 mt-1.5">{editImageError}</p>}
+              </div>
+
+              {/* TÍTULO */}
               <div>
                 <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-1">Título</label>
                 <input type="text" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500/50" />
               </div>
+
+              {/* EVENTO DE VARIOS DÍAS */}
+              <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
+                <div>
+                  <p className="text-sm font-bold">Evento de varios días</p>
+                  <p className="text-[11px] text-zinc-500">Activá para configurar varias jornadas.</p>
+                </div>
+                <button type="button" onClick={() => setEditIsMultiDay(v => !v)} aria-label="Varios días"
+                  className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${editIsMultiDay ? 'bg-orange-500' : 'bg-white/15'}`}>
+                  <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform ${editIsMultiDay ? 'translate-x-5' : ''}`} />
+                </button>
+              </div>
+
+              {/* FECHA(S) */}
+              {!editIsMultiDay ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-1">Fecha</label>
+                    <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500/50 [color-scheme:dark]" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-1">Hora</label>
+                    <input type="time" value={editTime} onChange={e => setEditTime(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500/50 [color-scheme:dark]" />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 block">Jornadas</label>
+                  {editDays.map((d, i) => (
+                    <div key={i} className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-zinc-400">Día {i + 1}</span>
+                        {editDays.length > 1 && (
+                          <button type="button" onClick={() => removeEditDay(i)} className="text-red-400 hover:text-red-300">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                      <input type="date" value={d.date} onChange={e => updateEditDay(i, { date: e.target.value })}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50 [color-scheme:dark]" />
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <span className="text-[10px] text-zinc-500 block mb-1">Desde</span>
+                          <input type="time" value={d.startTime} onChange={e => updateEditDay(i, { startTime: e.target.value })}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50 [color-scheme:dark]" />
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-500 block mb-1">Hasta</span>
+                          <input type="time" value={d.endTime} onChange={e => updateEditDay(i, { endTime: e.target.value })}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50 [color-scheme:dark]" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <button type="button" onClick={addEditDay}
+                    className="w-full flex items-center justify-center gap-2 h-11 rounded-xl border-2 border-dashed border-white/10 text-zinc-400 hover:border-orange-500/40 hover:text-orange-400 transition-colors text-sm font-bold">
+                    <Plus className="w-4 h-4" /> Agregar día
+                  </button>
+
+                  {/* Modo de QR */}
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-2">Modo de QR</label>
+                    <div className="grid grid-cols-1 gap-2">
+                      <button type="button" onClick={() => setEditEntryMode('whole_event')}
+                        className={`text-left p-3 rounded-xl border transition-all ${editEntryMode === 'whole_event' ? 'border-orange-500 bg-orange-500/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}>
+                        <p className="text-sm font-bold">Un QR para todo el evento</p>
+                        <p className="text-[11px] text-zinc-500">Mismo QR cada día, pero una sola vez por día.</p>
+                      </button>
+                      <button type="button" onClick={() => setEditEntryMode('per_day')}
+                        className={`text-left p-3 rounded-xl border transition-all ${editEntryMode === 'per_day' ? 'border-orange-500 bg-orange-500/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}>
+                        <p className="text-sm font-bold">Un QR por día</p>
+                        <p className="text-[11px] text-zinc-500">Si elige 4 días, recibe 4 QR.</p>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* GRATIS / PAGO */}
+              <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
+                <div>
+                  <p className="text-sm font-bold">Evento gratuito</p>
+                  <p className="text-[11px] text-zinc-500">Reservan sin pagar (igual sacan su QR). Los precios se editan en la pestaña Tickets.</p>
+                </div>
+                <button type="button" onClick={() => setEditIsFree(v => !v)} aria-label="Evento gratuito"
+                  className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${editIsFree ? 'bg-orange-500' : 'bg-white/15'}`}>
+                  <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform ${editIsFree ? 'translate-x-5' : ''}`} />
+                </button>
+              </div>
+
+              {/* UBICACIÓN */}
               <div>
-                <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-1">Lugar</label>
+                <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-1">Lugar / Dirección</label>
                 <input type="text" value={editForm.venue} onChange={e => setEditForm({...editForm, venue: e.target.value})}
+                  placeholder="Ej: Centro de Convenciones, Av. Figueroa Alcorta 2099"
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500/50" />
+                <p className="text-[11px] text-zinc-500 mt-1 flex items-center gap-1">
+                  <MapPin className="w-3 h-3" /> Esto es lo que usa el botón "Cómo llegar" en Google Maps. Poné una dirección real para que la encuentre.
+                </p>
               </div>
               <div>
                 <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-1">Ciudad</label>
                 <input type="text" value={editForm.location} onChange={e => setEditForm({...editForm, location: e.target.value})}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500/50" />
               </div>
+
+              {/* DESCRIPCIÓN */}
               <div>
                 <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-1">Descripción</label>
                 <textarea rows={4} value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500/50 resize-none" />
+              </div>
+
+              {/* ESTADO (PUBLICAR) */}
+              <div>
+                <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-1">Estado</label>
+                <select value={editForm.status} onChange={e => setEditForm({...editForm, status: e.target.value})}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500/50 [color-scheme:dark]">
+                  <option value="pending">Pendiente (no visible en la cartelera)</option>
+                  <option value="active">Activo (visible y a la venta)</option>
+                  <option value="paused">Pausado</option>
+                  <option value="cancelled">Cancelado</option>
+                </select>
               </div>
             </div>
 

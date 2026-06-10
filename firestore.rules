@@ -106,7 +106,7 @@ service cloud.firestore {
              (!('title' in data) || (data.title is string && data.title.size() < 100)) &&
              (!('venue' in data) || (data.venue is string && data.venue.size() < 100)) &&
              (!('date' in data) || data.date is timestamp) &&
-             (!('image' in data) || data.image == null || data.image == "" || isValidUrl(data.image)) &&
+             (!('image' in data) || data.image == null || data.image == "" || isValidUrl(data.image) || (data.image is string && data.image.matches("^data:image/.*"))) &&
              (!('status' in data) || data.status in ['draft', 'pending', 'published', 'active', 'paused', 'cancelled', 'deleted']) &&
              (!('organizerName' in data) || data.organizerName is string) &&
              (!('isDateTBD' in data) || data.isDateTBD is bool) &&
