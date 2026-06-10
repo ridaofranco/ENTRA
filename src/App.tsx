@@ -22,6 +22,7 @@ import EventDashboard from '@/src/pages/EventDashboard';
 import ClaimTicket from '@/src/pages/ClaimTicket';
 import Productores from '@/src/pages/Productores';
 import Ayuda from '@/src/pages/Ayuda';
+import Demo from '@/src/pages/Demo';
 
 export default function App() {
   return (
@@ -35,6 +36,7 @@ export default function App() {
             <Route path="/eventos" element={<Comprar />} />
             <Route path="/productores" element={<Productores />} />
             <Route path="/ayuda" element={<Ayuda />} />
+            <Route path="/demo" element={<Demo />} />
             <Route path="/evento/:id" element={<EventDetail />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/auth/login" element={<Auth />} />
