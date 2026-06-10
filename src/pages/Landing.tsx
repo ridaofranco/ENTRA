@@ -10,6 +10,7 @@ import { db } from '@/src/lib/firebase';
 import { seedEventsIfMissing } from '@/src/services/eventService';
 import { useAuth } from '@/src/context/AuthContext';
 import HeroAtmosphere from '@/src/components/HeroAtmosphere';
+import PosterFallback from '@/src/components/PosterFallback';
 
 interface Event {
   id: string;
@@ -156,12 +157,16 @@ export default function Landing() {
                     <div className="flex flex-col h-full space-y-4">
                       {/* Image Frame */}
                       <div className="relative aspect-[4/5] rounded-[2rem] border border-white/10 overflow-hidden bg-black group-hover:border-primary/40 transition-colors duration-300">
-                        <img
-                          src={event.image}
-                          alt={event.title}
-                          className="w-full h-full object-cover transition duration-500"
-                          referrerPolicy="no-referrer"
-                        />
+                        {event.image ? (
+                          <img
+                            src={event.image}
+                            alt={event.title}
+                            className="w-full h-full object-cover transition duration-500"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <PosterFallback />
+                        )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/10 to-transparent opacity-80" />
                         
                         {/* Status Label */}

@@ -8,6 +8,7 @@ import { Calendar, MapPin, Clock, Share2, Info, Ticket, ChevronRight, Minus, Plu
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { formatCurrency } from '@/src/lib/utils';
+import PosterFallback from '@/src/components/PosterFallback';
 
 interface TicketType {
   type: string;
@@ -212,12 +213,16 @@ export default function EventDetail() {
     <div className="pb-20 pt-20">
       {/* Banner — arranca debajo del navbar (h-20), no por detrás */}
       <div className="relative h-[60vh] overflow-hidden">
-        <img 
-          src={event.image || undefined} 
-          alt={event.title} 
-          className="w-full h-full object-cover"
-          referrerPolicy="no-referrer"
-        />
+        {event.image ? (
+          <img
+            src={event.image}
+            alt={event.title}
+            className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          <PosterFallback />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
         <div className="absolute bottom-0 left-0 w-full p-6 md:p-12 max-w-7xl mx-auto right-0">
           <Badge className="orange-gradient border-none font-bold uppercase tracking-widest text-xs px-4 py-1.5 mb-6">
