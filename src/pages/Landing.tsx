@@ -11,6 +11,7 @@ import { seedEventsIfMissing } from '@/src/services/eventService';
 import { useAuth } from '@/src/context/AuthContext';
 import HeroAtmosphere from '@/src/components/HeroAtmosphere';
 import PosterFallback from '@/src/components/PosterFallback';
+import { eventPath } from '@/src/lib/slug';
 
 interface Event {
   id: string;
@@ -37,7 +38,7 @@ export default function Landing() {
         const snapshot = await getDocs(collection(db, 'events'));
         const all = snapshot.docs
           .map(d => ({ id: d.id, ...d.data() }) as Event)
-          .filter(e => !e.status || e.status === 'active')
+          .filter(e => (!e.status || e.status === 'active') && !(e as any).hidden)
           .sort((a, b) => {
             const da = a.date?.toDate?.()?.getTime?.() || 0;
             const db2 = b.date?.toDate?.()?.getTime?.() || 0;
@@ -153,7 +154,7 @@ export default function Landing() {
                   transition={{ delay: i * 0.1 }}
                   className="group"
                 >
-                  <Link to={`/evento/${event.id}`}>
+                  <Link to={eventPath(event)}>
                     <div className="flex flex-col h-full space-y-4">
                       {/* Image Frame */}
                       <div className="relative aspect-[4/5] rounded-[2rem] border border-white/10 overflow-hidden bg-black group-hover:border-primary/40 transition-colors duration-300">

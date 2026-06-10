@@ -12,6 +12,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
 import { getCategoryLabel } from '@/src/lib/categories';
 import PosterFallback from '@/src/components/PosterFallback';
+import { eventPath } from '@/src/lib/slug';
 import { useAuth } from '@/src/context/AuthContext';
 import { formatCurrency } from '@/src/lib/utils';
 
@@ -117,6 +118,7 @@ export default function Comprar() {
   const visibleEvents = events.filter(event => {
     const status = event.status || 'active';
     if (isAdmin && showHiddenAdmin) return true;
+    if ((event as any).hidden) return false; // ocultos: solo por link directo
     return status === 'active' || status === 'paused';
   });
 
@@ -369,7 +371,7 @@ export default function Comprar() {
                   transition={{ delay: Math.min(i * 0.04, 0.3) }}
                   className="group"
                 >
-                  <Link to={`/evento/${event.id}`}>
+                  <Link to={eventPath(event)}>
                     <div className="flex flex-col h-full space-y-4">
                       {/* Image Frame */}
                       <div className="relative aspect-[4/5] rounded-[2rem] border border-white/10 overflow-hidden bg-black group-hover:border-primary/40 transition-colors duration-300">

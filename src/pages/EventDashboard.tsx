@@ -16,9 +16,10 @@ import {
   getDocs, 
   onSnapshot, 
   updateDoc, 
-  addDoc, 
+  addDoc,
   deleteDoc,
-  Timestamp 
+  deleteField,
+  Timestamp
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth, handleFirestoreError, OperationType } from '@/src/lib/firebase';
@@ -27,6 +28,7 @@ import { logAction } from '@/src/services/auditService';
 import { formatCurrency } from '@/src/lib/utils';
 import { uploadEventImage } from '@/src/lib/imageUpload';
 import { EVENT_CATEGORIES } from '@/src/lib/categories';
+import { eventPath } from '@/src/lib/slug';
 
 interface TicketType {
   type: string;
@@ -158,6 +160,7 @@ export default function EventDashboard() {
   const [editImageUploading, setEditImageUploading] = useState(false);
   const [editImageError, setEditImageError] = useState('');
   const [saveError, setSaveError] = useState('');
+  const [editHidden, setEditHidden] = useState(false);
 
   // Discount form state
   const [discountForm, setDiscountForm] = useState({
@@ -381,6 +384,7 @@ export default function EventDashboard() {
     });
     setEditIsMultiDay(Boolean(event.isMultiDay));
     setEditIsFree(Boolean(event.isFree));
+    setEditHidden(Boolean((event as any).hidden));
     setEditEntryMode(event.entryMode === 'per_day' ? 'per_day' : 'whole_event');
     const main = tsToParts(event.date);
     setEditDate(main.date);
@@ -431,6 +435,8 @@ export default function EventDashboard() {
         image: editForm.image || '',
         isFree: editIsFree,
         isMultiDay: editIsMultiDay,
+        // oculto: si está activo lo escribimos; si no, quitamos el campo
+        hidden: editHidden ? true : deleteField(),
         updatedAt: Timestamp.now()
       };
 
@@ -1176,7 +1182,7 @@ El equipo de ENTRÁ`;
             >
               <Edit className="w-4 h-4" /> Editar Info
             </button>
-            <Link to={`/evento/${event.id}`}>
+            <Link to={eventPath(event)}>
               <button className="flex items-center gap-2 bg-white/5 border border-white/10 text-sm font-heading font-black px-4 py-2.5 rounded-xl hover:border-orange-500/30 transition-all">
                 <Eye className="w-4 h-4" /> Ver página pública
               </button>
@@ -2203,6 +2209,18 @@ El equipo de ENTRÁ`;
                 <button type="button" onClick={() => setEditIsFree(v => !v)} aria-label="Evento gratuito"
                   className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${editIsFree ? 'bg-orange-500' : 'bg-white/15'}`}>
                   <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform ${editIsFree ? 'translate-x-5' : ''}`} />
+                </button>
+              </div>
+
+              {/* EVENTO OCULTO */}
+              <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
+                <div>
+                  <p className="text-sm font-bold">Evento oculto</p>
+                  <p className="text-[11px] text-zinc-500">No aparece en la cartelera. Solo entra quien tenga el link directo.</p>
+                </div>
+                <button type="button" onClick={() => setEditHidden(v => !v)} aria-label="Evento oculto"
+                  className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${editHidden ? 'bg-orange-500' : 'bg-white/15'}`}>
+                  <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform ${editHidden ? 'translate-x-5' : ''}`} />
                 </button>
               </div>
 

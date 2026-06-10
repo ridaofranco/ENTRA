@@ -39,6 +39,7 @@ export default function CreateEvent() {
   const [isDateProximamente, setIsDateProximamente] = useState(false);
   const [isTimeProximamente, setIsTimeProximamente] = useState(false);
   const [isVenueProximamente, setIsVenueProximamente] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
   const [imageError, setImageError] = useState('');
 
@@ -277,6 +278,7 @@ export default function CreateEvent() {
         isDateTBD: isMultiDay ? false : isDateProximamente,
         isTimeTBD: isMultiDay ? false : (isTimeProximamente || isDateProximamente),
         isVenueTBD: isVenueProximamente,
+        ...(isHidden ? { hidden: true } : {}),
         tickets: tickets.map(t => ({
           ...t,
           price: isFreeEvent ? 0 : (Number(t.price) || 0),
@@ -372,6 +374,22 @@ export default function CreateEvent() {
                   );
                 })}
               </div>
+            </div>
+
+            {/* Toggle: evento oculto (solo por link) */}
+            <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-white/5 border border-white/10">
+              <div>
+                <p className="text-sm font-heading font-black uppercase tracking-wide">Evento oculto</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">No aparece en la cartelera pública. Solo entra quien tenga el link directo.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsHidden(v => !v)}
+                aria-label="Evento oculto"
+                className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${isHidden ? 'bg-primary' : 'bg-white/15'}`}
+              >
+                <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform ${isHidden ? 'translate-x-5' : ''}`} />
+              </button>
             </div>
 
             {/* Toggle: evento de varios días */}

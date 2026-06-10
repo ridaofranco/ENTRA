@@ -9,6 +9,7 @@ import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { formatCurrency } from '@/src/lib/utils';
 import PosterFallback from '@/src/components/PosterFallback';
+import { resolveEventId } from '@/src/lib/slug';
 
 interface TicketType {
   type: string;
@@ -43,11 +44,13 @@ export default function EventDetail() {
   const [selectedDays, setSelectedDays] = useState<number[]>([]); // índices de días elegidos (multi-día por jornada)
   const [linkCopied, setLinkCopied] = useState(false);
 
+  const docId = resolveEventId(id);
+
   useEffect(() => {
-    if (!id) return;
+    if (!docId) return;
     setLoading(true);
 
-    const unsub = onSnapshot(doc(db, 'events', id), (docSnap) => {
+    const unsub = onSnapshot(doc(db, 'events', docId), (docSnap) => {
       if (docSnap.exists()) {
         const data = { id: docSnap.id, ...docSnap.data() } as Event;
         setEvent(data);
@@ -64,12 +67,12 @@ export default function EventDetail() {
       }
       setLoading(false);
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, `events/${id}`);
+      handleFirestoreError(error, OperationType.GET, `events/${docId}`);
       setLoading(false);
     });
 
     return () => unsub();
-  }, [id]);
+  }, [docId]);
 
   const updateQty = (type: string, delta: number) => {
     setQuantities(prev => ({
