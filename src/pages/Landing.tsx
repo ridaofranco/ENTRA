@@ -9,6 +9,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
 import { seedEventsIfMissing } from '@/src/services/eventService';
 import { useAuth } from '@/src/context/AuthContext';
+import HeroAtmosphere from '@/src/components/HeroAtmosphere';
 
 interface Event {
   id: string;
@@ -76,10 +77,10 @@ export default function Landing() {
       
       {/* 1. HERO — full screen, dark, atmospheric */}
       <section className="relative min-h-screen flex flex-col justify-center overflow-hidden px-6">
-        {/* Subtle, real organic background visual context (no flashing particles, purely dark crowd tones) */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent opacity-60 pointer-events-none" />
-        
-        <div className="max-w-7xl mx-auto w-full pt-20 relative">
+        {/* Atmósfera de marca: glows que respiran + brasas sutiles (detrás del texto) */}
+        <HeroAtmosphere />
+
+        <div className="max-w-7xl mx-auto w-full pt-20 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
