@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
+import { getCategoryLabel } from '@/src/lib/categories';
 import { useAuth } from '@/src/context/AuthContext';
 import { formatCurrency } from '@/src/lib/utils';
 
@@ -385,6 +386,15 @@ export default function Comprar() {
                             {badgeText}
                           </span>
                         </div>
+
+                        {/* Category badge (solo texto, en línea con la estética editorial) */}
+                        {event.category && (
+                          <div className="absolute top-6 right-6">
+                            <span className="text-[10px] font-sans font-bold tracking-widest px-3.5 py-1.5 rounded-full border border-white/15 bg-black/40 backdrop-blur-md uppercase text-white/80">
+                              {getCategoryLabel(event.category)}
+                            </span>
+                          </div>
+                        )}
 
                         {/* Location details inside visual overlay */}
                         <div className="absolute bottom-6 left-6 right-6 space-y-1 text-white">

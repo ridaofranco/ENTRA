@@ -28,6 +28,7 @@ import { useAuth } from '@/src/context/AuthContext';
 import { logAction } from '@/src/services/auditService';
 import { formatCurrency } from '@/src/lib/utils';
 import { uploadEventImage } from '@/src/lib/imageUpload';
+import { EVENT_CATEGORIES } from '@/src/lib/categories';
 
 export default function CreateEvent() {
   const navigate = useNavigate();
@@ -343,14 +344,36 @@ export default function CreateEvent() {
           <Card className="glass p-8 rounded-[2.5rem] border-white/5 space-y-6">
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Título del Evento</label>
-              <Input 
+              <Input
                 required
-                placeholder="Ej: Noche de Jazz en Palermo" 
+                placeholder="Ej: Noche de Jazz en Palermo"
                 className="bg-white/5 border-white/10 h-14 rounded-2xl text-lg"
                 value={formData.title}
                 onChange={e => setFormData({...formData, title: e.target.value})}
               />
             </div>
+
+            {/* Tipo de evento (categoría) — alimenta el filtro de la cartelera */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Tipo de evento</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {EVENT_CATEGORIES.map(cat => {
+                  const active = formData.category === cat.value;
+                  return (
+                    <button
+                      key={cat.value}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, category: cat.value })}
+                      className={`flex items-center gap-2 px-3 h-12 rounded-2xl border text-sm font-bold transition-all ${active ? 'border-primary bg-primary/10 text-primary' : 'border-white/10 bg-white/5 text-muted-foreground hover:border-white/20'}`}
+                    >
+                      <cat.icon className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{cat.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Toggle: evento de varios días */}
             <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-white/5 border border-white/10">
               <div>

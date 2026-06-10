@@ -26,6 +26,7 @@ import { useAuth } from '@/src/context/AuthContext';
 import { logAction } from '@/src/services/auditService';
 import { formatCurrency } from '@/src/lib/utils';
 import { uploadEventImage } from '@/src/lib/imageUpload';
+import { EVENT_CATEGORIES } from '@/src/lib/categories';
 
 interface TicketType {
   type: string;
@@ -2091,6 +2092,27 @@ El equipo de ENTRÁ`;
                 <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-1">Título</label>
                 <input type="text" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500/50" />
+              </div>
+
+              {/* TIPO DE EVENTO (CATEGORÍA) */}
+              <div>
+                <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-2">Tipo de evento</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {EVENT_CATEGORIES.map(cat => {
+                    const active = editForm.category === cat.value;
+                    return (
+                      <button
+                        key={cat.value}
+                        type="button"
+                        onClick={() => setEditForm({ ...editForm, category: cat.value })}
+                        className={`flex items-center gap-2 px-3 h-11 rounded-xl border text-xs font-bold transition-all ${active ? 'border-orange-500 bg-orange-500/10 text-orange-400' : 'border-white/10 bg-white/5 text-zinc-400 hover:border-white/20'}`}
+                      >
+                        <cat.icon className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{cat.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* EVENTO DE VARIOS DÍAS */}
