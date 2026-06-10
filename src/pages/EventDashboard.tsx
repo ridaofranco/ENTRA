@@ -429,6 +429,13 @@ export default function EventDashboard() {
         updatedAt: Timestamp.now()
       };
 
+      // Si se marca gratuito, ponemos los precios en 0 (igual que al crear el evento)
+      // para que no quede ningún precio viejo colgado en las filas de tickets.
+      if (editIsFree && Array.isArray(event.tickets)) {
+        update.tickets = event.tickets.map((t: any) => ({ ...t, price: 0 }));
+        update.price = 0;
+      }
+
       if (editIsMultiDay) {
         const built = editDays
           .filter(d => d.date)
