@@ -129,15 +129,18 @@ export default function Landing() {
         ) : featuredEvents.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {featuredEvents.map((event, i) => {
-              // Custom stock labeling to match "ABIERTO", "ÚLTIMOS ACCESOS", "AGOTADO"
+              // Etiqueta de stock REAL según disponibilidad de las entradas
+              const tks: any[] = (event as any).tickets || [];
+              const totalAvail = tks.reduce((s, t) => s + (Number(t.available) || 0), 0);
+              const soldOut = tks.length > 0 && tks.every(t => (Number(t.available) || 0) <= 0);
               let statusText = "ABIERTO";
               let statusClasses = "border-primary/20 text-primary";
-              if (i === 1) {
-                statusText = "ÚLTIMOS ACCESOS";
-                statusClasses = "border-orange-500/30 text-orange-400 bg-orange-950/20";
-              } else if (i === 3) {
+              if (soldOut) {
                 statusText = "AGOTADO";
                 statusClasses = "border-white/10 text-muted-foreground";
+              } else if (totalAvail > 0 && totalAvail < 10) {
+                statusText = "ÚLTIMOS ACCESOS";
+                statusClasses = "border-orange-500/30 text-orange-400 bg-orange-950/20";
               }
 
               return (

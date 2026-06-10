@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/src/components/ui/button';
 import { Card } from '@/src/components/ui/card';
 import { Badge } from '@/src/components/ui/badge';
-import { Calendar, MapPin, Clock, Share2, Info, Ticket, ChevronRight, Minus, Plus, AlertTriangle } from 'lucide-react';
+import { Calendar, MapPin, Clock, Share2, Info, Ticket, ChevronRight, Minus, Plus, AlertTriangle, CalendarPlus, Check } from 'lucide-react';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { formatCurrency } from '@/src/lib/utils';
@@ -40,6 +40,7 @@ export default function EventDetail() {
   const [loading, setLoading] = useState(true);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [selectedDays, setSelectedDays] = useState<number[]>([]); // índices de días elegidos (multi-día por jornada)
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -144,6 +145,69 @@ export default function EventDetail() {
 
   const eventDate = event.date?.toDate();
 
+  const handleShare = async () => {
+    const url = window.location.href;
+    const shareData = {
+      title: event.title,
+      text: `${event.title} — conseguí tus entradas en ENTRÁ`,
+      url,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
+    } catch {
+      // si el usuario cancela el share nativo, no hacemos nada
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      /* noop */
+    }
+  };
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const toICSDate = (d: Date) =>
+    `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+
+  const handleAddToCalendar = () => {
+    const start = eventDate && !isNaN(eventDate.getTime()) ? eventDate : new Date();
+    const endRaw = (event as any).endDate?.toDate
+      ? (event as any).endDate.toDate()
+      : new Date(start.getTime() + 3 * 60 * 60 * 1000);
+    const end = endRaw && !isNaN(endRaw.getTime()) ? endRaw : new Date(start.getTime() + 3 * 60 * 60 * 1000);
+    const esc = (s: string) => (s || '').replace(/\\/g, '\\\\').replace(/,/g, '\\,').replace(/;/g, '\\;').replace(/\n/g, '\\n');
+    const ics = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//ENTRA//Tickets//ES',
+      'CALSCALE:GREGORIAN',
+      'BEGIN:VEVENT',
+      `UID:${event.id || Date.now()}@entratickets`,
+      `DTSTAMP:${toICSDate(new Date())}`,
+      `DTSTART:${toICSDate(start)}`,
+      `DTEND:${toICSDate(end)}`,
+      `SUMMARY:${esc(event.title)}`,
+      `LOCATION:${esc(`${event.venue || ''}${event.location ? ', ' + event.location : ''}`)}`,
+      `DESCRIPTION:${esc(event.description || 'Evento en ENTRÁ')}`,
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n');
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(event.title || 'evento').replace(/[^a-zA-Z0-9-_]/g, '_')}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   return (
     <div className="pb-20 pt-20">
       {/* Banner — arranca debajo del navbar (h-20), no por detrás */}
@@ -199,6 +263,24 @@ export default function EventDetail() {
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-3 gap-12 mt-12">
         {/* Left Column: Info */}
         <div className="lg:col-span-2 space-y-12">
+          {/* Acciones: compartir / agregar al calendario */}
+          <div className="flex flex-wrap gap-3 -mb-4">
+            <button
+              onClick={handleShare}
+              className="flex items-center gap-2 h-11 px-5 rounded-xl bg-white/[0.03] border border-white/10 text-white text-sm font-bold hover:bg-white/[0.06] hover:border-white/20 transition-all"
+            >
+              {linkCopied ? <Check className="w-4 h-4 text-primary" /> : <Share2 className="w-4 h-4" />}
+              {linkCopied ? 'Link copiado' : 'Compartir'}
+            </button>
+            <button
+              onClick={handleAddToCalendar}
+              className="flex items-center gap-2 h-11 px-5 rounded-xl bg-white/[0.03] border border-white/10 text-white text-sm font-bold hover:bg-white/[0.06] hover:border-white/20 transition-all"
+            >
+              <CalendarPlus className="w-4 h-4" />
+              Agregar al calendario
+            </button>
+          </div>
+
           <section>
             <h2 className="text-2xl font-heading font-black mb-6 flex items-center gap-3">
               <Info className="w-6 h-6 text-primary" />
