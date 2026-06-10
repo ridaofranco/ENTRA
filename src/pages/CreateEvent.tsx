@@ -27,7 +27,7 @@ import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { useAuth } from '@/src/context/AuthContext';
 import { logAction } from '@/src/services/auditService';
 import { formatCurrency } from '@/src/lib/utils';
-import { compressImageFile } from '@/src/lib/imageUpload';
+import { uploadEventImage } from '@/src/lib/imageUpload';
 
 export default function CreateEvent() {
   const navigate = useNavigate();
@@ -49,8 +49,8 @@ export default function CreateEvent() {
     setImageError('');
     setImageUploading(true);
     try {
-      const { dataUrl } = await compressImageFile(file);
-      setImage(dataUrl);
+      const { url } = await uploadEventImage(file, user?.uid || 'misc');
+      setImage(url);
     } catch (err) {
       setImageError(err instanceof Error ? err.message : 'No se pudo subir la imagen.');
     } finally {

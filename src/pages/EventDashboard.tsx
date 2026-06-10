@@ -25,7 +25,7 @@ import { db, auth, handleFirestoreError, OperationType } from '@/src/lib/firebas
 import { useAuth } from '@/src/context/AuthContext';
 import { logAction } from '@/src/services/auditService';
 import { formatCurrency } from '@/src/lib/utils';
-import { compressImageFile } from '@/src/lib/imageUpload';
+import { uploadEventImage } from '@/src/lib/imageUpload';
 
 interface TicketType {
   type: string;
@@ -156,6 +156,7 @@ export default function EventDashboard() {
   const [editDays, setEditDays] = useState<Array<{ date: string; startTime: string; endTime: string }>>([]);
   const [editImageUploading, setEditImageUploading] = useState(false);
   const [editImageError, setEditImageError] = useState('');
+  const [saveError, setSaveError] = useState('');
 
   // Discount form state
   const [discountForm, setDiscountForm] = useState({
@@ -404,8 +405,8 @@ export default function EventDashboard() {
     setEditImageError('');
     setEditImageUploading(true);
     try {
-      const { dataUrl } = await compressImageFile(file);
-      setEditForm(f => ({ ...f, image: dataUrl }));
+      const { url } = await uploadEventImage(file, event?.id || 'event');
+      setEditForm(f => ({ ...f, image: url }));
     } catch (err) {
       setEditImageError(err instanceof Error ? err.message : 'No se pudo subir la imagen.');
     } finally {
@@ -417,6 +418,7 @@ export default function EventDashboard() {
     if (!event) return;
     try {
       setIsSaving(true);
+      setSaveError('');
 
       const update: any = {
         title: editForm.title,
@@ -466,14 +468,27 @@ export default function EventDashboard() {
         update.isMultiDay = false;
       }
 
+      // Defensa: Firestore rechaza valores undefined → los quitamos
+      Object.keys(update).forEach(k => { if (update[k] === undefined) delete update[k]; });
+
       await updateDoc(doc(db, 'events', event.id), update);
       setShowSavedFeedback(true);
       setTimeout(() => {
         setIsEditingEvent(false);
         setShowSavedFeedback(false);
       }, 1500);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `events/${event.id}`);
+    } catch (error: any) {
+      const raw = String(error?.message || error || '');
+      let msg = 'No se pudo guardar. Probá de nuevo.';
+      if (raw.toLowerCase().includes('permission') || raw.toLowerCase().includes('insufficient')) {
+        msg = 'No se pudo guardar por permisos de la base de datos. Reintentá; si persiste, hay que republicar las reglas de Firestore.';
+      } else if (raw.toLowerCase().includes('undefined') || raw.toLowerCase().includes('invalid')) {
+        msg = 'No se pudo guardar: un campo quedó vacío o inválido. Revisá fecha, días y ubicación.';
+      } else if (raw) {
+        msg = 'No se pudo guardar: ' + raw.slice(0, 140);
+      }
+      setSaveError(msg);
+      console.error('[handleSaveEventDetails]', error);
     } finally {
       setIsSaving(false);
     }
@@ -2205,8 +2220,14 @@ El equipo de ENTRÁ`;
               </div>
             </div>
 
+            {saveError && (
+              <div className="flex items-start gap-2 px-4 py-3 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-bold">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {saveError}
+              </div>
+            )}
+
             <div className="flex gap-3 pt-4">
-              <button onClick={() => setIsEditingEvent(false)} className="flex-1 px-6 py-3 rounded-2xl bg-white/5 hover:bg-white/10 font-bold transition">
+              <button onClick={() => { setIsEditingEvent(false); setSaveError(''); }} className="flex-1 px-6 py-3 rounded-2xl bg-white/5 hover:bg-white/10 font-bold transition">
                 Cancelar
               </button>
               <button 
