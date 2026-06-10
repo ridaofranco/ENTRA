@@ -82,7 +82,9 @@ export default function EventDetail() {
   const entryMode = (event as any)?.entryMode;
   const isFree = Boolean((event as any)?.isFree);
   const eventDays: any[] = Array.isArray((event as any)?.days) ? (event as any).days : [];
-  const isPerDay = isMultiDay && entryMode === 'per_day' && eventDays.length > 0;
+  // En CUALQUIER evento multi-día el comprador elige los días (no depende del modo).
+  // El "modo" (per_day vs whole_event) solo cambia cuántos QR se generan en el checkout.
+  const isPerDay = isMultiDay && eventDays.length > 0;
   const dayCount = isPerDay ? Math.max(1, selectedDays.length) : 1;
 
   const ticketsSubtotal = event?.tickets.reduce((acc, t) => acc + (quantities[t.type] || 0) * t.price, 0) || 0;
@@ -101,9 +103,8 @@ export default function EventDetail() {
   };
   const allDayKeys = eventDays.map(dayKey).filter(Boolean) as string[];
   const selectedDayKeys = selectedDays.map(i => dayKey(eventDays[i])).filter(Boolean) as string[];
-  // Días que habilita la entrada: si elige por jornada, los elegidos; si es pase
-  // completo, todos; si no es multi-día, vacío (entrada normal).
-  const validDays = isPerDay ? selectedDayKeys : (isMultiDay ? allDayKeys : []);
+  // Días que habilita la entrada = los que el comprador eligió.
+  const validDays = isPerDay ? selectedDayKeys : [];
 
   // Fee calculation matching Checkout page exactly:
   // 8% + IVA service fee + 4.99% processor rate
