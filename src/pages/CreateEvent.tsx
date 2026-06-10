@@ -19,7 +19,8 @@ import {
   Info,
   Upload,
   Loader2,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Users
 } from 'lucide-react';
 import { collection, setDoc, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
@@ -202,6 +203,21 @@ export default function CreateEvent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // ---- Validación de capacidad ----
+    // No se puede crear un evento sin capacidad: cada entrada/sector debe tener
+    // una cantidad cargada y el evento debe tener más de 1 entrada a la venta.
+    const totalCapacity = tickets.reduce((acc, t) => acc + (Number(t.available) || 0), 0);
+    const algunSinCapacidad = tickets.some(t => !(Number(t.available) > 0));
+    if (tickets.length === 0 || algunSinCapacidad) {
+      alert('Cada entrada/sector tiene que tener una capacidad cargada (cuántos tickets se ponen a la venta).');
+      return;
+    }
+    if (totalCapacity <= 1) {
+      alert('El evento tiene que tener más de 1 entrada a la venta en total.');
+      return;
+    }
+
     setLoading(true);
     try {
       // 1. Obtener plan del usuario y tiers globales para snapshot
@@ -303,6 +319,10 @@ export default function CreateEvent() {
       setLoading(false);
     }
   };
+
+  // Capacidad total y validez (cada entrada con cupo y más de 1 en total)
+  const totalCapacity = tickets.reduce((acc, t) => acc + (Number(t.available) || 0), 0);
+  const capacityValid = tickets.length > 0 && tickets.every(t => Number(t.available) > 0) && totalCapacity > 1;
 
   return (
     <div className="pt-32 pb-20 px-6 max-w-4xl mx-auto">
@@ -659,7 +679,7 @@ export default function CreateEvent() {
 
                   {/* Cupo - col-span-3 */}
                   <div className="space-y-1.5 md:col-span-3">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Cupo (Disponibles)</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Cupo (Disponibles) <span className="text-primary">*</span></label>
                     <Input 
                       type="number"
                       placeholder="100"
@@ -890,10 +910,26 @@ export default function CreateEvent() {
           </button>
         </div>
 
-        <Button 
-          type="submit" 
-          disabled={loading}
-          className="w-full h-20 orange-gradient border-none font-heading font-black text-2xl rounded-xl transition-all"
+        {/* Resumen de capacidad */}
+        <div className={`flex items-center justify-between gap-3 px-5 py-4 rounded-2xl border ${capacityValid ? 'bg-white/5 border-white/10' : 'bg-red-500/5 border-red-500/30'}`}>
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-bold">Capacidad total del evento</span>
+          </div>
+          <span className={`text-lg font-heading font-black ${capacityValid ? 'text-primary' : 'text-red-400'}`}>
+            {totalCapacity} {totalCapacity === 1 ? 'entrada' : 'entradas'}
+          </span>
+        </div>
+        {!capacityValid && (
+          <p className="text-xs text-red-400 -mt-2 px-1">
+            Cada entrada tiene que tener un cupo cargado y el evento debe tener más de 1 entrada a la venta.
+          </p>
+        )}
+
+        <Button
+          type="submit"
+          disabled={loading || !capacityValid}
+          className="w-full h-20 orange-gradient border-none font-heading font-black text-2xl rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? "Enviando..." : "Enviar a revisión"}
         </Button>
