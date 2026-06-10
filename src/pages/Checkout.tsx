@@ -47,6 +47,7 @@ interface TicketData {
   finalPricePaid?: number;
   status: 'valid';
   qrCode: string;
+  validDays?: string[];
   createdAt: any;
 }
 
@@ -142,9 +143,13 @@ export default function Checkout() {
     return null;
   }
 
-  // Calculate totals
-  const subtotalOriginal = (selectedTickets || []).reduce(
-    (acc: number, ticket: SelectedTicket) => acc + (Number(ticket.price) || 0) * (Number(ticket.quantity) || 0),
+  // Evento gratuito (reserva sin cobro)
+  const isFreeEvent = Boolean((event as any)?.isFree);
+
+  // Calculate totals — para multi-día "por jornada", el precio se multiplica por
+  // la cantidad de días que eligió el comprador (ticket.days).
+  const subtotalOriginal = isFreeEvent ? 0 : (selectedTickets || []).reduce(
+    (acc: number, ticket: any) => acc + (Number(ticket.price) || 0) * (Number(ticket.quantity) || 0) * (Number(ticket.days) || 1),
     0
   );
 
@@ -286,8 +291,10 @@ export default function Checkout() {
 
       // Create ticket documents
       const createdTickets: Array<{ id: string; qrCode: string; type: string }> = [];
+      const eventValidDays: string[] = Array.isArray((event as any).validDays) ? (event as any).validDays : [];
       for (const selectedTicket of selectedTickets) {
-        const basePrice = Number(selectedTicket.price) || 0;
+        // El precio del ticket considera los días elegidos (multi-día por jornada)
+        const basePrice = isFreeEvent ? 0 : (Number(selectedTicket.price) || 0) * (Number((selectedTicket as any).days) || 1);
         let discountedPrice = basePrice;
         if (subtotalOriginal > 0 && discountAmount > 0) {
           const discountProportion = discountAmount / subtotalOriginal;
@@ -309,10 +316,11 @@ export default function Checkout() {
             buyerPhone: buyerInfo.phone || '',
             buyerDni: buyerInfo.dni,
             ticketType: selectedTicket.type,
-            price: selectedTicket.price,
+            price: basePrice,
             finalPricePaid,
             status: 'valid',
             qrCode,
+            ...(eventValidDays.length > 0 ? { validDays: eventValidDays } : {}),
             createdAt: Timestamp.now(),
           };
 
@@ -839,7 +847,7 @@ ${successState.tickets.map((ticket, i) => `
           onClick={handleConfirmPurchase}
           className="flex-grow h-12 orange-gradient border-none font-heading font-black rounded-xl"
         >
-          {isProcessing ? 'Procesando...' : 'Confirmar Compra'}
+          {isProcessing ? 'Procesando...' : (isFreeEvent ? 'Confirmar Reserva' : 'Confirmar Compra')}
         </Button>
       </div>
     </motion.div>
@@ -859,7 +867,7 @@ ${successState.tickets.map((ticket, i) => `
         </div>
         <div className="space-y-2">
           <h2 className="text-4xl font-heading font-black tracking-tighter">
-            ¡Compra Exitosa!
+            {isFreeEvent ? '¡Reserva Confirmada!' : '¡Compra Exitosa!'}
           </h2>
           <p className="text-lg text-muted-foreground">
             Orden #{successState.orderId.substring(0, 8).toUpperCase()}

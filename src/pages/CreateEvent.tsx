@@ -34,6 +34,9 @@ export default function CreateEvent() {
   const [isTimeProximamente, setIsTimeProximamente] = useState(false);
   const [isVenueProximamente, setIsVenueProximamente] = useState(false);
 
+  // =================== GRATIS vs PAGO ===================
+  const [isFreeEvent, setIsFreeEvent] = useState(false);
+
   // =================== EVENTO MULTI-DÍA ===================
   const [isMultiDay, setIsMultiDay] = useState(false);
   const [sameSchedule, setSameSchedule] = useState(true);
@@ -227,7 +230,8 @@ export default function CreateEvent() {
       const eventData = {
         ...restFormData,
         id: eventId,
-        price: minPrice,
+        price: isFreeEvent ? 0 : minPrice,
+        isFree: isFreeEvent,
         date: Timestamp.fromDate(eventDate),
         ...multiDayExtra,
         isDateTBD: isMultiDay ? false : isDateProximamente,
@@ -235,7 +239,7 @@ export default function CreateEvent() {
         isVenueTBD: isVenueProximamente,
         tickets: tickets.map(t => ({
           ...t,
-          price: Number(t.price) || 0,
+          price: isFreeEvent ? 0 : (Number(t.price) || 0),
           available: Number(t.available) || 0
         })),
         customFields: customFields.filter(cf => cf.label.trim() !== ''), // solo guardamos los que tengan label
@@ -537,6 +541,22 @@ export default function CreateEvent() {
             <h2 className="text-xl font-heading font-black uppercase tracking-tight">Tickets y Precios</h2>
           </div>
           <Card className="glass p-8 rounded-[2.5rem] border-white/5 space-y-6">
+            {/* Toggle: evento gratuito */}
+            <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-white/5 border border-white/10">
+              <div>
+                <p className="text-sm font-heading font-black uppercase tracking-wide">Evento gratuito</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Los asistentes reservan su lugar sin pagar (igual sacan su QR de acceso).</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFreeEvent(v => !v)}
+                aria-label="Evento gratuito"
+                className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${isFreeEvent ? 'bg-primary' : 'bg-white/15'}`}
+              >
+                <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform ${isFreeEvent ? 'translate-x-5' : ''}`} />
+              </button>
+            </div>
+
             {tickets.map((ticket, index) => (
               <div key={index} className="bg-white/5 border border-white/10 p-5 rounded-[2rem] relative group mb-6 transition-all hover:border-primary/20">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
@@ -563,11 +583,12 @@ export default function CreateEvent() {
                         <span className="text-[10px] font-black text-primary animate-in fade-in slide-in-from-right-1">{formatCurrency(Number(ticket.price))}</span>
                       )}
                     </div>
-                    <Input 
+                    <Input
                       type="number"
-                      placeholder="0"
-                      className="bg-zinc-900/50 border-white/10 h-11 rounded-xl text-sm font-bold shadow-inner"
-                      value={ticket.price === 0 ? '' : ticket.price}
+                      placeholder={isFreeEvent ? 'Gratis' : '0'}
+                      disabled={isFreeEvent}
+                      className="bg-zinc-900/50 border-white/10 h-11 rounded-xl text-sm font-bold shadow-inner disabled:opacity-40 disabled:cursor-not-allowed"
+                      value={isFreeEvent ? '' : (ticket.price === 0 ? '' : ticket.price)}
                       onChange={e => {
                         const newTickets = [...tickets];
                         newTickets[index].price = e.target.value === '' ? '' : Number(e.target.value);

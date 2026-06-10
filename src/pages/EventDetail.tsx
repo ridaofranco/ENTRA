@@ -39,6 +39,7 @@ export default function EventDetail() {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [selectedDays, setSelectedDays] = useState<number[]>([]); // índices de días elegidos (multi-día por jornada)
 
   useEffect(() => {
     if (!id) return;
@@ -75,8 +76,34 @@ export default function EventDetail() {
     }));
   };
 
-  const total = event?.tickets.reduce((acc, t) => acc + (quantities[t.type] || 0) * t.price, 0) || 0;
+  // Multi-día: si es "un QR por día", el comprador elige las jornadas y el
+  // precio se multiplica por la cantidad de días elegidos.
+  const isMultiDay = Boolean((event as any)?.isMultiDay);
+  const entryMode = (event as any)?.entryMode;
+  const isFree = Boolean((event as any)?.isFree);
+  const eventDays: any[] = Array.isArray((event as any)?.days) ? (event as any).days : [];
+  const isPerDay = isMultiDay && entryMode === 'per_day' && eventDays.length > 0;
+  const dayCount = isPerDay ? Math.max(1, selectedDays.length) : 1;
+
+  const ticketsSubtotal = event?.tickets.reduce((acc, t) => acc + (quantities[t.type] || 0) * t.price, 0) || 0;
+  const total = ticketsSubtotal * dayCount;
   const totalQty = Object.values(quantities).reduce((acc: number, q) => acc + (q as number), 0);
+
+  const toggleDay = (i: number) =>
+    setSelectedDays(prev => (prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i].sort((a, b) => a - b)));
+  const needsDays = isPerDay && selectedDays.length === 0;
+
+  // Clave local YYYY-MM-DD de cada día (para registrar en el ticket qué jornadas habilita)
+  const dayKey = (d: any): string | null => {
+    const dt = d?.date?.toDate ? d.date.toDate() : (d?.date?.seconds ? new Date(d.date.seconds * 1000) : null);
+    if (!dt) return null;
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+  };
+  const allDayKeys = eventDays.map(dayKey).filter(Boolean) as string[];
+  const selectedDayKeys = selectedDays.map(i => dayKey(eventDays[i])).filter(Boolean) as string[];
+  // Días que habilita la entrada: si elige por jornada, los elegidos; si es pase
+  // completo, todos; si no es multi-día, vacío (entrada normal).
+  const validDays = isPerDay ? selectedDayKeys : (isMultiDay ? allDayKeys : []);
 
   // Fee calculation matching Checkout page exactly:
   // 8% + IVA service fee + 4.99% processor rate
@@ -281,8 +308,36 @@ export default function EventDetail() {
               /* Event is active — show ticket selector */
               <>
                 <h3 className="text-2xl font-heading font-black uppercase tracking-tight mb-8">
-                  ENTRADAS
+                  {isFree ? 'RESERVÁ TU LUGAR' : 'ENTRADAS'}
                 </h3>
+
+                {isPerDay && (
+                  <div className="mb-8">
+                    <p className="text-[11px] uppercase tracking-widest text-primary font-bold mb-3">Elegí tus días</p>
+                    <div className="flex flex-wrap gap-2">
+                      {eventDays.map((d, i) => {
+                        const dt = d?.date?.toDate ? d.date.toDate() : (d?.date?.seconds ? new Date(d.date.seconds * 1000) : null);
+                        const active = selectedDays.includes(i);
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => toggleDay(i)}
+                            className={`px-3.5 py-2.5 rounded-xl border text-left transition-all ${active ? 'border-primary bg-primary/15 text-white' : 'border-white/10 bg-white/5 text-zinc-300 hover:border-white/20'}`}
+                          >
+                            <span className="block text-[10px] uppercase tracking-wider opacity-70">Día {i + 1}</span>
+                            <span className="block text-sm font-heading font-black capitalize">
+                              {dt ? dt.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' }) : `Día ${i + 1}`}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-2">
+                      {isFree ? 'Reservás solo los días que vas a ir.' : 'Pagás solo por los días que elegís.'}
+                    </p>
+                  </div>
+                )}
 
                 <div className="space-y-4 mb-8">
                   {event.tickets.map((t, idx) => {
@@ -410,16 +465,22 @@ export default function EventDetail() {
                   <div className="border-t border-white/5 pt-3 flex justify-between items-end">
                     <div>
                       <div className="text-[10px] uppercase tracking-[0.2em] text-[#a0a0aa] font-bold font-sans">
-                        Total Final ({totalQty} {totalQty === 1 ? 'entrada' : 'entradas'})
+                        {isFree ? 'Reserva' : 'Total Final'} ({totalQty} {totalQty === 1 ? 'entrada' : 'entradas'}{isPerDay ? ` · ${dayCount} día${dayCount === 1 ? '' : 's'}` : ''})
                       </div>
                       <div className="text-3xl font-heading font-black orange-text-gradient mt-1">
-                        {formatCurrency(finalCalculatedTotal)}
+                        {isFree ? 'Gratis' : formatCurrency(finalCalculatedTotal)}
                       </div>
                     </div>
                     <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary rounded-xl">
                       <Share2 className="w-5 h-5" />
                     </Button>
                   </div>
+
+                  {needsDays && Number(totalQty) > 0 && (
+                    <p className="text-[11px] text-center text-orange-400 font-bold uppercase tracking-wide">
+                      Elegí al menos un día arriba
+                    </p>
+                  )}
 
                   <Link
                     to="/checkout"
@@ -430,28 +491,34 @@ export default function EventDetail() {
                         venue: event.venue,
                         location: event.location,
                         image: event.image,
-                        date: event.date
+                        date: event.date,
+                        isMultiDay,
+                        entryMode: entryMode || null,
+                        isFree,
+                        validDays,
+                        selectedDayKeys,
                       },
                       selectedTickets: event.tickets
                         .filter(t => (quantities[t.type] || 0) > 0)
                         .map(t => ({
                           type: t.type,
                           price: t.price,
-                          quantity: quantities[t.type]
+                          quantity: quantities[t.type],
+                          days: dayCount,
                         }))
                     }}
-                    className={totalQty === 0 ? "pointer-events-none" : ""}
+                    className={(totalQty === 0 || needsDays) ? "pointer-events-none" : ""}
                   >
                     <Button
-                      disabled={totalQty === 0}
+                      disabled={totalQty === 0 || needsDays}
                       className="w-full h-16 orange-gradient border-none font-heading font-black text-2xl uppercase tracking-wider rounded-xl disabled:opacity-50 disabled:grayscale"
                     >
-                      ENTRÁ
+                      {isFree ? 'RESERVAR' : 'ENTRÁ'}
                       <ChevronRight className="ml-2 w-6 h-6" />
                     </Button>
                   </Link>
                   <p className="text-[10px] text-center text-muted-foreground uppercase tracking-widest font-bold">
-                    Compra segura · Sin registro obligatorio · nos vemos adentro
+                    {isFree ? 'Reserva sin cargo · Sin registro obligatorio · nos vemos adentro' : 'Compra segura · Sin registro obligatorio · nos vemos adentro'}
                   </p>
                 </div>
               </>
