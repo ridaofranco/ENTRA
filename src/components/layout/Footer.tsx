@@ -21,8 +21,8 @@ export function Footer() {
           <Link to="/productores" className="hover:text-primary transition-colors">Productores</Link>
           <Link to="/ayuda" className="hover:text-primary transition-colors">Ayuda</Link>
           <Link to="/contacto" className="hover:text-primary transition-colors">Sobre Nosotros</Link>
-          <Link to="/contacto" className="hover:text-border hover:text-white transition-colors">Términos</Link>
-          <Link to="/contacto" className="hover:text-border hover:text-white transition-colors">Privacidad</Link>
+          <Link to="/terminos" className="hover:text-primary transition-colors">Términos</Link>
+          <Link to="/privacidad" className="hover:text-primary transition-colors">Privacidad</Link>
         </div>
 
         {/* Contacts */}

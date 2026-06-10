@@ -23,6 +23,8 @@ import ClaimTicket from '@/src/pages/ClaimTicket';
 import Productores from '@/src/pages/Productores';
 import Ayuda from '@/src/pages/Ayuda';
 import Demo from '@/src/pages/Demo';
+import Terminos from '@/src/pages/Terminos';
+import Privacidad from '@/src/pages/Privacidad';
 
 export default function App() {
   return (
@@ -37,6 +39,8 @@ export default function App() {
             <Route path="/productores" element={<Productores />} />
             <Route path="/ayuda" element={<Ayuda />} />
             <Route path="/demo" element={<Demo />} />
+            <Route path="/terminos" element={<Terminos />} />
+            <Route path="/privacidad" element={<Privacidad />} />
             <Route path="/evento/:id" element={<EventDetail />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/auth/login" element={<Auth />} />
