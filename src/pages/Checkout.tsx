@@ -292,44 +292,63 @@ export default function Checkout() {
       // Create ticket documents
       const createdTickets: Array<{ id: string; qrCode: string; type: string }> = [];
       const eventValidDays: string[] = Array.isArray((event as any).validDays) ? (event as any).validDays : [];
+      // "Un QR por día": se emite un ticket/QR por cada jornada elegida.
+      // "Un QR para todo el evento": un solo ticket/QR válido todos los días (1 ingreso por día).
+      const isPerDayMode = Boolean((event as any).isMultiDay) && (event as any).entryMode === 'per_day' && eventValidDays.length > 0;
+
+      const fmtDayKey = (dk: string): string => {
+        try {
+          const [y, m, d] = dk.split('-').map(Number);
+          return new Date(y, m - 1, d).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+        } catch {
+          return dk;
+        }
+      };
+
       for (const selectedTicket of selectedTickets) {
-        // El precio del ticket considera los días elegidos (multi-día por jornada)
-        const basePrice = isFreeEvent ? 0 : (Number(selectedTicket.price) || 0) * (Number((selectedTicket as any).days) || 1);
-        let discountedPrice = basePrice;
+        // Precio por unidad: por día (per_day) o plano (whole_event / single)
+        const perUnit = isFreeEvent ? 0 : (Number(selectedTicket.price) || 0);
+        let discountedPrice = perUnit;
         if (subtotalOriginal > 0 && discountAmount > 0) {
           const discountProportion = discountAmount / subtotalOriginal;
-          discountedPrice = Math.max(0, basePrice * (1 - discountProportion));
+          discountedPrice = Math.max(0, perUnit * (1 - discountProportion));
         }
         const fee = discountedPrice * 0.08;
         const feeConIva = Math.round(fee * 1.21);
         const finalPricePaid = discountedPrice > 0 ? Math.round((discountedPrice + feeConIva) / (1 - 0.0499)) : 0;
 
-        for (let i = 0; i < selectedTicket.quantity; i++) {
-          const qrCode = generateUUID();
-          const ticketData: TicketData = {
-            orderId,
-            eventId: event.id,
-            eventTitle: event.title,
-            buyerId,
-            buyerName: buyerInfo.name,
-            buyerEmail: buyerInfo.email,
-            buyerPhone: buyerInfo.phone || '',
-            buyerDni: buyerInfo.dni,
-            ticketType: selectedTicket.type,
-            price: basePrice,
-            finalPricePaid,
-            status: 'valid',
-            qrCode,
-            ...(eventValidDays.length > 0 ? { validDays: eventValidDays } : {}),
-            createdAt: Timestamp.now(),
-          };
+        // per_day → un grupo (= un ticket) por cada día; whole_event/single → un solo grupo
+        const issueGroups: string[][] = isPerDayMode ? eventValidDays.map(dk => [dk]) : [eventValidDays];
 
-          const ticketDocRef = await addDoc(collection(db, 'tickets'), ticketData);
-          createdTickets.push({
-            id: ticketDocRef.id,
-            qrCode,
-            type: selectedTicket.type,
-          });
+        for (let i = 0; i < selectedTicket.quantity; i++) {
+          for (const grpDays of issueGroups) {
+            const qrCode = generateUUID();
+            const dayLabel = isPerDayMode && grpDays[0] ? fmtDayKey(grpDays[0]) : '';
+            const ticketData: TicketData = {
+              orderId,
+              eventId: event.id,
+              eventTitle: event.title,
+              buyerId,
+              buyerName: buyerInfo.name,
+              buyerEmail: buyerInfo.email,
+              buyerPhone: buyerInfo.phone || '',
+              buyerDni: buyerInfo.dni,
+              ticketType: selectedTicket.type,
+              price: perUnit,
+              finalPricePaid,
+              status: 'valid',
+              qrCode,
+              ...(grpDays.length > 0 ? { validDays: grpDays } : {}),
+              createdAt: Timestamp.now(),
+            };
+
+            const ticketDocRef = await addDoc(collection(db, 'tickets'), ticketData);
+            createdTickets.push({
+              id: ticketDocRef.id,
+              qrCode,
+              type: dayLabel ? `${selectedTicket.type} · ${dayLabel}` : selectedTicket.type,
+            });
+          }
         }
       }
 

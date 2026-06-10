@@ -120,8 +120,13 @@ export default function AccessControl() {
     const qTickets = query(collection(db, 'tickets'), where('eventId', '==', selectedEvent.id));
     const unsubscribeTickets = onSnapshot(qTickets, (snapshot) => {
       const allTickets = snapshot.docs.map(doc => doc.data());
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       const vendidos = snapshot.size;
-      const ingresaron = allTickets.filter(t => t.status === 'used').length;
+      // Ingresados = entradas normales usadas + entradas multi-día que ingresaron HOY
+      const ingresaron = allTickets.filter(
+        (t: any) => t.status === 'used' || (Array.isArray(t.usedDays) && t.usedDays.includes(today))
+      ).length;
       const faltan = Math.max(0, vendidos - ingresaron);
       
       setStats({
@@ -276,6 +281,20 @@ export default function AccessControl() {
     }
   };
 
+  // Clave local YYYY-MM-DD de hoy (para validar entradas multi-día por jornada)
+  const todayKey = (): string => {
+    const n = new Date();
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+  };
+  const fmtDayShort = (dk: string): string => {
+    try {
+      const [y, m, d] = dk.split('-').map(Number);
+      return new Date(y, m - 1, d).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+    } catch {
+      return dk;
+    }
+  };
+
   // Helper trigger for visual result and haptic feedback
   const triggerFeedback = (
     type: 'success' | 'warning' | 'error',
@@ -321,6 +340,44 @@ export default function AccessControl() {
         triggerFeedback('error', 'Ticket cancelado / devuelto', buyerName, ticketType);
         return;
       }
+
+      // ===== MULTI-DÍA: validación por jornada =====
+      // Si el ticket habilita días específicos (validDays), se valida así:
+      //  - debe ser un día válido (sino, denegado)
+      //  - una sola vez por día (si ya ingresó hoy, denegado con el tiempo)
+      //  - puede ingresar en cada día válido (no se "quema" de una)
+      const validDays: string[] = Array.isArray(ticketData.validDays) ? ticketData.validDays : [];
+      if (validDays.length > 0) {
+        const today = todayKey();
+        if (!validDays.includes(today)) {
+          triggerFeedback('error', 'NO VÁLIDO HOY', buyerName, ticketType, `Válido: ${validDays.map(fmtDayShort).join(', ')}`);
+          return;
+        }
+        const usedDays: string[] = Array.isArray(ticketData.usedDays) ? ticketData.usedDays : [];
+        if (usedDays.includes(today)) {
+          const usedAgo = timeAgo(ticketData.lastUsedAt);
+          triggerFeedback('error', 'DENEGADO · YA INGRESÓ HOY', buyerName, ticketType, usedAgo ? `Ingresó ${usedAgo}` : undefined);
+          try {
+            await addDoc(collection(db, 'checkins'), {
+              ticketId: ticketDoc.id, attendeeName: buyerName, ticketType,
+              timestamp: Timestamp.now(), status: 'error', eventId: selectedEvent.id,
+            });
+          } catch { /* no bloqueamos por el log */ }
+          return;
+        }
+        // Día válido y todavía no ingresó hoy → habilitar
+        await updateDoc(doc(db, 'tickets', ticketDoc.id), {
+          usedDays: [...usedDays, today],
+          lastUsedAt: Timestamp.now(),
+        });
+        await addDoc(collection(db, 'checkins'), {
+          ticketId: ticketDoc.id, attendeeName: buyerName, ticketType,
+          timestamp: Timestamp.now(), status: 'success', eventId: selectedEvent.id,
+        });
+        triggerFeedback('success', '¡Ingreso autorizado!', buyerName, ticketType, `Día ${fmtDayShort(today)}`);
+        return;
+      }
+      // ===== fin multi-día (sigue lógica normal de un solo uso) =====
 
       if (ticketData.status === 'used') {
         const usedAgo = timeAgo(ticketData.usedAt);
