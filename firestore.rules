@@ -45,7 +45,10 @@ service cloud.firestore {
     }
 
     function isEmailOwner(email) {
-      return isAuthenticated() && (request.auth.token.email == email || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email == email));
+      // Solo el email VERIFICADO por Firebase Auth (no el campo del doc, que el
+      // propio usuario puede editar). Antes esto permitía leer tickets/órdenes de
+      // cualquiera cambiándose el email del perfil (IDOR de datos personales).
+      return isAuthenticated() && request.auth.token.email == email;
     }
 
     function isSuperAdmin() {
@@ -176,11 +179,20 @@ service cloud.firestore {
                     request.resource.data.uid == request.auth.uid &&
                     isValidEmail(request.resource.data.email) &&
                     (request.resource.data.role == 'buyer' || isSuperAdmin());
-      allow update: if (isOwner(userId) || isSuperAdmin()) && 
-                    isValidUser(request.resource.data) && 
-                    (isSuperAdmin() || 
-                     (request.resource.data.role == resource.data.role && request.resource.data.uid == request.auth.uid) ||
-                     (resource.data.role == 'buyer' && request.resource.data.role == 'organizer' && isOwner(userId)));
+      allow update: if (isOwner(userId) || isSuperAdmin()) &&
+                    isValidUser(request.resource.data) &&
+                    (isSuperAdmin() || (
+                      // el email del doc no puede quedar en cualquier valor: o no cambia,
+                      // o queda igual al verificado por Auth (post re-autenticación). Evita
+                      // que alguien se ponga el email de una víctima para leer sus datos.
+                      (request.resource.data.email == resource.data.email || request.resource.data.email == request.auth.token.email) &&
+                      // un usuario no puede cambiarse el estado de suspensión (solo admin)
+                      request.resource.data.get('suspended', false) == resource.data.get('suspended', false) &&
+                      (
+                        (request.resource.data.role == resource.data.role && request.resource.data.uid == request.auth.uid) ||
+                        (resource.data.role == 'buyer' && request.resource.data.role == 'organizer' && isOwner(userId))
+                      )
+                    ));
       allow delete: if isSuperAdmin();
     }
 
@@ -202,11 +214,15 @@ service cloud.firestore {
 
     match /tickets/{ticketId} {
       allow read: if isAuthenticated() && (
-        isOwner(resource.data.buyerId) || 
-        isEmailOwner(resource.data.buyerEmail) || 
-        isAdmin() || 
+        isOwner(resource.data.buyerId) ||
+        isEmailOwner(resource.data.buyerEmail) ||
+        isAdmin() ||
         isOwner(get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organizerId)
       );
+      // ⚠️ FASE COBRO (crítico C-1): hoy el cliente puede crear tickets 'valid' sin pagar.
+      // Cuando entre el backend de pago (Cloud Function/serverless con Admin SDK + webhook
+      // MercadoPago), esto debe pasar a `allow create: if false;` — solo el backend
+      // (que saltea las reglas con el Admin SDK) emite tickets, tras verificar el pago.
       allow create: if isValidTicket(request.resource.data);
       allow update: if isAuthenticated() && (
         isAdmin() || 
@@ -216,7 +232,14 @@ service cloud.firestore {
     }
 
     match /ticket_transfers/{transferId} {
-      allow read: if true;
+      // Antes: `if true` exponía email/teléfono de TODAS las transferencias a cualquiera.
+      // Ahora solo las ve el que la envió, el destinatario (por email verificado) o un admin.
+      allow read: if isAuthenticated() && (
+        resource.data.fromUserId == request.auth.uid ||
+        resource.data.toUserEmail == request.auth.token.email ||
+        (resource.data.get('toUserId', '') == request.auth.uid) ||
+        isAdmin()
+      );
       allow create: if request.auth != null
         && request.resource.data.fromUserId == request.auth.uid
         && request.resource.data.status == 'pending'
@@ -295,7 +318,9 @@ service cloud.firestore {
 
     match /reviews/{reviewId} {
       allow read: if true;
-      allow create: if isAuthenticated();
+      // Antes cualquier autenticado podía crear una reseña a nombre de otro. Ahora el
+      // userId de la reseña debe ser el del propio autor.
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
