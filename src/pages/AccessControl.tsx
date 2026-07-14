@@ -45,6 +45,16 @@ export default function AccessControl() {
   const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
   const [eventSearch, setEventSearch] = useState('');
 
+  // Estado de conexión: para avisarle al operador que está validando offline.
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  useEffect(() => {
+    const on = () => setIsOnline(true);
+    const off = () => setIsOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []);
+
   // Si se entra con ?event=ID (desde el dashboard del evento), preseleccionarlo
   useEffect(() => {
     const eid = searchParams.get('event');
@@ -533,6 +543,13 @@ export default function AccessControl() {
           display: none !important;
         }
       `}</style>
+
+      {!isOnline && (
+        <div className="rounded-xl border border-yellow-500/30 bg-yellow-950/30 px-4 py-3 text-sm text-yellow-300 flex items-center gap-2">
+          <span className="inline-block w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+          Sin conexión — seguís validando con los datos ya cargados. Los ingresos se sincronizan solos cuando vuelva internet.
+        </div>
+      )}
 
       <AnimatePresence mode="wait">
         {!selectedEvent ? (

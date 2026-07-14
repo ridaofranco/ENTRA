@@ -869,7 +869,7 @@ export default function Profile() {
 
                     <div className="mt-4 pt-3 border-t border-white/5 flex justify-between items-center">
                       <span className="text-xs text-zinc-600 font-mono">#{order.id.substring(0, 8).toUpperCase()}</span>
-                      <Link to="/eventos">
+                      <Link to={`/evento/${(order as any).eventId}`}>
                         <button className="text-xs text-orange-500 font-bold hover:underline">Ver evento</button>
                       </Link>
                     </div>

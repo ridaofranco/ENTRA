@@ -112,13 +112,14 @@ export default function Dashboard() {
 
   const loadOrders = async (eventIds: string[]) => {
     try {
-      const batchIds = eventIds.slice(0, 30);
-      const ordersQuery = query(
-        collection(db, 'orders'),
-        where('eventId', 'in', batchIds)
+      // Firestore permite hasta 30 valores en 'in'. Paginamos en tandas de 30 para no
+      // perder órdenes de organizadores con más de 30 eventos (antes cortaba a 30).
+      const chunks: string[][] = [];
+      for (let i = 0; i < eventIds.length; i += 30) chunks.push(eventIds.slice(i, i + 30));
+      const snaps = await Promise.all(
+        chunks.map((batchIds) => getDocs(query(collection(db, 'orders'), where('eventId', 'in', batchIds))))
       );
-      const ordersSnap = await getDocs(ordersQuery);
-      const ordersList: OrderData[] = ordersSnap.docs.map(d => ({ id: d.id, ...d.data() } as OrderData));
+      const ordersList: OrderData[] = snaps.flatMap((snap) => snap.docs.map(d => ({ id: d.id, ...d.data() } as OrderData)));
 
       ordersList.sort((a, b) => {
         const aTime = a.createdAt?.seconds || 0;
