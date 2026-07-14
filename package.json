@@ -21,6 +21,8 @@
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "firebase": "^12.11.0",
+    "firebase-admin": "^13.0.2",
+    "mercadopago": "^2.0.15",
     "framer-motion": "^12.38.0",
     "html5-qrcode": "^2.3.8",
     "jspdf": "^2.5.2",
