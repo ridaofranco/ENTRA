@@ -16,7 +16,7 @@
 
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { Timestamp } from 'firebase-admin/firestore';
-import { getAdminDb } from './_lib/firebaseAdmin';
+import { getAdminDb } from './_lib/firebaseAdmin.js';
 
 const PLATFORM_FEE_RATE = 0.08;   // comisión ENTRÁ sobre el ticket
 const IVA = 1.21;                 // 21%
