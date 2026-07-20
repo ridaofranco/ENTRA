@@ -98,10 +98,13 @@ service cloud.firestore {
     }
 
     function isStockUpdate() {
-      // No requiere auth: una compra de invitado debe poder descontar el stock.
-      // Queda acotado a SOLO los 4 campos de stock (no se puede tocar precio,
-      // título, etc.), por lo que es seguro para el flujo de venta pública.
-      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tickets', 'ticketsSold', 'totalRevenue', 'updatedAt']);
+      // Solo para eventos GRATUITOS: una reserva de invitado descuenta el stock
+      // desde el navegador. En eventos PAGOS el stock lo descuenta únicamente el
+      // backend (webhook de MercadoPago, en transacción, con Admin SDK), así que
+      // el cliente ya no necesita —ni puede— tocar el stock de un evento pago.
+      // Queda acotado además a SOLO los 4 campos de stock (no precio, título, etc.).
+      return resource.data.get('isFree', false) == true &&
+             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tickets', 'ticketsSold', 'totalRevenue', 'updatedAt']);
     }
 
     function isValidEvent(data) {
@@ -219,11 +222,17 @@ service cloud.firestore {
         isAdmin() ||
         isOwner(get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organizerId)
       );
-      // ⚠️ FASE COBRO (crítico C-1): hoy el cliente puede crear tickets 'valid' sin pagar.
-      // Cuando entre el backend de pago (Cloud Function/serverless con Admin SDK + webhook
-      // MercadoPago), esto debe pasar a `allow create: if false;` — solo el backend
-      // (que saltea las reglas con el Admin SDK) emite tickets, tras verificar el pago.
-      allow create: if isValidTicket(request.resource.data);
+      // COBRO (crítico C-1 cerrado): para eventos PAGOS ningún cliente puede emitir
+      // tickets. Solo el backend de pago (webhook de MercadoPago con Admin SDK, que
+      // saltea estas reglas) los emite tras verificar el pago aprobado. Desde el
+      // cliente se permite crear tickets únicamente en dos casos legítimos:
+      //   1) cortesías: el organizador del evento (o un admin) emite entradas de regalo;
+      //   2) reservas de eventos GRATUITOS (no hay cobro que burlar).
+      allow create: if isValidTicket(request.resource.data) && (
+        isAdmin() ||
+        isOwner(get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.organizerId) ||
+        get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.get('isFree', false) == true
+      );
       allow update: if isAuthenticated() && (
         isAdmin() || 
         isOwner(get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organizerId)
