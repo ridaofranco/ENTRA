@@ -44,7 +44,15 @@ export default async function handler(req: any, res: any) {
     const mp = new MercadoPagoConfig({ accessToken });
     const payment: any = await new Payment(mp).get({ id: String(paymentId) });
 
+    // Registramos SIEMPRE el estado del intento (approved/rejected/pending) en la orden,
+    // para trazabilidad en el panel. Si no está aprobado, no emitimos.
     if (payment.status !== 'approved') {
+      const oid = payment.external_reference;
+      if (oid) {
+        await getAdminDb().collection('orders').doc(oid)
+          .update({ paymentStatus: payment.status, mpPaymentId: String(paymentId) })
+          .catch(() => {});
+      }
       return res.status(200).json({ ok: true, status: payment.status });
     }
 

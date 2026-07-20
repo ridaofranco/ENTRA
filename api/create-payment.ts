@@ -167,9 +167,12 @@ export default async function handler(req: any, res: any) {
       },
     });
 
+    // MP_SANDBOX=true → devolvemos el link de PRUEBA (sandbox_init_point) para testear el
+    // flujo completo con tarjetas de prueba, sin cobrar de verdad. Sin la flag, link real.
+    const sandbox = process.env.MP_SANDBOX === 'true';
     return res.status(200).json({
       orderId: orderRef.id,
-      init_point: preference.init_point,
+      init_point: sandbox ? preference.sandbox_init_point : preference.init_point,
       preferenceId: preference.id,
     });
   } catch (err: any) {
