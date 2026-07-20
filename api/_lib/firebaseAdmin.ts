@@ -33,6 +33,14 @@ export function getAdminDb(): Firestore {
     ? getApps()[0]!
     : initializeApp({ credential: cert(serviceAccount as any) });
 
-  cachedDb = getFirestore(app);
+  // ⚠️ La app fue creada desde Google AI Studio y su base de datos Firestore
+  // NO es la '(default)': tiene un nombre propio (ver firestoreDatabaseId en
+  // firebase-applet-config.json). El cliente ya apunta a esa base con nombre.
+  // El Admin SDK debe apuntar a la MISMA base o Firestore devuelve '5 NOT_FOUND'
+  // (la base '(default)' no existe en este proyecto). Se puede sobreescribir con
+  // la env var FIREBASE_DATABASE_ID; por defecto usa el nombre real del repo.
+  const databaseId = process.env.FIREBASE_DATABASE_ID || 'ai-studio-1f48d1a4-8f81-4978-8af2-62a9d8c7f9ea';
+
+  cachedDb = getFirestore(app, databaseId);
   return cachedDb;
 }
