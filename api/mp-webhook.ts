@@ -14,7 +14,7 @@
 import { MercadoPagoConfig, Payment } from 'mercadopago';
 import { Timestamp } from 'firebase-admin/firestore';
 import { randomUUID } from 'crypto';
-import { getAdminDb } from './_lib/firebaseAdmin';
+import { getAdminDb } from './_lib/firebaseAdmin.js';
 
 const BASE_URL = process.env.PUBLIC_BASE_URL || 'https://www.entratickets.com';
 
