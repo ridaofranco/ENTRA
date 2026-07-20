@@ -1,15 +1,14 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, '.', '');
+export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-    },
+    // Nota de seguridad: se quitó `define: process.env.GEMINI_API_KEY`, que incrustaba
+    // una clave de servidor en el bundle servido al navegador (cualquiera podía leerla).
+    // Si se usa IA, va detrás de un endpoint backend, nunca en el cliente.
     resolve: {
       alias: {
         '@/src': path.resolve(__dirname, './src'),

@@ -334,6 +334,11 @@ export default function Comprar() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredEvents.map((event, i) => {
               const soldOut = isSoldOut(event);
+              // Stock real disponible (suma de todos los tipos de entrada) — para el
+              // badge de "últimas entradas", que antes se ponía falsamente al 2º evento.
+              const totalAvailable = Array.isArray(event.tickets)
+                ? event.tickets.reduce((s: number, t: any) => s + (Number(t.available) || 0), 0)
+                : 0;
               const status = event.status || 'active';
               const isDeleted = status === 'deleted';
               const isScheduled = status === 'scheduled';
@@ -358,8 +363,8 @@ export default function Comprar() {
               } else if (isPaused) {
                 badgeText = "VENTA PAUSADA";
                 badgeClasses = "border-yellow-500/20 text-yellow-500 bg-yellow-950/20";
-              } else if (i === 1) {
-                badgeText = "ÚLTIMOS ACCESOS";
+              } else if (totalAvailable > 0 && totalAvailable <= 15) {
+                badgeText = "ÚLTIMAS ENTRADAS";
                 badgeClasses = "border-orange-500/30 text-orange-400 bg-orange-950/20";
               }
 

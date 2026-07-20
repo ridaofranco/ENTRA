@@ -139,6 +139,82 @@ export default function Checkout() {
     loadProfile();
   }, [user]);
 
+  // ==================== RETORNO DESDE MERCADOPAGO ====================
+  // Al volver del pago, MP redirige a /checkout?status=success|failure|pending&order=ID.
+  // Acá NO hay location.state (es una navegación nueva), así que resolvemos la
+  // pantalla de resultado ANTES del guard que exige event/selectedTickets.
+  // Los tickets ya los emitió el webhook tras confirmar el pago: al comprador le
+  // llegan por email y quedan en su perfil (no dependemos de tenerlos en memoria).
+  const returnParams = new URLSearchParams(location.search);
+  const paymentStatus = returnParams.get('status');
+  const returnOrderId = returnParams.get('order');
+
+  if (paymentStatus) {
+    const orderShort = returnOrderId ? returnOrderId.substring(0, 8).toUpperCase() : null;
+    const isSuccess = paymentStatus === 'success';
+    const isPending = paymentStatus === 'pending';
+
+    return (
+      <div className="pt-32 pb-20 px-6 max-w-xl mx-auto">
+        <Card className="glass p-10 rounded-[2.5rem] border-white/10 text-center space-y-6">
+          <div className="flex justify-center">
+            <div
+              className={cn(
+                'w-20 h-20 rounded-full flex items-center justify-center',
+                isSuccess ? 'bg-emerald-500/15 text-emerald-400'
+                  : isPending ? 'bg-amber-500/15 text-amber-400'
+                  : 'bg-red-500/15 text-red-400'
+              )}
+            >
+              {isSuccess ? <CheckCircle2 className="w-10 h-10" />
+                : isPending ? <Loader2 className="w-10 h-10 animate-spin" />
+                : <X className="w-10 h-10" />}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-3xl font-heading font-black tracking-tighter uppercase">
+              {isSuccess ? '¡Pago confirmado!'
+                : isPending ? 'Pago en proceso'
+                : 'El pago no se completó'}
+            </h1>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              {isSuccess
+                ? 'Estamos generando tus entradas. Te las enviamos por email y quedan disponibles en tu perfil. Puede tardar unos segundos en impactar.'
+                : isPending
+                ? 'MercadoPago todavía está acreditando el pago. Cuando se apruebe, te enviamos las entradas por email automáticamente.'
+                : 'No se realizó ningún cobro. Podés intentar la compra de nuevo cuando quieras.'}
+            </p>
+            {orderShort && (
+              <p className="text-xs text-muted-foreground pt-2">
+                Orden #{orderShort}
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+            {isSuccess || isPending ? (
+              <Button onClick={() => navigate('/perfil')} className="rounded-full font-bold">
+                Ver mis entradas
+              </Button>
+            ) : (
+              <Button onClick={() => navigate('/eventos')} className="rounded-full font-bold">
+                Volver a los eventos
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/')}
+              className="rounded-full hover:bg-primary/10 hover:text-primary"
+            >
+              Ir al inicio
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   if (!event || !selectedTickets) {
     return null;
   }
@@ -250,6 +326,47 @@ export default function Checkout() {
       // Para invitados, el buyerId debe ser exactamente 'guest' para cumplir
       // con las reglas de seguridad de Firestore (isValidOrder / isValidTicket).
       const buyerId = user?.uid || 'guest';
+
+      // ====================== COBRO CON MERCADOPAGO ======================
+      // Para eventos PAGOS el cobro y la emisión pasan por el backend de
+      // confianza: /api/create-payment revalida precio y stock en el servidor,
+      // crea la orden en estado 'pending' y devuelve el link de pago. Los tickets
+      // se emiten SOLO cuando el pago se confirma (webhook /api/mp-webhook). El
+      // navegador ya no emite tickets pagos. Los eventos GRATUITOS siguen el
+      // flujo directo de reserva más abajo.
+      if (!isFreeEvent) {
+        const payResp = await fetch('/api/create-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            eventId: event.id,
+            items: selectedTickets,
+            buyer: {
+              name: buyerInfo.name,
+              email: buyerInfo.email,
+              dni: buyerInfo.dni,
+              phone: buyerInfo.phone || '',
+            },
+            buyerId,
+            discountCode: appliedDiscount?.code || null,
+          }),
+        });
+        const payData = await payResp.json().catch(() => null);
+        if (!payResp.ok || !payData) {
+          setToast({
+            message: payData?.error || 'No se pudo iniciar el pago. Intentá de nuevo.',
+            type: 'error',
+          });
+          return;
+        }
+        if (payData.init_point) {
+          // Redirigir a MercadoPago (link de sandbox o real según MP_SANDBOX
+          // en el servidor). Al volver caemos en /checkout?status=... (ver abajo).
+          window.location.href = payData.init_point;
+          return;
+        }
+        // Si el server lo resolvió como gratis (total 0), seguimos al flujo directo.
+      }
 
       // Create order document
       const orderData: any = {

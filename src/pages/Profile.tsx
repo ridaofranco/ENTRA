@@ -16,85 +16,11 @@ import { formatCurrency } from '@/src/lib/utils';
 // QR CODE GENERATOR (same as Checkout)
 // ============================================================
 function generateQRCodeSVG(text: string, size: number = 200): string {
-  const modules = 25;
-  const cellSize = size / modules;
-
-  function hashCode(str: string): number {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash);
-  }
-
-  function seededRandom(seed: number): () => number {
-    let s = seed;
-    return () => {
-      s = (s * 16807 + 0) % 2147483647;
-      return s / 2147483647;
-    };
-  }
-
-  const hash = hashCode(text);
-  const rand = seededRandom(hash);
-  const matrix: boolean[][] = Array(modules).fill(null).map(() => Array(modules).fill(false));
-
-  function addFinderPattern(row: number, col: number) {
-    for (let r = 0; r < 7; r++) {
-      for (let c = 0; c < 7; c++) {
-        if (r === 0 || r === 6 || c === 0 || c === 6 || (r >= 2 && r <= 4 && c >= 2 && c <= 4)) {
-          if (row + r < modules && col + c < modules) matrix[row + r][col + c] = true;
-        }
-      }
-    }
-  }
-
-  addFinderPattern(0, 0);
-  addFinderPattern(0, modules - 7);
-  addFinderPattern(modules - 7, 0);
-
-  for (let i = 8; i < modules - 8; i++) {
-    matrix[6][i] = i % 2 === 0;
-    matrix[i][6] = i % 2 === 0;
-  }
-
-  const ap = modules - 9;
-  for (let r = ap; r < ap + 5; r++) {
-    for (let c = ap; c < ap + 5; c++) {
-      if (r < modules && c < modules) {
-        if (r === ap || r === ap + 4 || c === ap || c === ap + 4 || (r === ap + 2 && c === ap + 2)) {
-          matrix[r][c] = true;
-        }
-      }
-    }
-  }
-
-  for (let r = 0; r < modules; r++) {
-    for (let c = 0; c < modules; c++) {
-      const inFinderTL = r < 8 && c < 8;
-      const inFinderTR = r < 8 && c >= modules - 8;
-      const inFinderBL = r >= modules - 8 && c < 8;
-      const inTiming = r === 6 || c === 6;
-      const inAlignment = r >= ap && r < ap + 5 && c >= ap && c < ap + 5;
-      if (!inFinderTL && !inFinderTR && !inFinderBL && !inTiming && !inAlignment) {
-        matrix[r][c] = rand() > 0.5;
-      }
-    }
-  }
-
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">`;
-  svg += `<rect width="${size}" height="${size}" fill="white"/>`;
-  for (let r = 0; r < modules; r++) {
-    for (let c = 0; c < modules; c++) {
-      if (matrix[r][c]) {
-        svg += `<rect x="${c * cellSize}" y="${r * cellSize}" width="${cellSize}" height="${cellSize}" fill="#09090B"/>`;
-      }
-    }
-  }
-  svg += '</svg>';
-  return `data:image/svg+xml;base64,${btoa(svg)}`;
+  // QR REAL y escaneable, vía api.qrserver.com — igual que el checkout y el email.
+  // Antes esta función dibujaba un patrón ALEATORIO (rand() > 0.5): parecía un QR
+  // pero no codificaba nada, así que en la puerta no se podía escanear el ticket
+  // desde el perfil. Ahora el QR del perfil coincide con el del ticket emitido.
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=8&data=${encodeURIComponent(text)}`;
 }
 
 // Helper to determine accurate final price paid with ENTRÁ commissions
@@ -943,7 +869,7 @@ export default function Profile() {
 
                     <div className="mt-4 pt-3 border-t border-white/5 flex justify-between items-center">
                       <span className="text-xs text-zinc-600 font-mono">#{order.id.substring(0, 8).toUpperCase()}</span>
-                      <Link to="/eventos">
+                      <Link to={`/evento/${(order as any).eventId}`}>
                         <button className="text-xs text-orange-500 font-bold hover:underline">Ver evento</button>
                       </Link>
                     </div>

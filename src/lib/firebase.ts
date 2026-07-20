@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { initializeFirestore, doc, getDoc, setDoc, collection, query, where, onSnapshot, addDoc, updateDoc, getDocFromServer, Timestamp, getDocs, orderBy, limit, deleteDoc } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, collection, query, where, onSnapshot, addDoc, updateDoc, getDocFromServer, Timestamp, getDocs, orderBy, limit, deleteDoc } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -10,9 +10,13 @@ import firebaseConfig from '../../firebase-applet-config.json';
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore with experimental long-polling to prevent connection blocking in proxy/iframe environments
+// Initialize Firestore with experimental long-polling to prevent connection blocking in proxy/iframe environments.
+// `persistentLocalCache` activa la persistencia offline (IndexedDB): los tickets del evento
+// quedan cacheados y las validaciones/check-ins funcionan SIN internet en la puerta, y se
+// sincronizan solos al reconectar. persistentMultipleTabManager permite varias pestañas/dispositivos.
 export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true
+  experimentalForceLongPolling: true,
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
 }, firebaseConfig.firestoreDatabaseId || '(default)');
 
 export const auth = getAuth(app);
@@ -68,8 +72,10 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
+  // El detalle (con datos de sesión) queda solo en consola para debug; NO se propaga
+  // a la UI para no filtrar email/uid/proveedor en un mensaje de error visible.
   console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  throw new Error(error instanceof Error ? error.message : String(error));
 }
 
 // Connection Test - Defer to allow browser sandboxed environment to establish network routes and DNS resolve first

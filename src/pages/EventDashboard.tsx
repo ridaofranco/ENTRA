@@ -615,17 +615,10 @@ export default function EventDashboard() {
     try {
       setIsSaving(true);
       
-      // Generate UUID for QR code
-      const generateUUID = () => {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-          const r = (Math.random() * 16) | 0;
-          const v = c === 'x' ? r : (r & 0x3) | 0x8;
-          return v.toString(16);
-        });
-      };
-
+      // Emitimos las cortesías y juntamos sus QR para el email real.
+      const emittedCourtesies: Array<{ qrCode: string; type: string }> = [];
       for (let i = 0; i < courtesyQty; i++) {
-        const qrCode = generateUUID();
+        const qrCode = crypto.randomUUID(); // seguro, no Math.random
         const ticketData = {
           eventId: event.id,
           eventTitle: event.title,
@@ -643,17 +636,33 @@ export default function EventDashboard() {
         };
 
         await addDoc(collection(db, 'tickets'), ticketData);
+        emittedCourtesies.push({ qrCode, type: courtesyType });
       }
 
       // Log action
-      await logAction('GENERATE_COURTESY', 'events', event.id, { 
-        name: courtesyName || 'Sin nombre', 
-        qty: courtesyQty || 1, 
-        type: courtesyType || 'Sin tipo' 
+      await logAction('GENERATE_COURTESY', 'events', event.id, {
+        name: courtesyName || 'Sin nombre',
+        qty: courtesyQty || 1,
+        type: courtesyType || 'Sin tipo'
       });
 
+      // Envío REAL del email de cortesía (antes estaba simulado con console.log).
       if (courtesySendEmail) {
-        console.log(`Simulating email send to ${courtesyEmail}`);
+        try {
+          await fetch('/api/send-ticket-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              eventId: event.id,
+              eventTitle: event.title,
+              buyerEmail: courtesyEmail,
+              buyerName: courtesyName,
+              tickets: emittedCourtesies,
+            }),
+          });
+        } catch (emailErr) {
+          console.error('Error enviando email de cortesía:', emailErr);
+        }
       }
 
       alert('Cortesía(s) generada(s) con éxito');
@@ -674,8 +683,18 @@ export default function EventDashboard() {
   const handleResendEmail = async (ticket: any) => {
     try {
       setIsSaving(true);
-      // Simulate email resend
-      console.log(`Resending email to ${ticket.buyerEmail}`);
+      // Reenvío REAL del email (antes estaba simulado con console.log).
+      await fetch('/api/send-ticket-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId: ticket.eventId,
+          eventTitle: ticket.eventTitle,
+          buyerEmail: ticket.buyerEmail,
+          buyerName: ticket.buyerName,
+          tickets: [{ qrCode: ticket.qrCode, type: ticket.ticketType }],
+        }),
+      });
       await logAction('RESEND_COURTESY_EMAIL', 'tickets', ticket.id, { email: ticket.buyerEmail || 'Sin email' });
       alert(`Email reenviado a ${ticket.buyerEmail}`);
     } catch (error) {
