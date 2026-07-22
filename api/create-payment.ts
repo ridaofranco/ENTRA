@@ -108,6 +108,22 @@ export default async function handler(req: any, res: any) {
     const feeConIva = isFree ? 0 : Math.round(subAfterDiscount * PLATFORM_FEE_RATE * IVA);
     const total = isFree ? 0 : Math.round((subAfterDiscount + feeConIva) / (1 - PROCESSOR_GROSSUP));
 
+    // --- Marketplace / split: ¿el organizador conectó su MercadoPago? ---
+    // Si conectó, cobramos con SU token + marketplace_fee (la comisión de ENTRÁ):
+    // MercadoPago le paga directo a él y a ENTRÁ su comisión, automáticamente. Si
+    // no conectó, se cobra a la cuenta de ENTRÁ (comportamiento actual, sin split).
+    const organizerId: string = event.organizerId || '';
+    let sellerToken = process.env.MP_ACCESS_TOKEN;
+    let isMarketplace = false;
+    if (organizerId) {
+      const accSnap = await db.collection('mp_accounts').doc(organizerId).get();
+      const acc = accSnap.exists ? (accSnap.data() as any) : null;
+      if (acc?.access_token) {
+        sellerToken = acc.access_token;
+        isMarketplace = true;
+      }
+    }
+
     // --- 5) crear la ORDEN en estado pending (aún sin ticket ni descuento de stock) ---
     const orderRef = await db.collection('orders').add({
       buyerId: buyerId || 'guest',
@@ -126,6 +142,8 @@ export default async function handler(req: any, res: any) {
       total,
       status: 'pending',
       paymentMethod: 'mercadopago',
+      collectorId: isMarketplace ? organizerId : null,
+      marketplace: isMarketplace,
       createdAt: Timestamp.now(),
     });
 
@@ -140,32 +158,38 @@ export default async function handler(req: any, res: any) {
     }
 
     // --- 6) crear la preferencia de pago en MercadoPago ---
-    const accessToken = process.env.MP_ACCESS_TOKEN;
-    if (!accessToken) {
-      return res.status(500).json({ error: 'Falta MP_ACCESS_TOKEN en el servidor.' });
+    // En marketplace usamos el token del PRODUCTOR (sellerToken); si no, el de ENTRÁ.
+    if (!sellerToken) {
+      return res.status(500).json({ error: 'Falta la credencial de cobro en el servidor.' });
     }
-    const mp = new MercadoPagoConfig({ accessToken });
-    const preference = await new Preference(mp).create({
-      body: {
-        items: [{
-          id: eventId,
-          title: `Entradas · ${event.title}`.slice(0, 250),
-          quantity: 1,
-          unit_price: total,
-          currency_id: 'ARS',
-        }],
-        payer: { name: buyer.name, email: buyer.email },
-        external_reference: orderRef.id,
-        notification_url: `${BASE_URL}/api/mp-webhook`,
-        back_urls: {
-          success: `${BASE_URL}/checkout?status=success&order=${orderRef.id}`,
-          failure: `${BASE_URL}/checkout?status=failure&order=${orderRef.id}`,
-          pending: `${BASE_URL}/checkout?status=pending&order=${orderRef.id}`,
-        },
-        auto_return: 'approved',
-        statement_descriptor: 'ENTRA TICKETS',
+    const mp = new MercadoPagoConfig({ accessToken: sellerToken });
+    const prefBody: any = {
+      items: [{
+        id: eventId,
+        title: `Entradas · ${event.title}`.slice(0, 250),
+        quantity: 1,
+        unit_price: total,
+        currency_id: 'ARS',
+      }],
+      payer: { name: buyer.name, email: buyer.email },
+      external_reference: orderRef.id,
+      // En marketplace el pago vive en la cuenta del PRODUCTOR, así que pasamos su
+      // id en la URL del webhook para poder consultar el pago con el token correcto.
+      notification_url: `${BASE_URL}/api/mp-webhook${isMarketplace ? `?seller=${encodeURIComponent(organizerId)}` : ''}`,
+      back_urls: {
+        success: `${BASE_URL}/checkout?status=success&order=${orderRef.id}`,
+        failure: `${BASE_URL}/checkout?status=failure&order=${orderRef.id}`,
+        pending: `${BASE_URL}/checkout?status=pending&order=${orderRef.id}`,
       },
-    });
+      auto_return: 'approved',
+      statement_descriptor: 'ENTRA TICKETS',
+    };
+    // Comisión de ENTRÁ: MercadoPago la descuenta del total y se la acredita a ENTRÁ
+    // (dueña de la app de marketplace); el resto va directo al productor.
+    if (isMarketplace) {
+      prefBody.marketplace_fee = feeConIva;
+    }
+    const preference = await new Preference(mp).create({ body: prefBody });
 
     // MP_SANDBOX=true → devolvemos el link de PRUEBA (sandbox_init_point) para testear el
     // flujo completo con tarjetas de prueba, sin cobrar de verdad. Sin la flag, link real.

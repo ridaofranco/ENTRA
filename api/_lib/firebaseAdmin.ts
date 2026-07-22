@@ -9,11 +9,13 @@
 
 import { cert, getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
+import { getAuth, type Auth } from 'firebase-admin/auth';
 
+let cachedApp: App | null = null;
 let cachedDb: Firestore | null = null;
 
-export function getAdminDb(): Firestore {
-  if (cachedDb) return cachedDb;
+function ensureApp(): App {
+  if (cachedApp) return cachedApp;
 
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!raw) {
@@ -29,9 +31,16 @@ export function getAdminDb(): Firestore {
     throw new Error('FIREBASE_SERVICE_ACCOUNT no es un JSON válido. Pegá el contenido completo del archivo .json.');
   }
 
-  const app: App = getApps().length
+  cachedApp = getApps().length
     ? getApps()[0]!
     : initializeApp({ credential: cert(serviceAccount as any) });
+  return cachedApp;
+}
+
+export function getAdminDb(): Firestore {
+  if (cachedDb) return cachedDb;
+
+  const app = ensureApp();
 
   // ⚠️ La app fue creada desde Google AI Studio y su base de datos Firestore
   // NO es la '(default)': tiene un nombre propio (ver firestoreDatabaseId en
@@ -43,4 +52,11 @@ export function getAdminDb(): Firestore {
 
   cachedDb = getFirestore(app, databaseId);
   return cachedDb;
+}
+
+// Verifica el ID token de Firebase de un usuario (para saber, del lado del
+// servidor, QUIÉN está haciendo la acción). Se usa al conectar MercadoPago:
+// así nadie puede vincular una cuenta de MP a un organizador que no es él.
+export function getAdminAuth(): Auth {
+  return getAuth(ensureApp());
 }
