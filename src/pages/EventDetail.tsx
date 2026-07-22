@@ -500,7 +500,7 @@ export default function EventDetail() {
                             </span>
 
                             <div className="text-primary font-heading font-black text-2xl pt-2">
-                              {formatCurrency(Number(t.price) || 0)}
+                              {isFree ? 'Gratis' : formatCurrency(Number(t.price) || 0)}
                             </div>
                           </div>
 

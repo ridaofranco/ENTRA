@@ -1234,29 +1234,27 @@ ${successState.tickets.map((ticket, i) => `
                 </h4>
                 <div className="space-y-3">
                   {selectedTickets.map((ticket: SelectedTicket, i: number) => {
+                    // Mostramos el PRECIO BASE de la entrada (igual que en el resto
+                    // del checkout y en el Subtotal). Los cargos (servicio + procesador)
+                    // se desglosan UNA sola vez más abajo y cierran en el Total. Antes
+                    // acá se mostraba el "precio final con cargos" por entrada, que
+                    // confundía: la misma entrada aparecía con dos precios distintos.
                     const basePrice = Number(ticket.price) || 0;
-                    let discountedPrice = basePrice;
-                    if (subtotalOriginal > 0 && discountAmount > 0) {
-                      const discountProportion = discountAmount / subtotalOriginal;
-                      discountedPrice = Math.max(0, basePrice * (1 - discountProportion));
-                    }
-                    const feeVal = discountedPrice * 0.08;
-                    const feeConIva = Math.round(feeVal * 1.21);
-                    const finalTicketPrice = discountedPrice > 0 ? Math.round((discountedPrice + feeConIva) / (1 - 0.0499)) : 0;
                     return (
-                      <div key={i} className="space-y-1 border-b border-white/5 pb-2.5 last:border-none last:pb-0">
-                        <div className="flex justify-between text-sm">
+                      <div key={i} className="flex justify-between items-start text-sm border-b border-white/5 pb-2.5 last:border-none last:pb-0">
+                        <div>
                           <span className="font-bold text-white">
                             {ticket.quantity}x {ticket.type}
                           </span>
-                          <span className="font-bold text-white font-sans">
-                            {formatCurrency(finalTicketPrice * ticket.quantity)}
-                          </span>
+                          {ticket.quantity > 1 && (
+                            <span className="block text-[10px] text-muted-foreground/80 font-sans">
+                              {formatCurrency(basePrice)} c/u
+                            </span>
+                          )}
                         </div>
-                        <div className="flex justify-between text-[10px] text-muted-foreground/80 font-sans">
-                          <span>Precio base: {formatCurrency(basePrice)} c/u</span>
-                          <span className="font-medium">Final con cargos: {formatCurrency(finalTicketPrice)} c/u</span>
-                        </div>
+                        <span className="font-bold text-white font-sans">
+                          {formatCurrency(basePrice * ticket.quantity)}
+                        </span>
                       </div>
                     );
                   })}
