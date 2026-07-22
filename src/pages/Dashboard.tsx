@@ -56,6 +56,57 @@ export default function Dashboard() {
   const [eventSearch, setEventSearch] = useState('');
   const [eventTimeFilter, setEventTimeFilter] = useState<'all' | 'upcoming' | 'past'>('all');
 
+  // --- Conexión de MercadoPago (cobro con split / marketplace) ---
+  const [mpConnected, setMpConnected] = useState<boolean | null>(null);
+  const [mpConnecting, setMpConnecting] = useState(false);
+  const [mpBanner, setMpBanner] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
+
+  // Lee el estado de conexión (SIN secretos) del productor
+  useEffect(() => {
+    if (!user?.uid) return;
+    getDoc(doc(db, 'mp_connections', user.uid))
+      .then((snap) => setMpConnected(snap.exists() && snap.data()?.connected === true))
+      .catch(() => setMpConnected(false));
+  }, [user]);
+
+  // Muestra el resultado al volver del OAuth (?mp=connected | ?mp=error)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mp = params.get('mp');
+    if (mp === 'connected') {
+      setMpBanner({ type: 'ok', text: '¡MercadoPago conectado! Tus ventas van a entrar directo a tu cuenta.' });
+      setMpConnected(true);
+      window.history.replaceState({}, '', '/dashboard');
+    } else if (mp === 'error') {
+      setMpBanner({ type: 'error', text: 'No se pudo conectar MercadoPago. Probá de nuevo en un momento.' });
+      window.history.replaceState({}, '', '/dashboard');
+    }
+  }, []);
+
+  const handleConnectMP = async () => {
+    if (!user) return;
+    setMpConnecting(true);
+    setMpBanner(null);
+    try {
+      const idToken = await user.getIdToken();
+      const resp = await fetch('/api/mp-oauth-start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok || !data?.url) {
+        setMpBanner({ type: 'error', text: data?.error || 'No se pudo iniciar la conexión con MercadoPago.' });
+        setMpConnecting(false);
+        return;
+      }
+      window.location.href = data.url;
+    } catch {
+      setMpBanner({ type: 'error', text: 'No se pudo iniciar la conexión con MercadoPago.' });
+      setMpConnecting(false);
+    }
+  };
+
   // Auth
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
@@ -302,6 +353,46 @@ export default function Dashboard() {
             <p className="text-2xl font-black">{stat.value}</p>
           </motion.div>
         ))}
+      </div>
+
+      {/* Conexión de MercadoPago — cobro con split para el productor */}
+      <div className="mb-6">
+        {mpBanner && (
+          <div className={`mb-3 rounded-2xl px-4 py-3 text-sm font-semibold border ${mpBanner.type === 'ok' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+            {mpBanner.text}
+          </div>
+        )}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${mpConnected ? 'bg-emerald-500/15 text-emerald-400' : 'bg-orange-500/15 text-orange-400'}`}>
+              <DollarSign className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-bold text-sm">
+                {mpConnected ? 'MercadoPago conectado' : 'Cobrá tus ventas directo a tu MercadoPago'}
+              </p>
+              <p className="text-xs text-zinc-400">
+                {mpConnected
+                  ? 'La plata de tus entradas entra directo a tu cuenta; ENTRÁ retiene solo su comisión.'
+                  : 'Conectá tu cuenta y cobrá directo, con la comisión de ENTRÁ descontada automáticamente.'}
+              </p>
+            </div>
+          </div>
+          {mpConnected ? (
+            <span className="inline-flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-widest shrink-0">
+              ✓ Conectado
+            </span>
+          ) : (
+            <button
+              onClick={handleConnectMP}
+              disabled={mpConnecting}
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm bg-orange-500 text-white hover:bg-orange-600 transition-all disabled:opacity-60 shrink-0"
+            >
+              {mpConnecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <DollarSign className="w-4 h-4" />}
+              Conectar MercadoPago
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}

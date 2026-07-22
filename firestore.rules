@@ -278,6 +278,20 @@ service cloud.firestore {
       allow create: if isValidOrder(request.resource.data);
     }
 
+    // Credenciales de MercadoPago del productor (token de cobro con split/marketplace).
+    // NUNCA se leen ni escriben desde el cliente: solo el backend (Admin SDK, que
+    // saltea estas reglas) las guarda al conectar y las usa al cobrar.
+    match /mp_accounts/{organizerId} {
+      allow read, write: if false;
+    }
+
+    // Estado de conexión de MercadoPago (SIN secretos): el productor puede ver si su
+    // cuenta quedó conectada. Solo el backend lo escribe al completar el OAuth.
+    match /mp_connections/{organizerId} {
+      allow read: if isOwner(organizerId) || isAdmin();
+      allow write: if false;
+    }
+
     match /email_logs/{logId} {
       // Lo crea el checkout (incluso invitados) al registrar el resultado del envío.
       allow create: if isValidEmailLog(request.resource.data);

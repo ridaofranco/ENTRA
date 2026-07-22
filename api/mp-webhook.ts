@@ -30,8 +30,19 @@ function fmtDayKey(dk: string): string {
 export default async function handler(req: any, res: any) {
   // MP espera un 200 rápido; respondemos 200 salvo error transitorio (para que reintente).
   try {
-    const accessToken = process.env.MP_ACCESS_TOKEN;
-    if (!accessToken) return res.status(500).json({ error: 'Falta MP_ACCESS_TOKEN' });
+    // En marketplace el pago vive en la cuenta del PRODUCTOR: la preferencia manda
+    // su id en ?seller=... para poder consultar el pago con el token correcto. Si no
+    // viene seller, es una venta a la cuenta de ENTRÁ (token propio).
+    const sellerId = req.query?.seller ? String(req.query.seller) : '';
+    let accessToken = process.env.MP_ACCESS_TOKEN;
+    if (sellerId) {
+      try {
+        const accSnap = await getAdminDb().collection('mp_accounts').doc(sellerId).get();
+        const acc = accSnap.exists ? (accSnap.data() as any) : null;
+        if (acc?.access_token) accessToken = acc.access_token;
+      } catch { /* si falla la búsqueda, caemos al token de ENTRÁ */ }
+    }
+    if (!accessToken) return res.status(500).json({ error: 'Falta credencial de cobro' });
 
     // El id del pago llega por query (?data.id=) o por body ({ data: { id } }).
     const paymentId =
