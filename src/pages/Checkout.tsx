@@ -1108,10 +1108,10 @@ ${successState.tickets.map((ticket, i) => `
 
       <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4">
         <p className="text-sm text-primary font-bold mb-2">
-          Confirmación enviada a {buyerInfo.email}
+          ¡Listo! Tus entradas están acá 👇
         </p>
         <p className="text-xs text-primary/80">
-          Guardá o descargá tus entradas. Presentá el QR en la puerta del evento.
+          Guardá o descargá el QR y presentalo en la puerta. También te mandamos una copia a {buyerInfo.email}; si no la ves, revisá el spam o descargá las entradas desde acá.
         </p>
       </div>
 

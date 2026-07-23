@@ -6,7 +6,7 @@ import {
   ChevronRight, Copy, CheckCircle2, ShieldCheck, Loader2, Clock,
   Settings, Save, Eye, EyeOff, AlertTriangle, Mail, Lock, Phone, CreditCard, Pencil, Send
 } from 'lucide-react';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
 import { useAuth } from '@/src/context/AuthContext';
 import { TransferTicketModal } from '@/src/components/TransferTicketModal';
@@ -176,6 +176,26 @@ export default function Profile() {
     navigator.clipboard.writeText(text);
     setCopied(text);
     setTimeout(() => setCopied(null), 2000);
+  };
+
+  // Cancela una transferencia PENDIENTE: marca el/los ticket_transfers como 'cancelled'
+  // (el link deja de servir) y libera el ticket (vuelve a ser transferible). Antes no
+  // existía y la entrada quedaba trabada para siempre si se mandaba al mail equivocado.
+  const handleCancelTransfer = async (ticket: any) => {
+    if (!window.confirm('¿Cancelar la transferencia? La entrada vuelve a ser tuya y el link deja de funcionar.')) return;
+    try {
+      const tq = await getDocs(query(
+        collection(db, 'ticket_transfers'),
+        where('ticketId', '==', ticket.id),
+        where('status', '==', 'pending'),
+      ));
+      await Promise.all(tq.docs.map((d) => updateDoc(d.ref, { status: 'cancelled' })));
+      await updateDoc(doc(db, 'tickets', ticket.id), { transferStatus: 'none', transferToken: null });
+      setTickets((prev) => prev.map((t: any) => (t.id === ticket.id ? { ...t, transferStatus: 'none', transferToken: null } : t)));
+    } catch (err) {
+      console.error('Error cancelando transferencia:', err);
+      window.alert('No se pudo cancelar la transferencia. Intentá de nuevo.');
+    }
   };
 
   const handleLogout = async () => {
@@ -735,9 +755,18 @@ export default function Profile() {
                                   </button>
                                 )}
                                 {(ticket as any).transferStatus === 'pending' && (
-                                  <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full bg-yellow-500/10 text-yellow-500 border border-yellow-500/30">
-                                    Transferencia pendiente
-                                  </span>
+                                  <>
+                                    <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full bg-yellow-500/10 text-yellow-500 border border-yellow-500/30">
+                                      Transferencia pendiente
+                                    </span>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleCancelTransfer(ticket); }}
+                                      className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 transition-colors"
+                                      title="Cancelar transferencia"
+                                    >
+                                      Cancelar
+                                    </button>
+                                  </>
                                 )}
                               </div>
                             </div>

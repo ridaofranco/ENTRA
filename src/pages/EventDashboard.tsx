@@ -797,7 +797,7 @@ export default function EventDashboard() {
       detalle: (o.items || []).map((it: any) => `${it.type} x${it.quantity}`).join(' | '),
       cantidad: (o.items || []).reduce((s: number, it: any) => s + (Number(it.quantity) || 0), 0),
       subtotal: typeof o.subtotal === 'number' ? o.subtotal : '',
-      comision: typeof o.commission === 'number' ? o.commission : '',
+      comision: typeof o.fee === 'number' ? o.fee : (typeof o.commission === 'number' ? o.commission : ''),
       total: typeof o.total === 'number' ? o.total : '',
       fecha: formatCsvDate(o.createdAt),
       estado: o.status === 'confirmed' ? 'Completado' : (o.status || ''),
