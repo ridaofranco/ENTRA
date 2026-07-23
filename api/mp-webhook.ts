@@ -167,20 +167,26 @@ export default async function handler(req: any, res: any) {
 
     console.log(`[mp-webhook] transacción OK: orden=${orderId} emitidos=${emitted.length} estadoOrdenPrevio=${orderData?.status} evento=${orderData?.eventId} buyer=${orderData?.buyerEmail}`);
 
-    // 4) email de confirmación (fuera de la transacción; si falla no rompe la emisión)
+    // 4) email de confirmación. IMPORTANTE: se AWAITEA. Antes era fire-and-forget y Vercel
+    // congela la función apenas responde el 200, cortando el fetch → el email nunca salía.
     if (emitted.length > 0 && orderData) {
-      fetch(`${BASE_URL}/api/send-ticket-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId,
-          eventId: orderData.eventId,
-          eventTitle: orderData.eventTitle,
-          buyerEmail: orderData.buyerEmail,
-          buyerName: orderData.buyerName,
-          tickets: emitted.map((t) => ({ qrCode: t.qrCode, type: t.type })),
-        }),
-      }).catch((e) => console.error('[mp-webhook] email falló:', e?.message || e));
+      try {
+        const emailResp = await fetch(`${BASE_URL}/api/send-ticket-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId,
+            eventId: orderData.eventId,
+            eventTitle: orderData.eventTitle,
+            buyerEmail: orderData.buyerEmail,
+            buyerName: orderData.buyerName,
+            tickets: emitted.map((t) => ({ qrCode: t.qrCode, type: t.type })),
+          }),
+        });
+        console.log(`[mp-webhook] email a ${orderData.buyerEmail} status=${emailResp.status}`);
+      } catch (e: any) {
+        console.error('[mp-webhook] email falló:', e?.message || e);
+      }
     }
 
     return res.status(200).json({ ok: true, emitted: emitted.length });
