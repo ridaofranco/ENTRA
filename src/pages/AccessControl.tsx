@@ -367,23 +367,27 @@ export default function AccessControl() {
         if (usedDays.includes(today)) {
           const usedAgo = timeAgo(ticketData.lastUsedAt);
           triggerFeedback('error', 'DENEGADO · YA INGRESÓ HOY', buyerName, ticketType, usedAgo ? `Ingresó ${usedAgo}` : undefined);
-          try {
-            await addDoc(collection(db, 'checkins'), {
-              ticketId: ticketDoc.id, attendeeName: buyerName, ticketType,
-              timestamp: Timestamp.now(), status: 'error', eventId: selectedEvent.id,
-            });
-          } catch { /* no bloqueamos por el log */ }
+          // Fire-and-forget: sin await para no colgar el flujo offline (la promesa no
+          // resuelve hasta reconectar). Firestore escribe en la caché local al instante y
+          // sincroniza el log solo al volver internet.
+          addDoc(collection(db, 'checkins'), {
+            ticketId: ticketDoc.id, attendeeName: buyerName, ticketType,
+            timestamp: Timestamp.now(), status: 'error', eventId: selectedEvent.id,
+          }).catch((e) => console.warn('checkin log (denegado multi-día) diferido/falló:', e));
           return;
         }
-        // Día válido y todavía no ingresó hoy → habilitar
-        await updateDoc(doc(db, 'tickets', ticketDoc.id), {
+        // Día válido y todavía no ingresó hoy → habilitar.
+        // Escrituras SIN await: la caché local de Firestore se actualiza sincrónicamente
+        // (el ticket queda 'usado hoy' para el próximo escaneo, incluso offline) y el cartel
+        // de ingreso se muestra al toque. La sync con el server ocurre al reconectar.
+        updateDoc(doc(db, 'tickets', ticketDoc.id), {
           usedDays: [...usedDays, today],
           lastUsedAt: Timestamp.now(),
-        });
-        await addDoc(collection(db, 'checkins'), {
+        }).catch((e) => console.warn('updateDoc (ingreso multi-día) diferido/falló:', e));
+        addDoc(collection(db, 'checkins'), {
           ticketId: ticketDoc.id, attendeeName: buyerName, ticketType,
           timestamp: Timestamp.now(), status: 'success', eventId: selectedEvent.id,
-        });
+        }).catch((e) => console.warn('checkin log (ingreso multi-día) diferido/falló:', e));
         triggerFeedback('success', '¡Ingreso autorizado!', buyerName, ticketType, `Día ${fmtDayShort(today)}`);
         return;
       }
@@ -398,35 +402,37 @@ export default function AccessControl() {
           ticketType,
           usedAgo ? `Ingresó ${usedAgo}` : undefined
         );
-        // Registrar el intento de reingreso denegado en el historial
-        try {
-          await addDoc(collection(db, 'checkins'), {
-            ticketId: ticketDoc.id,
-            attendeeName: buyerName,
-            ticketType: ticketType,
-            timestamp: Timestamp.now(),
-            status: 'error',
-            eventId: selectedEvent.id,
-          });
-        } catch { /* no bloqueamos por el log */ }
+        // Registrar el intento de reingreso denegado en el historial.
+        // Fire-and-forget: sin await, si no offline cuelga el finally y traba el escáner.
+        addDoc(collection(db, 'checkins'), {
+          ticketId: ticketDoc.id,
+          attendeeName: buyerName,
+          ticketType: ticketType,
+          timestamp: Timestamp.now(),
+          status: 'error',
+          eventId: selectedEvent.id,
+        }).catch((e) => console.warn('checkin log (denegado) diferido/falló:', e));
         return;
       }
 
-      // 3. Document is valid! Perform atomic-like state change
-      await updateDoc(doc(db, 'tickets', ticketDoc.id), {
+      // 3. Document is valid! Perform atomic-like state change.
+      // Escrituras SIN await: la caché local de Firestore marca el ticket 'used' al instante
+      // (el próximo escaneo del mismo QR lo ve usado, incluso offline), el cartel de ingreso
+      // se muestra sin esperar al server, y la sync ocurre sola al reconectar.
+      updateDoc(doc(db, 'tickets', ticketDoc.id), {
         status: 'used',
         usedAt: Timestamp.now()
-      });
+      }).catch((e) => console.warn('updateDoc (ingreso) diferido/falló:', e));
 
       // 4. Save checkin list
-      await addDoc(collection(db, 'checkins'), {
+      addDoc(collection(db, 'checkins'), {
         ticketId: ticketDoc.id,
         attendeeName: buyerName,
         ticketType: ticketType,
         timestamp: Timestamp.now(),
         status: 'success',
         eventId: selectedEvent.id
-      });
+      }).catch((e) => console.warn('checkin log (ingreso) diferido/falló:', e));
 
       triggerFeedback('success', '¡Ingreso autorizado!', buyerName, ticketType);
 
