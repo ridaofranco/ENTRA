@@ -192,6 +192,7 @@ export default async function handler(req: any, res: any) {
       prefBody.marketplace_fee = feeConIva;
     }
     const preference = await new Preference(mp).create({ body: prefBody });
+    console.log(`[create-payment] orden=${orderRef.id} buyer=${buyer.email} split=${isMarketplace} organizer=${organizerId} fee=${feeConIva} total=${total} pref=${preference.id} notif=${prefBody.notification_url}`);
 
     // MP_SANDBOX=true → devolvemos el link de PRUEBA (sandbox_init_point) para testear el
     // flujo completo con tarjetas de prueba, sin cobrar de verdad. Sin la flag, link real.
