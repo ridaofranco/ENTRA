@@ -16,7 +16,9 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 
 const OAUTH_TOKEN_URL = 'https://api.mercadopago.com/oauth/token';
-const OAUTH_AUTH_URL = 'https://auth.mercadopago.com.ar/authorization';
+// Dominio de autorización oficial de MercadoPago (sin sufijo de país; el país se
+// resuelve en el propio flujo de OAuth). Verificado contra la doc oficial.
+const OAUTH_AUTH_URL = 'https://auth.mercadopago.com/authorization';
 
 export function getRedirectUri(): string {
   const base = process.env.PUBLIC_BASE_URL || 'https://www.entratickets.com';
