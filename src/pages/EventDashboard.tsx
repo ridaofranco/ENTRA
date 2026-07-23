@@ -26,6 +26,7 @@ import { db, auth, handleFirestoreError, OperationType } from '@/src/lib/firebas
 import { useAuth } from '@/src/context/AuthContext';
 import { logAction } from '@/src/services/auditService';
 import { formatCurrency } from '@/src/lib/utils';
+import { estadoOrden, estadoTicket } from '@/src/lib/estados';
 import { uploadEventImage } from '@/src/lib/imageUpload';
 import { EVENT_CATEGORIES } from '@/src/lib/categories';
 import { eventPath } from '@/src/lib/slug';
@@ -796,7 +797,7 @@ export default function EventDashboard() {
       detalle: (o.items || []).map((it: any) => `${it.type} x${it.quantity}`).join(' | '),
       cantidad: (o.items || []).reduce((s: number, it: any) => s + (Number(it.quantity) || 0), 0),
       subtotal: typeof o.subtotal === 'number' ? o.subtotal : '',
-      comision: typeof o.commission === 'number' ? o.commission : '',
+      comision: typeof o.fee === 'number' ? o.fee : (typeof o.commission === 'number' ? o.commission : ''),
       total: typeof o.total === 'number' ? o.total : '',
       fecha: formatCsvDate(o.createdAt),
       estado: o.status === 'confirmed' ? 'Completado' : (o.status || ''),
@@ -1564,7 +1565,7 @@ El equipo de ENTRÁ`;
             <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
               <h3 className="font-bold mb-4">Resumen de cortesías</h3>
               <div className="text-center py-4">
-                <div className="text-4xl font-black text-transparent bg-clip-text orange-gradient">{totalCourtesies}</div>
+                <div className="text-4xl font-black text-orange-500">{totalCourtesies}</div>
                 <p className="text-xs text-zinc-500">cortesías emitidas</p>
               </div>
               <div className="border-t border-white/10 pt-4 space-y-2">
@@ -1610,7 +1611,7 @@ El equipo de ENTRÁ`;
                       <td className="p-2">
                         <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
                           c.status === 'valid' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                        }`}>{c.status === 'valid' ? 'Válido' : c.status}</span>
+                        }`}>{estadoTicket(c.status)}</span>
                       </td>
                       <td className="p-2">
                         <div className="flex gap-1">
@@ -1715,7 +1716,7 @@ El equipo de ENTRÁ`;
                       <td className="p-2">
                         <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
                           order.status === 'confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                        }`}>{order.status === 'confirmed' ? 'Completado' : order.status}</span>
+                        }`}>{order.status === 'confirmed' ? 'Completado' : estadoOrden(order.status)}</span>
                       </td>
                     </tr>
                   ))}

@@ -234,8 +234,14 @@ service cloud.firestore {
         get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.get('isFree', false) == true
       );
       allow update: if isAuthenticated() && (
-        isAdmin() || 
-        isOwner(get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organizerId)
+        isAdmin() ||
+        isOwner(get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organizerId) ||
+        // El DUEÑO del ticket puede CANCELAR una transferencia pendiente: solo se le permite
+        // tocar los campos de transferencia de su propio ticket (nada de precio/estado/QR).
+        (
+          (isOwner(resource.data.buyerId) || isEmailOwner(resource.data.buyerEmail)) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['transferStatus', 'transferToken'])
+        )
       );
       allow delete: if false;
     }
