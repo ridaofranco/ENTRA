@@ -10,6 +10,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '@/src/lib/firebase';
 import { useAuth } from '@/src/context/AuthContext';
 import { formatCurrency } from '@/src/lib/utils';
+import { estadoOrden } from '@/src/lib/estados';
 
 interface EventData {
   id: string;
@@ -246,8 +247,11 @@ export default function Dashboard() {
                        
     const matchesSearch = e.title.toLowerCase().includes(eventSearch.toLowerCase()) ||
                          e.venue?.toLowerCase().includes(eventSearch.toLowerCase());
-                         
-    return matchesTime && matchesSearch;
+
+    // Los eventos eliminados NO se muestran en el dashboard (ensuciaban la vista).
+    const notDeleted = e.status !== 'deleted' && e.status !== 'cancelled' && !e.deletedAt;
+
+    return matchesTime && matchesSearch && notDeleted;
   });
 
   // ==================== LOADING ====================
@@ -528,17 +532,19 @@ export default function Dashboard() {
                         {event.image ? (
                           <img src={event.image || undefined} alt={event.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-orange-500/20 to-orange-600/20 flex items-center justify-center">
-                            <Calendar className="w-10 h-10 text-orange-500/50" />
+                          <div className="w-full h-full bg-white/[0.03] flex items-center justify-center">
+                            <Calendar className="w-10 h-10 text-white/10" />
                           </div>
                         )}
                         <span className={`absolute top-3 right-3 text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full backdrop-blur-sm border ${
-                          event.status === 'active' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                          event.status === 'active' || event.status === 'published' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
                           event.status === 'pending' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
                           'bg-zinc-500/20 text-zinc-400 border-zinc-500/30'
                         }`}>
-                          {event.status === 'active' ? 'Activo' : 
-                           event.status === 'pending' ? 'Pendiente' : 
+                          {event.status === 'active' || event.status === 'published' ? 'Activo' :
+                           event.status === 'pending' ? 'Pendiente' :
+                           event.status === 'paused' ? 'Pausado' :
+                           event.status === 'draft' ? 'Borrador' :
                            event.status}
                         </span>
                       </div>
@@ -576,7 +582,7 @@ export default function Dashboard() {
                         <div className="flex items-center justify-between pt-2 border-t border-white/5">
                           <div>
                             <p className="text-xs text-zinc-500">Ingresos</p>
-                            <p className="font-black text-transparent bg-clip-text orange-gradient">
+                            <p className="font-black text-orange-500">
                                {formatCurrency(Number(eventRevenue) || 0)}
                             </p>
                           </div>
@@ -635,7 +641,7 @@ export default function Dashboard() {
                   <span className={`flex-shrink-0 text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full ${
                     order.status === 'confirmed' ? 'bg-green-500/10 text-green-500' : 'bg-zinc-500/10 text-zinc-500'
                   }`}>
-                    {order.status === 'confirmed' ? 'OK' : order.status}
+                    {estadoOrden(order.status)}
                   </span>
                 </div>
               </motion.div>
@@ -655,7 +661,7 @@ export default function Dashboard() {
                 <Percent className="w-4 h-4 text-orange-500" />
               </div>
             </div>
-            <p className="text-4xl font-black text-transparent bg-clip-text orange-gradient">
+            <p className="text-4xl font-black text-orange-500">
               {formatCurrency(totalCommissions || 0)}
             </p>
             <p className="text-xs text-zinc-500 mt-2">
@@ -689,7 +695,7 @@ export default function Dashboard() {
                     </div>
                     <div className="flex-shrink-0 text-right">
                       <p className="text-xs text-zinc-500">Comisión ENTRÁ</p>
-                      <p className="font-black text-transparent bg-clip-text orange-gradient">
+                      <p className="font-black text-orange-500">
                         {formatCurrency(row.commission || 0)}
                       </p>
                     </div>

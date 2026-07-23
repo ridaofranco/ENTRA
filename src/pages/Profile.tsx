@@ -11,6 +11,7 @@ import { db } from '@/src/lib/firebase';
 import { useAuth } from '@/src/context/AuthContext';
 import { TransferTicketModal } from '@/src/components/TransferTicketModal';
 import { formatCurrency } from '@/src/lib/utils';
+import { estadoOrden } from '@/src/lib/estados';
 
 // ============================================================
 // QR CODE GENERATOR (same as Checkout)
@@ -344,7 +345,7 @@ export default function Profile() {
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Entrada ENTRA - ${ticket.eventTitle}</title>
+<title>Entrada ENTRÁ - ${ticket.eventTitle}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -527,9 +528,9 @@ export default function Profile() {
     </div>
   </div>
   <div class="ticket-footer">
-    <span class="status">${ticket.status === 'valid' ? 'VÁLIDO' : ticket.status.toUpperCase()}</span>
+    <span class="status">${ticket.status === 'valid' ? 'VÁLIDO' : ticket.status === 'used' ? 'USADA' : ticket.status === 'cancelled' ? 'CANCELADA' : ticket.status === 'refunded' ? 'DEVUELTA' : '—'}</span>
     <span class="order-badge">Orden #${orderShort}</span>
-    <span class="brand-footer">ENTRA</span>
+    <span class="brand-footer">ENTRÁ</span>
   </div>
 </div>
 <script>
@@ -833,13 +834,13 @@ export default function Profile() {
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-lg font-black text-transparent bg-clip-text orange-gradient">
+                        <p className="text-lg font-black text-orange-500">
                           {formatCurrency(order.total || 0)}
                         </p>
                         <span className={`text-[10px] font-bold uppercase tracking-widest ${
                           order.status === 'confirmed' ? 'text-green-500' : 'text-zinc-500'
                         }`}>
-                          {order.status === 'confirmed' ? 'Confirmada' : order.status}
+                          {estadoOrden(order.status)}
                         </span>
                       </div>
                     </div>

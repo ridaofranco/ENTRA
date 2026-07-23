@@ -34,14 +34,23 @@ export default async function handler(req: any, res: any) {
     // su id en ?seller=... para poder consultar el pago con el token correcto. Si no
     // viene seller, es una venta a la cuenta de ENTRÁ (token propio).
     const sellerId = req.query?.seller ? String(req.query.seller) : '';
+    // Respaldo: MP manda el user_id del vendedor en el cuerpo del webhook. Si por lo que
+    // sea no llegó el ?seller (ej. notificación global del panel), resolvemos el token por
+    // ahí, para que un ticket YA PAGADO nunca deje de emitirse.
+    const sellerMpUserId = req.body?.user_id ? String(req.body.user_id)
+      : (req.query?.user_id ? String(req.query.user_id) : '');
     let accessToken = process.env.MP_ACCESS_TOKEN;
-    if (sellerId) {
-      try {
-        const accSnap = await getAdminDb().collection('mp_accounts').doc(sellerId).get();
+    try {
+      const db = getAdminDb();
+      if (sellerId) {
+        const accSnap = await db.collection('mp_accounts').doc(sellerId).get();
         const acc = accSnap.exists ? (accSnap.data() as any) : null;
         if (acc?.access_token) accessToken = acc.access_token;
-      } catch { /* si falla la búsqueda, caemos al token de ENTRÁ */ }
-    }
+      } else if (sellerMpUserId) {
+        const q = await db.collection('mp_accounts').where('mp_user_id', '==', sellerMpUserId).limit(1).get();
+        if (!q.empty) { const acc = q.docs[0].data() as any; if (acc?.access_token) accessToken = acc.access_token; }
+      }
+    } catch { /* si falla la búsqueda, caemos al token de ENTRÁ */ }
     if (!accessToken) return res.status(500).json({ error: 'Falta credencial de cobro' });
 
     // El id del pago llega por query (?data.id=) o por body ({ data: { id } }).

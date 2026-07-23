@@ -487,7 +487,7 @@ export default function AdminDashboard() {
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8 flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-black tracking-tight">
-            Panel de <span className="text-transparent bg-clip-text orange-gradient">Administración</span>
+            Panel de <span className="text-orange-500">Administración</span>
           </h1>
           <p className="text-zinc-400 mt-1 text-sm">
             Gestión de usuarios, eventos y métricas · Sesión: {user.email}
@@ -631,7 +631,7 @@ export default function AdminDashboard() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mb-8">
         <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
           <h2 className="text-xl font-heading font-black mb-4">
-            <span className="text-transparent bg-clip-text orange-gradient">Usuarios</span>
+            <span className="text-orange-500">Usuarios</span>
             <span className="text-zinc-500 text-sm font-normal ml-3">{users.length} total</span>
           </h2>
           <div className="overflow-x-auto">
@@ -736,7 +736,7 @@ export default function AdminDashboard() {
         <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
           <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
             <h2 className="text-xl font-heading font-black">
-              <span className="text-transparent bg-clip-text orange-gradient">Eventos</span>
+              <span className="text-orange-500">Eventos</span>
               <span className="text-zinc-500 text-sm font-normal ml-3">
                 {filteredEvents.length} de {events.length}
               </span>

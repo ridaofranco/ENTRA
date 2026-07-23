@@ -15,7 +15,7 @@
 // cuando cada organizador tenga su cuenta de MP vinculada.
 
 import { MercadoPagoConfig, Preference } from 'mercadopago';
-import { Timestamp } from 'firebase-admin/firestore';
+import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { getAdminDb } from './_lib/firebaseAdmin.js';
 
 const PLATFORM_FEE_RATE = 0.08;   // comisión ENTRÁ sobre el ticket
@@ -149,7 +149,9 @@ export default async function handler(req: any, res: any) {
 
     // incremento de uso del cupón (idempotencia real se refuerza en el webhook)
     if (discountRef) {
-      await discountRef.update({ usedCount: (discountData?.usedCount || 0) + 1, updatedAt: Timestamp.now() }).catch(() => {});
+      // BUG FIX: antes escribía (usedCount||0)+1 con usedCount indefinido → siempre 1,
+      // así maxUses nunca limitaba (cupones infinitos). increment() suma sobre el valor real.
+      await discountRef.update({ usedCount: FieldValue.increment(1), updatedAt: Timestamp.now() }).catch(() => {});
     }
 
     // --- evento gratis: no pasa por MercadoPago, se confirma directo ---
