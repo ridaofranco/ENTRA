@@ -61,12 +61,15 @@ export default async function handler(req: any, res: any) {
     if (topic && topic !== 'payment') return res.status(200).json({ ignored: topic });
     if (!paymentId) return res.status(200).json({ ignored: 'sin id de pago' });
 
+    const tokenSrc = sellerId ? `seller:${sellerId}` : (sellerMpUserId ? `mpuser:${sellerMpUserId}` : 'plataforma');
     const mp = new MercadoPagoConfig({ accessToken });
     const payment: any = await new Payment(mp).get({ id: String(paymentId) });
+    console.log(`[mp-webhook] pago=${paymentId} status=${payment.status} extref=${payment.external_reference} token=${tokenSrc}`);
 
     // Registramos SIEMPRE el estado del intento (approved/rejected/pending) en la orden,
     // para trazabilidad en el panel. Si no está aprobado, no emitimos.
     if (payment.status !== 'approved') {
+      console.log(`[mp-webhook] NO emito: pago no aprobado (status=${payment.status})`);
       const oid = payment.external_reference;
       if (oid) {
         await getAdminDb().collection('orders').doc(oid)
@@ -77,7 +80,7 @@ export default async function handler(req: any, res: any) {
     }
 
     const orderId = payment.external_reference;
-    if (!orderId) return res.status(200).json({ ignored: 'sin external_reference' });
+    if (!orderId) { console.log('[mp-webhook] NO emito: pago aprobado SIN external_reference'); return res.status(200).json({ ignored: 'sin external_reference' }); }
 
     const db = getAdminDb();
     const orderRef = db.collection('orders').doc(orderId);
@@ -161,6 +164,8 @@ export default async function handler(req: any, res: any) {
         paidAt: Timestamp.now(),
       });
     });
+
+    console.log(`[mp-webhook] transacción OK: orden=${orderId} emitidos=${emitted.length} estadoOrdenPrevio=${orderData?.status} evento=${orderData?.eventId} buyer=${orderData?.buyerEmail}`);
 
     // 4) email de confirmación (fuera de la transacción; si falla no rompe la emisión)
     if (emitted.length > 0 && orderData) {
