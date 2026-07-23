@@ -37,6 +37,11 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: 'Faltan datos de la compra (evento, entradas o comprador).' });
     }
 
+    // Normalizamos el email a minúsculas SIEMPRE. Firebase Auth guarda el email en
+    // minúsculas, y "Mis Tickets" busca por igualdad exacta; si el comprador lo tipea
+    // en mayúsculas (FRANCO@...), el ticket no aparecía en su cuenta. Bug real, cerrado acá.
+    buyer.email = String(buyer.email).trim().toLowerCase();
+
     const db = getAdminDb();
 
     // --- 1) leer el evento REAL (fuente de verdad de precio y stock) ---
