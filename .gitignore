@@ -7,3 +7,6 @@ coverage/
 .env*
 !.env.example
 .vercel
+
+# Docs internos: este repo es PUBLICO, no deben subirse nunca.
+DOCS-ENTRA/
