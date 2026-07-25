@@ -295,6 +295,145 @@ export async function generateTicketsPDF(data: RequestBody): Promise<Buffer> {
   return Buffer.from(doc.output('arraybuffer'));
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ENVÍO EN CASCADA REAL: Resend primero, SMTP de respaldo.
+//
+// POR QUÉ: la entrada es lo único que el comprador recibe después de pagar, y no
+// estaba llegando. El SMTP de hosting compartido devuelve 250 OK y el mail cae en
+// spam o se pierde, así que desde afuera parecía que funcionaba. ENTRÁ era el
+// único producto del ecosistema que cobra plata Y el único sin ninguna red de
+// contención de envío.
+//
+// CASCADA DE VERDAD, no un switch: si Resend está configurado se intenta primero
+// (API HTTP, ~300 ms, entregabilidad alta y devuelve el error real). Si Resend
+// falla por cualquier motivo, se intenta el SMTP igual. Recién si los dos fallan
+// se devuelve error. PASE tiene un `if resend else smtp` que parece cascada pero
+// no lo es: cuando Resend rechaza, marca el envío como fallido y nunca prueba el
+// SMTP. Acá no se repite ese error.
+//
+// LOS QR VAN INLINE EN LOS DOS CANALES: nodemailer con `cid`, y Resend con
+// `content_id` (que es el equivalente en su API, ya probado en producción por
+// PASE). El QR ES la entrada: no puede depender de que el cliente de correo
+// muestre imágenes remotas.
+// ─────────────────────────────────────────────────────────────────────────────
+
+type Attachment = {
+  filename: string;
+  content: Buffer;
+  cid?: string;
+  contentType?: string;
+  contentDisposition?: 'attachment' | 'inline';
+};
+
+type SendResult = { ok: boolean; channel?: 'resend' | 'smtp'; id?: string; error?: string };
+
+function resendReady(): boolean {
+  return !!(process.env.RESEND_API_KEY && process.env.RESEND_FROM);
+}
+
+function smtpReady(): boolean {
+  const { SMTP_HOST, SMTP_USER, SMTP_PASS } = process.env;
+  return !!(SMTP_HOST && SMTP_USER && SMTP_PASS);
+}
+
+const errText = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+
+async function sendViaResend(opts: {
+  to: string; subject: string; html: string; attachments: Attachment[];
+}): Promise<string | undefined> {
+  const resp = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: process.env.RESEND_FROM,
+      to: [opts.to],
+      subject: opts.subject,
+      html: opts.html,
+      // El PDF va como adjunto normal; los QR con content_id para que el
+      // `cid:` del HTML los resuelva igual que por SMTP.
+      attachments: opts.attachments.map((a) => ({
+        filename: a.filename,
+        content: a.content.toString('base64'),
+        ...(a.cid ? { content_id: a.cid } : {}),
+      })),
+      ...(process.env.MAIL_REPLY_TO ? { reply_to: process.env.MAIL_REPLY_TO } : {}),
+    }),
+    // Resend es rápido: cortamos a los 15 s para no colgar el webhook de pago.
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!resp.ok) {
+    const detail = await resp.text().catch(() => '');
+    throw new Error(`resend_${resp.status}: ${detail.slice(0, 300)}`);
+  }
+  const data = (await resp.json().catch(() => null)) as { id?: string } | null;
+  return data?.id;
+}
+
+async function sendViaSmtp(opts: {
+  to: string; subject: string; html: string; attachments: Attachment[];
+}): Promise<string | undefined> {
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
+  const port = Number(SMTP_PORT) || 465;
+  const transporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port,
+    secure: port === 465,
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+    // El SMTP de hosting compartido es lento: fallar rápido es mejor que colgar
+    // la función hasta que Vercel la corte.
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
+  });
+  const info = await transporter.sendMail({
+    from: { name: 'ENTRÁ Tickets', address: SMTP_USER as string },
+    ...(process.env.MAIL_REPLY_TO ? { replyTo: process.env.MAIL_REPLY_TO } : {}),
+    to: opts.to,
+    subject: opts.subject,
+    html: opts.html,
+    attachments: opts.attachments,
+  });
+  return info.messageId;
+}
+
+async function deliver(opts: {
+  to: string; subject: string; html: string; attachments: Attachment[];
+}): Promise<SendResult> {
+  let resendError: string | undefined;
+
+  if (resendReady()) {
+    try {
+      const id = await sendViaResend(opts);
+      return { ok: true, channel: 'resend', id };
+    } catch (e) {
+      resendError = errText(e);
+      console.error('[send-ticket-email] Resend falló, pruebo SMTP:', resendError);
+    }
+  }
+
+  if (smtpReady()) {
+    try {
+      const id = await sendViaSmtp(opts);
+      return { ok: true, channel: 'smtp', id };
+    } catch (e) {
+      const smtpError = errText(e);
+      console.error('[send-ticket-email] SMTP falló:', smtpError);
+      return {
+        ok: false,
+        error: resendError ? `smtp: ${smtpError} | resend: ${resendError}` : `smtp: ${smtpError}`,
+      };
+    }
+  }
+
+  return {
+    ok: false,
+    error: resendError ?? 'No hay ninguna vía de envío configurada (falta RESEND_API_KEY + RESEND_FROM, o el SMTP).',
+  };
+}
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
@@ -321,10 +460,12 @@ export default async function handler(req: any, res: any) {
     );
   }
 
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-    console.error('[send-ticket-email] Faltan variables SMTP en el entorno.');
-    return res.status(500).json({ ok: false, error: 'SMTP no configurado en el servidor.' });
+  // Antes se exigía SMTP sí o sí. Ahora alcanza con UNA vía configurada: si está
+  // Resend, el SMTP puede no existir (y al revés). Si no hay ninguna, cortamos
+  // acá con un mensaje claro en vez de fallar más abajo sin explicar por qué.
+  if (!resendReady() && !smtpReady()) {
+    console.error('[send-ticket-email] No hay vía de envío: faltan RESEND_API_KEY + RESEND_FROM y también el SMTP.');
+    return res.status(500).json({ ok: false, error: 'Envío de email no configurado en el servidor.' });
   }
 
   try {
@@ -338,14 +479,7 @@ export default async function handler(req: any, res: any) {
     // espacios es una fuente conocida de rebotes en este ecosistema.
     body.buyerEmail = String(body.buyerEmail).trim().toLowerCase();
 
-    const transporter = nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: Number(SMTP_PORT) || 465,
-      secure: (Number(SMTP_PORT) || 465) === 465,
-      auth: { user: SMTP_USER, pass: SMTP_PASS },
-    });
-
-    const attachments: any[] = [];
+    const attachments: Attachment[] = [];
 
     const logoSrc = LOGO_DARK;
 
@@ -394,19 +528,27 @@ export default async function handler(req: any, res: any) {
 
     const hasPdf = attachments.some((a) => a.contentType === 'application/pdf');
 
-    const info = await transporter.sendMail({
-      from: { name: 'ENTRÁ Tickets', address: SMTP_USER },
+    const result = await deliver({
       to: body.buyerEmail,
       subject: `Tu entrada para ${body.eventTitle} — ENTRÁ`,
       html: buildConfirmationHTML(body, logoSrc, qrSrcs),
       attachments,
     });
 
+    if (!result.ok) {
+      // 502 y NO 200: el comprador ya pagó y no tiene su entrada. Con un 200 el
+      // fallo quedaba invisible y nadie salía a arreglarlo.
+      console.error(
+        `[send-ticket-email] FALLÓ → to=${body.buyerEmail} | orden=${body.orderId} | ${result.error}`
+      );
+      return res.status(502).json({ ok: false, error: 'No se pudo enviar el email.', detail: result.error });
+    }
+
     console.log(
-      `[send-ticket-email] OK → to=${body.buyerEmail} | orden=${body.orderId} | tickets=${body.tickets.length} | pdf=${hasPdf} | messageId=${info.messageId}`
+      `[send-ticket-email] OK → to=${body.buyerEmail} | orden=${body.orderId} | tickets=${body.tickets.length} | pdf=${hasPdf} | via=${result.channel} | id=${result.id ?? '-'}`
     );
 
-    return res.status(200).json({ ok: true, to: body.buyerEmail, messageId: info.messageId, pdf: hasPdf });
+    return res.status(200).json({ ok: true, to: body.buyerEmail, channel: result.channel, messageId: result.id, pdf: hasPdf });
   } catch (error) {
     console.error('[send-ticket-email] Error enviando el mail:', error);
     return res.status(500).json({ ok: false, error: 'No se pudo enviar el email.' });
