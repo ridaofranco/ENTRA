@@ -1,0 +1,30 @@
+# CI mínimo: cada vez que se sube un cambio, compila. Si se rompe, GitHub avisa
+# por mail al que pusheó. No corre tests (no hay), no deploya nada, no toca
+# producción: solo responde "esto compila" o "esto está roto", que es la
+# diferencia entre enterarse ahora o el viernes a la noche cuando no funciona.
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ENTRA
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      # npm ci si el lock está sano; si no, install (algunos repos tienen deps
+      # con peer conflicts y no vale la pena trabar el CI por eso).
+      - name: Instalar dependencias
+        run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund --legacy-peer-deps
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Build
+        run: npm run build
