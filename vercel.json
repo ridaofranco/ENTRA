@@ -5,6 +5,17 @@
       "destination": "https://gen-lang-client-0748196420.firebaseapp.com/__/auth/:path*"
     },
     {
+      "source": "/evento/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|WhatsApp|Twitterbot|Slackbot|Slack-ImgProxy|LinkedInBot|Discordbot|TelegramBot|Pinterest|redditbot|SkypeUriPreview|vkShare|Googlebot|bingbot|Applebot|Iframely|Embedly).*"
+        }
+      ],
+      "destination": "/api/evento-preview?id=:id"
+    },
+    {
       "source": "/((?!api/|assets|__/).*)",
       "destination": "/index.html"
     }
