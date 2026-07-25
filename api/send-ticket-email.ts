@@ -1,4 +1,5 @@
 import { deliver, resendReady, smtpReady, type Attachment } from './_mailer.js';
+import { alerta } from './_alerta.js';
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
 // Fuente Jost (subset Latin) embebida para el PDF — no editar a mano.
@@ -402,6 +403,16 @@ export default async function handler(req: any, res: any) {
       console.error(
         `[send-ticket-email] FALLÓ → to=${body.buyerEmail} | orden=${body.orderId} | ${result.error}`
       );
+      // Lo más caro que puede pasar en todo el ecosistema: la plata entró y la
+      // persona no tiene su entrada. Tiene que llegarle un aviso a Franco YA,
+      // porque se resuelve mandando el ticket a mano en 2 minutos.
+      await alerta({
+        titulo: 'Alguien pagó y NO recibió su entrada',
+        plata: true,
+        datos: { comprador: body.buyerEmail, orden: body.orderId, evento: body.eventTitle },
+        detalle: result.error,
+        clave: 'entrada-no-enviada',
+      });
       return res.status(502).json({ ok: false, error: 'No se pudo enviar el email.', detail: result.error });
     }
 

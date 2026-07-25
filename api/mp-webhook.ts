@@ -16,6 +16,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { randomUUID } from 'crypto';
 import { getAdminDb } from './_lib/firebaseAdmin.js';
 import { esRechazoDefinitivo, sendPaymentFailedEmail } from './_payment-failed.js';
+import { alerta } from './_alerta.js';
 
 const BASE_URL = process.env.PUBLIC_BASE_URL || 'https://www.entratickets.com';
 
@@ -304,6 +305,19 @@ export default async function handler(req: any, res: any) {
   } catch (err: any) {
     const permanent = err instanceof PermanentError;
     console.error(`[mp-webhook] error${permanent ? ` PERMANENTE (${err.code})` : ''}:`, err?.message || err);
+
+    // El comprador pagó y algo se rompió emitiendo. Un 'needs_attention' en el
+    // panel solo sirve si alguien entra a mirarlo: acá lo que hace falta es que
+    // Franco se entere en el celular, porque del otro lado hay alguien que pagó.
+    await alerta({
+      titulo: permanent
+        ? 'Un pago quedó sin emitir y hay que resolverlo a mano'
+        : 'Falló el webhook de pagos (MercadoPago va a reintentar)',
+      plata: true,
+      datos: { orden: orderIdForLog, pago: paymentIdForLog, causa: permanent ? err.code : undefined },
+      detalle: String(err?.message || err),
+      clave: permanent ? `emision-${err.code}` : 'webhook-transitorio',
+    });
 
     if (permanent) {
       // Reintentar no lo arregla. Marcamos la orden para que aparezca en el panel
