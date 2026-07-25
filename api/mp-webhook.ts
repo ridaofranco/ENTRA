@@ -18,6 +18,26 @@ import { getAdminDb } from './_lib/firebaseAdmin.js';
 
 const BASE_URL = process.env.PUBLIC_BASE_URL || 'https://www.entratickets.com';
 
+// Tolerancia al comparar lo cobrado contra el total de la orden. MP puede
+// devolver el monto con centavos por redondeo de cuotas; $1 alcanza y sobra.
+const AMOUNT_TOLERANCE = 1;
+
+/**
+ * Error que NO se arregla reintentando (stock agotado, monto que no coincide,
+ * orden inexistente). MercadoPago reintenta ante cualquier no-2xx, así que si
+ * devolviéramos 500 para estos casos MP quedaría reintentando para siempre algo
+ * que nunca va a funcionar. Se responde 200 y se marca la orden para revisión.
+ */
+class PermanentError extends Error {
+  constructor(
+    message: string,
+    public readonly code: string,
+  ) {
+    super(message);
+    this.name = 'PermanentError';
+  }
+}
+
 function fmtDayKey(dk: string): string {
   try {
     const [y, m, d] = dk.split('-').map(Number);
@@ -28,6 +48,11 @@ function fmtDayKey(dk: string): string {
 }
 
 export default async function handler(req: any, res: any) {
+  // Se declaran acá afuera para que el catch pueda marcar la orden ante un
+  // PermanentError (adentro del try quedarían fuera de alcance).
+  let orderIdForLog: string | null = null;
+  let paymentIdForLog: string | null = null;
+
   // MP espera un 200 rápido; respondemos 200 salvo error transitorio (para que reintente).
   try {
     // En marketplace el pago vive en la cuenta del PRODUCTOR: la preferencia manda
@@ -60,6 +85,7 @@ export default async function handler(req: any, res: any) {
 
     if (topic && topic !== 'payment') return res.status(200).json({ ignored: topic });
     if (!paymentId) return res.status(200).json({ ignored: 'sin id de pago' });
+    paymentIdForLog = String(paymentId);
 
     const tokenSrc = sellerId ? `seller:${sellerId}` : (sellerMpUserId ? `mpuser:${sellerMpUserId}` : 'plataforma');
     const mp = new MercadoPagoConfig({ accessToken });
@@ -81,6 +107,7 @@ export default async function handler(req: any, res: any) {
 
     const orderId = payment.external_reference;
     if (!orderId) { console.log('[mp-webhook] NO emito: pago aprobado SIN external_reference'); return res.status(200).json({ ignored: 'sin external_reference' }); }
+    orderIdForLog = String(orderId);
 
     const db = getAdminDb();
     const orderRef = db.collection('orders').doc(orderId);
@@ -91,15 +118,40 @@ export default async function handler(req: any, res: any) {
 
     await db.runTransaction(async (tx) => {
       const orderSnap = await tx.get(orderRef);
-      if (!orderSnap.exists) throw new Error(`Orden ${orderId} inexistente`);
+      if (!orderSnap.exists) throw new PermanentError(`Orden ${orderId} inexistente`, 'order_missing');
       orderData = orderSnap.data();
 
       // Idempotencia: si ya está confirmada, no reemitir.
       if (orderData.status === 'confirmed') return;
 
+      // ── CONTROL DE PLATA (agregado 2026-07-25) ────────────────────────────
+      // Hasta acá alcanzaba con que el pago estuviera 'approved' para emitir lo
+      // que dijera orderData.items, sin mirar NUNCA cuánto se cobró de verdad.
+      // Como la orden queda 'pending' en Firestore entre que se genera el link
+      // de pago y que llega este webhook, editarla en esa ventana (subir
+      // quantity) daba tickets que nadie pagó: se abonaba el total viejo y se
+      // emitía el carrito nuevo.
+      // create-payment.ts arma la preferencia con `total`, así que lo cobrado y
+      // el total de la orden tienen que coincidir. Si no coinciden, la orden no
+      // es la que se pagó: no se emite nada.
+      const paidAmount = Number(payment.transaction_amount);
+      const orderTotal = Number(orderData.total);
+      if (!Number.isFinite(paidAmount) || !Number.isFinite(orderTotal)) {
+        throw new PermanentError(
+          `Montos no numéricos (pagado=${payment.transaction_amount} orden=${orderData.total})`,
+          'amount_invalid',
+        );
+      }
+      if (Math.abs(paidAmount - orderTotal) > AMOUNT_TOLERANCE) {
+        throw new PermanentError(
+          `Monto pagado ($${paidAmount}) != total de la orden ($${orderTotal})`,
+          'amount_mismatch',
+        );
+      }
+
       const eventRef = db.collection('events').doc(orderData.eventId);
       const eventSnap = await tx.get(eventRef);
-      if (!eventSnap.exists) throw new Error(`Evento ${orderData.eventId} inexistente`);
+      if (!eventSnap.exists) throw new PermanentError(`Evento ${orderData.eventId} inexistente`, 'event_missing');
       const event: any = eventSnap.data();
 
       const eventTickets: any[] = Array.isArray(event.tickets) ? event.tickets : [];
@@ -113,7 +165,10 @@ export default async function handler(req: any, res: any) {
         const bought = items.find((it) => it.type === t.type);
         if (!bought) return t;
         const avail = typeof t.available === 'number' ? t.available : Infinity;
-        if (avail < bought.quantity) throw new Error(`Sin stock de "${t.type}"`);
+        // Permanente: reintentar no va a hacer aparecer stock. Antes esto tiraba
+        // un Error común → 500 → MP reintentaba para siempre, y el comprador
+        // quedaba pagado y sin entradas, en silencio.
+        if (avail < bought.quantity) throw new PermanentError(`Sin stock de "${t.type}"`, 'out_of_stock');
         totalQty += bought.quantity;
         return { ...t, available: Math.max(0, avail - bought.quantity) };
       });
@@ -170,10 +225,21 @@ export default async function handler(req: any, res: any) {
     // 4) email de confirmación. IMPORTANTE: se AWAITEA. Antes era fire-and-forget y Vercel
     // congela la función apenas responde el 200, cortando el fetch → el email nunca salía.
     if (emitted.length > 0 && orderData) {
+      // El estado del envío se GUARDA en la orden. Antes solo se logueaba el
+      // status y además no se miraba si era 2xx: un 500 del endpoint de mail
+      // quedaba registrado igual que un envío exitoso, y el panel no tenía forma
+      // de saber que el comprador nunca recibió sus entradas.
+      let emailStatus = 'failed';
+      let emailError: string | null = null;
       try {
         const emailResp = await fetch(`${BASE_URL}/api/send-ticket-email`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(process.env.INTERNAL_API_SECRET
+              ? { 'x-internal-secret': process.env.INTERNAL_API_SECRET }
+              : {}),
+          },
           body: JSON.stringify({
             orderId,
             eventId: orderData.eventId,
@@ -183,15 +249,44 @@ export default async function handler(req: any, res: any) {
             tickets: emitted.map((t) => ({ qrCode: t.qrCode, type: t.type })),
           }),
         });
-        console.log(`[mp-webhook] email a ${orderData.buyerEmail} status=${emailResp.status}`);
+        if (emailResp.ok) {
+          emailStatus = 'sent';
+        } else {
+          emailError = `HTTP ${emailResp.status}: ${(await emailResp.text().catch(() => '')).slice(0, 300)}`;
+        }
+        console.log(`[mp-webhook] email a ${orderData.buyerEmail} status=${emailResp.status} ok=${emailResp.ok}`);
       } catch (e: any) {
-        console.error('[mp-webhook] email falló:', e?.message || e);
+        emailError = e?.message || String(e);
+        console.error('[mp-webhook] email falló:', emailError);
       }
+      await db.collection('orders').doc(orderId).update({
+        emailStatus,
+        emailError,
+        emailSentAt: Timestamp.now(),
+      }).catch((e: any) => console.error('[mp-webhook] no se pudo registrar emailStatus:', e?.message || e));
     }
 
     return res.status(200).json({ ok: true, emitted: emitted.length });
   } catch (err: any) {
-    console.error('[mp-webhook] error:', err?.message || err);
+    const permanent = err instanceof PermanentError;
+    console.error(`[mp-webhook] error${permanent ? ` PERMANENTE (${err.code})` : ''}:`, err?.message || err);
+
+    if (permanent) {
+      // Reintentar no lo arregla. Marcamos la orden para que aparezca en el panel
+      // (el comprador PAGÓ y no tiene entradas: hay que resolverlo a mano) y
+      // devolvemos 200 para que MP deje de reintentar.
+      if (orderIdForLog && err.code !== 'order_missing') {
+        await getAdminDb().collection('orders').doc(orderIdForLog).update({
+          status: 'needs_attention',
+          issueCode: err.code,
+          issueMessage: String(err.message).slice(0, 500),
+          issueAt: Timestamp.now(),
+          mpPaymentId: paymentIdForLog,
+        }).catch((e: any) => console.error('[mp-webhook] no se pudo marcar la orden:', e?.message || e));
+      }
+      return res.status(200).json({ ok: false, permanent: true, code: err.code });
+    }
+
     // 500 → MercadoPago reintenta la notificación más tarde
     return res.status(500).json({ error: 'Error procesando el pago' });
   }
