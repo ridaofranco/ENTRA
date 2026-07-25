@@ -1202,13 +1202,24 @@ ${successState.tickets.map((ticket, i) => `
           <div className="lg:sticky lg:top-28 lg:h-fit">
             <Card className="glass p-6 rounded-[2.5rem] border-white/10 space-y-6">
               <div className="space-y-3">
+                {/* Si el evento no tiene foto, ANTES quedaba un <img> sin src: una
+                    caja gris vacía justo arriba del precio, que es el peor lugar
+                    para que algo se vea roto. Ahora cae a una portada de marca. */}
                 <div className="relative w-full h-24 rounded-2xl overflow-hidden">
-                  <img
-                    src={event.image || undefined}
-                    alt={event.title}
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
+                  {event.image ? (
+                    <img
+                      src={event.image}
+                      alt={event.title}
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#FF5C00]/30 via-[#18181B] to-black">
+                      <span className="font-heading font-black text-lg tracking-tight text-white/90">
+                        ENTRÁ
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <h3 className="text-sm font-heading font-bold line-clamp-2">
                   {event.title}
@@ -1344,18 +1355,22 @@ ${successState.tickets.map((ticket, i) => `
 
                   {subtotal > 0 ? (
                     <>
+                      {/* UNA sola línea de cargo, y sin porcentajes ni IVA a la vista.
+                          Antes eran dos líneas ("Cargo por Servicio ENTRÁ (8% + IVA)" y
+                          "Costo de Procesamiento (4.99%)"): tres números y dos
+                          porcentajes justo en el momento de pagar, que es donde la
+                          gente abandona. La cuenta NO cambia, es exactamente la misma
+                          plata: cambia cómo se presenta. La aclaración de qué incluye
+                          va abajo, chica, para el que quiera mirarla. */}
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Cargo por Servicio ENTRÁ (8% + IVA)</span>
+                        <span className="text-muted-foreground">Cargo por servicio</span>
                         <span className="font-bold">
-                          {formatCurrency(feeEntraConIva)}
+                          {formatCurrency(feeEntraConIva + processorFee)}
                         </span>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Costo de Procesamiento (4.99%)</span>
-                        <span className="font-bold">
-                          {formatCurrency(processorFee)}
-                        </span>
-                      </div>
+                      <p className="text-[11px] leading-snug text-muted-foreground/70">
+                        Incluye el servicio de ENTRÁ y el procesamiento del pago.
+                      </p>
                     </>
                   ) : (
                     <div className="flex justify-between text-sm">
