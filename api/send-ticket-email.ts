@@ -300,6 +300,27 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
   }
 
+  // ── AUTH (agregado 2026-07-25) ────────────────────────────────────────────
+  // Este endpoint NO tenía ninguna verificación: era un relay de mail abierto.
+  // Cualquiera podía POSTear y mandar mails con el branding de ENTRÁ desde el
+  // SMTP de la casa, lo que además explica parte del problema de deliverability
+  // (un dominio que emite mail arbitrario se gana la reputación que se merece).
+  //
+  // Se valida solo si INTERNAL_API_SECRET está cargado, para no cortar el envío
+  // de entradas mientras la variable no esté en Vercel. Cargarla es obligatorio:
+  // hasta entonces el endpoint sigue abierto y esto solo lo avisa por log.
+  const internalSecret = process.env.INTERNAL_API_SECRET;
+  if (internalSecret) {
+    if (req.headers?.['x-internal-secret'] !== internalSecret) {
+      console.error('[send-ticket-email] rechazado: x-internal-secret inválido o ausente');
+      return res.status(401).json({ ok: false, error: 'No autorizado' });
+    }
+  } else {
+    console.warn(
+      '[send-ticket-email] ⚠️ INTERNAL_API_SECRET no está configurado: el endpoint acepta cualquier request. Cargala en Vercel.',
+    );
+  }
+
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
     console.error('[send-ticket-email] Faltan variables SMTP en el entorno.');
@@ -313,6 +334,10 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ ok: false, error: 'Datos incompletos para el envío.' });
     }
 
+    // Mismo criterio que create-payment.ts:43. Un destinatario con mayúsculas o
+    // espacios es una fuente conocida de rebotes en este ecosistema.
+    body.buyerEmail = String(body.buyerEmail).trim().toLowerCase();
+
     const transporter = nodemailer.createTransport({
       host: SMTP_HOST,
       port: Number(SMTP_PORT) || 465,
@@ -322,11 +347,37 @@ export default async function handler(req: any, res: any) {
 
     const attachments: any[] = [];
 
-    // Imágenes REMOTAS por URL: es lo que mejor renderiza en Gmail y lo que
-    // Apple Mail (con Mail Privacy Protection) precarga sin pedir "tap".
-    // Tamaños fijos en el HTML evitan el "flash gigante".
     const logoSrc = LOGO_DARK;
-    const qrSrcs: string[] = body.tickets.map((t) => qrImageUrl(t.qrCode, 320));
+
+    // QR EMBEBIDOS POR CID (antes eran remotos, vía api.qrserver.com).
+    // Dos motivos para no depender de un tercero acá:
+    //  1) Privacidad: el QR ES el código de acceso a la entrada. Pedirlo por URL
+    //     se lo entregaba en claro a un servicio externo, y quedaba en sus logs.
+    //  2) Entrega: Gmail y varios clientes bloquean imágenes remotas por defecto,
+    //     así que la entrada llegaba sin el QR visible hasta que el comprador
+    //     tocara "mostrar imágenes". Los adjuntos inline se ven siempre.
+    // La librería `qrcode` ya estaba en el proyecto (la usa el PDF), así que esto
+    // no agrega ninguna dependencia. Si la generación falla, se cae a la URL
+    // remota de antes para no quedarse sin QR.
+    const qrSrcs: string[] = [];
+    for (let i = 0; i < body.tickets.length; i++) {
+      const t = body.tickets[i];
+      try {
+        const buf = await QRCode.toBuffer(t.qrCode, { width: 320, margin: 1 });
+        const cid = `qr${i}@entra`;
+        attachments.push({
+          filename: `qr-${i + 1}.png`,
+          content: buf,
+          cid,
+          contentType: 'image/png',
+          contentDisposition: 'inline',
+        });
+        qrSrcs.push(`cid:${cid}`);
+      } catch (qrErr) {
+        console.error(`[send-ticket-email] QR inline falló para el ticket ${i + 1}, uso URL remota:`, qrErr);
+        qrSrcs.push(qrImageUrl(t.qrCode, 320));
+      }
+    }
 
     // PDF adjunto (oscuro, de marca). Si falla, igual mandamos el mail.
     try {
