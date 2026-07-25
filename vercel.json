@@ -16,6 +16,10 @@
       "destination": "/api/evento-preview?id=:id"
     },
     {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
+    {
       "source": "/((?!api/|assets|__/).*)",
       "destination": "/index.html"
     }

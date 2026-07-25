@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+
+# Pantallas privadas o de un solo uso: no aportan nada al índice y le hacen perder
+# tiempo al crawler (y en el caso de claim, son links de una entrada concreta).
+Disallow: /checkout
+Disallow: /dashboard
+Disallow: /auth
+Disallow: /entrar
+Disallow: /claim
+
+# El sitemap se arma en cada request con los eventos publicados y a futuro
+# (api/sitemap.ts), así que un evento nuevo aparece sin necesidad de redeployar.
+Sitemap: https://www.entratickets.com/sitemap.xml
