@@ -15,6 +15,7 @@ import { MercadoPagoConfig, Payment } from 'mercadopago';
 import { Timestamp } from 'firebase-admin/firestore';
 import { randomUUID } from 'crypto';
 import { getAdminDb } from './_lib/firebaseAdmin.js';
+import { esRechazoDefinitivo, sendPaymentFailedEmail } from './_payment-failed.js';
 
 const BASE_URL = process.env.PUBLIC_BASE_URL || 'https://www.entratickets.com';
 
@@ -98,9 +99,42 @@ export default async function handler(req: any, res: any) {
       console.log(`[mp-webhook] NO emito: pago no aprobado (status=${payment.status})`);
       const oid = payment.external_reference;
       if (oid) {
-        await getAdminDb().collection('orders').doc(oid)
+        const ref = getAdminDb().collection('orders').doc(oid);
+        await ref
           .update({ paymentStatus: payment.status, mpPaymentId: String(paymentId) })
           .catch(() => {});
+
+        // AVISO DE PAGO RECHAZADO. Hoy al que le rebota la tarjeta no le llega
+        // nada: se va y no vuelve, siendo el lead más caliente que existe (ya
+        // eligió el evento y ya puso los datos).
+        //
+        // Solo con rechazo DEFINITIVO: nunca con pending ni in_process, porque
+        // esos se pueden aprobar minutos después y decirle "no pagaste" a alguien
+        // que sí pagó es peor que no decir nada. Y una sola vez por orden: MP
+        // notifica el mismo pago varias veces y tres mails así son una pesadilla.
+        if (esRechazoDefinitivo(payment.status)) {
+          try {
+            const snap = await ref.get();
+            const o: any = snap.exists ? snap.data() : null;
+            if (o && !o.paymentFailedEmailAt && o.status !== 'confirmed' && o.buyerEmail) {
+              const total = Number(o.total);
+              const ok = await sendPaymentFailedEmail({
+                buyerName: o.buyerName ?? null,
+                buyerEmail: String(o.buyerEmail).trim().toLowerCase(),
+                eventTitle: o.eventTitle ?? null,
+                eventDate: o.eventDate ?? null,
+                totalText: Number.isFinite(total) ? `$${total.toLocaleString('es-AR')}` : null,
+                retryUrl: o.eventId ? `${BASE_URL}/evento/${o.eventId}` : BASE_URL,
+              });
+              if (ok) {
+                await ref.update({ paymentFailedEmailAt: new Date().toISOString() }).catch(() => {});
+              }
+            }
+          } catch (e) {
+            // El estado del pago ya quedó registrado; el aviso es secundario.
+            console.error('[mp-webhook] aviso de pago rechazado falló:', e instanceof Error ? e.message : String(e));
+          }
+        }
       }
       return res.status(200).json({ ok: true, status: payment.status });
     }
