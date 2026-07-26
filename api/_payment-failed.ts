@@ -17,6 +17,7 @@
 //    igual: el estado del pago ya quedó registrado y eso es lo que importa.
 
 import { deliver } from './_mailer.js';
+import { botonWhatsApp } from './_whatsapp.js';
 
 const BASE_URL = 'https://entra-by-der.vercel.app';
 const LOGO_DARK = `${BASE_URL}/entra-logo-dark.png`;
@@ -92,7 +93,14 @@ function buildHtml(d: PaymentFailedData): string {
     </td></tr>
 
     <tr><td style="padding:16px 32px 30px 32px;text-align:center;">
-      <p style="margin:0;font-size:12px;color:#71717A;">Si te sigue fallando, respond&eacute; este mail y lo resolvemos:</p>
+      <p style="margin:0 0 16px 0;font-size:12px;color:#71717A;">Si te sigue fallando, escribinos y lo resolvemos con vos:</p>
+      ${botonWhatsApp(
+        d.eventTitle
+          ? `Hola, tuve un problema para pagar mi entrada de ${d.eventTitle}.`
+          : 'Hola, tuve un problema para pagar mi entrada.',
+        'Escribinos por WhatsApp',
+      )}
+      <p style="margin:16px 0 0 0;font-size:12px;color:#71717A;">O respond&eacute; este mail:</p>
       <p style="margin:6px 0 0 0;"><a href="mailto:tuticket@entratickets.com" style="color:#EA580C;font-size:13px;font-weight:700;text-decoration:none;">tuticket@entratickets.com</a></p>
       <p style="margin:14px 0 0 0;font-size:10px;color:#A1A1AA;letter-spacing:0.5px;">entratickets.com &#183; Plataforma de ticketing digital</p>
     </td></tr>

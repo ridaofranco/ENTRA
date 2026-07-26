@@ -1,6 +1,7 @@
 import { deliver, resendReady, smtpReady, type Attachment } from './_mailer.js';
 import { alerta } from './_alerta.js';
 import { frenado } from './_rate-limit.js';
+import { botonWhatsApp } from './_whatsapp.js';
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
 // Fuente Jost (subset Latin) embebida para el PDF — no editar a mano.
@@ -177,7 +178,9 @@ function buildConfirmationHTML(data: RequestBody, logoSrc: string, qrSrcs: strin
         <!-- FOOTER -->
         <tr>
           <td bgcolor="#F7F7F8" style="background-color:#F7F7F8;padding:26px 32px;text-align:center;border-top:1px solid #ECECEE;">
-            <p style="margin:0;font-size:12px;color:#71717A;">&iquest;Algo no cierra? Respond&eacute; este mail o escrib&iacute;nos:</p>
+            <p style="margin:0 0 16px 0;font-size:12px;color:#71717A;">&iquest;Algo no cierra? Escribinos y lo resolvemos.</p>
+            ${botonWhatsApp(`Hola, te escribo por mi entrada para ${data.eventTitle}.`, '¿Alguna duda? Escribinos')}
+            <p style="margin:16px 0 0 0;font-size:12px;color:#71717A;">Tambi&eacute;n pod&eacute;s responder este mail o escribirnos a:</p>
             <p style="margin:6px 0 0 0;"><a href="mailto:tuticket@entratickets.com" style="color:#EA580C;font-size:13px;font-weight:700;text-decoration:none;">tuticket@entratickets.com</a></p>
             <img src="${logoSrc}" width="84" height="28" alt="ENTR&Aacute;" style="display:block;margin:18px auto 0 auto;border:0;width:84px;height:28px;opacity:0.9;" />
             <p style="margin:8px 0 0 0;font-size:10px;color:#A1A1AA;letter-spacing:0.5px;">entratickets.com &mdash; Plataforma de ticketing digital</p>
