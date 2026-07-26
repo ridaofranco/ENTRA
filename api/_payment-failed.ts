@@ -45,7 +45,8 @@ export interface PaymentFailedData {
   retryUrl: string;
 }
 
-function buildHtml(d: PaymentFailedData): string {
+// Exportada para poder previsualizar el mail sin mandarlo (Franco pidió ver cómo llega).
+export function buildHtml(d: PaymentFailedData): string {
   const firstName = String(d.buyerName || '').trim().split(/\s+/)[0] || '';
   const saludo = firstName ? `Tranquilo/a ${esc(firstName)}` : 'Tranquilo/a';
 

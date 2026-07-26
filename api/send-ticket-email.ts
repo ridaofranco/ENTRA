@@ -67,7 +67,8 @@ function escapeHtml(str: string): string {
 // ============================================================
 // EMAIL HTML — CLARO PREMIUM
 // ============================================================
-function buildConfirmationHTML(data: RequestBody, logoSrc: string, qrSrcs: string[]): string {
+// Exportada para poder previsualizar el mail sin mandarlo (Franco pidió ver cómo llega).
+export function buildConfirmationHTML(data: RequestBody, logoSrc: string, qrSrcs: string[]): string {
   const venueLine = [data.eventVenue, data.eventLocation].filter(Boolean).map(escapeHtml).join(' &middot; ');
   const orderShort = (data.orderId || '').substring(0, 8).toUpperCase();
   const firstName = escapeHtml((data.buyerName || '').split(' ')[0] || '');
