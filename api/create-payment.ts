@@ -17,6 +17,7 @@
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { getAdminDb } from './_lib/firebaseAdmin.js';
+import { frenado } from './_rate-limit.js';
 
 const PLATFORM_FEE_RATE = 0.08;   // comisión ENTRÁ sobre el ticket
 const IVA = 1.21;                 // 21%
@@ -29,6 +30,12 @@ export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido' });
   }
+
+  // Freno de abuso. 8 por minuto por IP: alguien comprando de verdad entra una
+  // vez, y como mucho reintenta un par si se equivocó o le rebotó la tarjeta.
+  // Se pone ANTES de leer Firestore y de tocar MercadoPago, que es justo lo que
+  // hay que proteger (ver el comentario largo de _rate-limit.ts).
+  if (frenado(req, res, 'create-payment', 8)) return;
 
   try {
     const { eventId, items, buyer, buyerId, discountCode } = req.body || {};

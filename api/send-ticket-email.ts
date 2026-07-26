@@ -1,5 +1,6 @@
 import { deliver, resendReady, smtpReady, type Attachment } from './_mailer.js';
 import { alerta } from './_alerta.js';
+import { frenado } from './_rate-limit.js';
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
 // Fuente Jost (subset Latin) embebida para el PDF — no editar a mano.
@@ -311,8 +312,10 @@ export default async function handler(req: any, res: any) {
   // de entradas mientras la variable no esté en Vercel. Cargarla es obligatorio:
   // hasta entonces el endpoint sigue abierto y esto solo lo avisa por log.
   const internalSecret = process.env.INTERNAL_API_SECRET;
+  const esInterno = !!internalSecret && req.headers?.['x-internal-secret'] === internalSecret;
+
   if (internalSecret) {
-    if (req.headers?.['x-internal-secret'] !== internalSecret) {
+    if (!esInterno) {
       console.error('[send-ticket-email] rechazado: x-internal-secret inválido o ausente');
       return res.status(401).json({ ok: false, error: 'No autorizado' });
     }
@@ -321,6 +324,26 @@ export default async function handler(req: any, res: any) {
       '[send-ticket-email] ⚠️ INTERNAL_API_SECRET no está configurado: el endpoint acepta cualquier request. Cargala en Vercel.',
     );
   }
+
+  // ⚠️⚠️ OJO ANTES DE CARGAR INTERNAL_API_SECRET EN VERCEL ⚠️⚠️
+  // El webhook de MercadoPago manda el header (mp-webhook.ts), pero el CHECKOUT y
+  // el panel del productor llaman a este endpoint DESDE EL NAVEGADOR
+  // (src/pages/Checkout.tsx y src/pages/EventDashboard.tsx) y no pueden mandarlo,
+  // porque un secreto en el browser no es un secreto. O sea que el día que se
+  // cargue esa variable, esos dos flujos van a empezar a recibir 401 y el mail no
+  // va a salir por ahí. El flujo de compra PAGA no se ve afectado (ese pasa por el
+  // webhook), pero sí el de eventos gratis y el reenvío manual desde el panel.
+  // Está anotado en PENDIENTES-DER-MASTER.md: hay que mover esos dos llamados a
+  // un endpoint de servidor antes de cerrar el candado.
+
+  // Freno de abuso para el caso de hoy, que es el endpoint todavía abierto: sin la
+  // variable cargada esto sigue siendo un relay de mail público. El freno no lo
+  // cierra, pero corta el abuso desde una IP, que es el escenario real (mandar
+  // mails con branding ENTRÁ desde nuestro SMTP quema la reputación del dominio).
+  // Las llamadas internas del webhook quedan EXENTAS: un evento con muchas ventas
+  // dispara muchos envíos seguidos desde la misma IP de servidor, y frenar eso
+  // sería dejar sin entrada a gente que pagó.
+  if (!esInterno && frenado(req, res, 'send-ticket-email', 10)) return;
 
   // Antes se exigía SMTP sí o sí. Ahora alcanza con UNA vía configurada: si está
   // Resend, el SMTP puede no existir (y al revés). Si no hay ninguna, cortamos
