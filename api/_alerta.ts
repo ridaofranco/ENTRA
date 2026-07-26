@@ -34,12 +34,51 @@
  */
 
 const PRODUCTO = "ENTRA";
+
+/**
+ * ── Y TAMBIÉN POR MAIL (pedido de Franco, 26/7) ──
+ * Telegram sirve para enterarse en el momento; el mail sirve para que QUEDE: se
+ * puede buscar tres semanas después, reenviar y usar como registro. Va a
+ * MAIL_ADMIN_TO, que acepta varias direcciones separadas por coma.
+ * Los dos canales son independientes y los dos se esperan antes de devolver: si el
+ * mail quedara sin await, en serverless la función se congela y no sale nunca.
+ */
 const VENTANA_REPETICION_MS = 10 * 60 * 1000;
 
 const ultimoAviso = new Map<string, number>();
 
-function habilitado(): boolean {
+function telegramHabilitado(): boolean {
   return !!(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID);
+}
+
+function habilitado(): boolean {
+  return telegramHabilitado() || !!process.env.MAIL_ADMIN_TO;
+}
+
+/** El mismo aviso por mail. Nunca tira. */
+async function mandarMail(opts: AlertaOpts, filas: string): Promise<boolean> {
+  try {
+    const to = (process.env.MAIL_ADMIN_TO || "").trim();
+    if (!to) return false;
+    const { deliver } = await import("./_mailer.js");
+    const html =
+      `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;background:#0d0d0d;color:#e9e6e4;padding:24px">` +
+      `<p style="margin:0 0 6px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:${opts.plata ? "#ffcc00" : "#ff5c5c"}">${esc(PRODUCTO)} · algo se rompió</p>` +
+      `<h1 style="margin:0 0 14px;font-size:20px;line-height:1.3">${esc(opts.titulo)}</h1>` +
+      (filas ? `<p style="margin:0 0 14px;font-size:14px;line-height:1.7;color:#cfcbca">${filas.replace(/\n/g, "<br>")}</p>` : "") +
+      (opts.detalle ? `<pre style="background:#000;border:1px solid #1a1a1a;padding:12px;font-size:12px;white-space:pre-wrap;color:#cfe8d4;margin:0">${esc(String(opts.detalle).slice(0, 1200))}</pre>` : "") +
+      `</div>`;
+    const r = await deliver({
+      to,
+      subject: `${opts.plata ? "💸" : "🔴"} ${PRODUCTO}: ${opts.titulo}`,
+      html,
+      attachments: [],
+    });
+    return !!r.ok;
+  } catch (e) {
+    console.error("[alerta] no se pudo avisar por mail:", e instanceof Error ? e.message : String(e));
+    return false;
+  }
 }
 
 /** Escapa lo mínimo para el modo HTML de Telegram. */
@@ -90,26 +129,34 @@ export async function alerta(opts: AlertaOpts): Promise<boolean> {
       (filas ? `\n${filas}\n` : "") +
       (opts.detalle ? `\n<pre>${esc(String(opts.detalle).slice(0, 600))}</pre>` : "");
 
-    const r = await fetch(
-      `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: process.env.TELEGRAM_CHAT_ID,
-          text: texto,
-          parse_mode: "HTML",
-          disable_web_page_preview: true,
-        }),
-        // Un aviso no puede demorar un cobro ni un envío de mail.
-        signal: AbortSignal.timeout(3000),
-      },
-    );
-    if (!r.ok) {
-      console.error("[alerta] Telegram respondió", r.status);
-      return false;
-    }
-    return true;
+    const porMail = mandarMail(opts, filas);
+    const porTelegram = (async (): Promise<boolean> => {
+      if (!telegramHabilitado()) return false;
+      try {
+        const rr = await fetch(
+          `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: process.env.TELEGRAM_CHAT_ID,
+              text: texto,
+              parse_mode: "HTML",
+              disable_web_page_preview: true,
+            }),
+            signal: AbortSignal.timeout(3000),
+          },
+        );
+        if (!rr.ok) console.error("[alerta] Telegram respondió", rr.status);
+        return rr.ok;
+      } catch (e) {
+        console.error("[alerta] Telegram falló:", e instanceof Error ? e.message : String(e));
+        return false;
+      }
+    })();
+    const [mailOk, tgOk] = await Promise.all([porMail, porTelegram]);
+    return mailOk || tgOk;
+
   } catch (e) {
     // Si el aviso falla, se traga: el problema real ya está logueado por el caller.
     console.error("[alerta] no se pudo avisar:", e instanceof Error ? e.message : String(e));
