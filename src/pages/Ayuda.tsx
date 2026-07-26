@@ -28,7 +28,7 @@ const faqs = [
   },
   { 
     q: 'Soy organizador, ¿cómo publico un evento?', 
-    a: 'Es extremadamente fácil. Escribinos a organizadores@entra.com.ar o mandanos un mensaje por WhatsApp. Te activamos tu cuenta oficial para empezar a emitir entradas, trackear ventas en tiempo real y gestionar la permanencia en segundos.' 
+    a: 'Es extremadamente fácil. Escribinos a organizadores@entratickets.com o mandanos un mensaje por WhatsApp. Te activamos tu cuenta oficial para empezar a emitir entradas, trackear ventas en tiempo real y gestionar la permanencia en segundos.' 
   }
 ];
 
@@ -60,7 +60,7 @@ export default function Ayuda() {
                 WhatsApp Directo
               </Button>
             </a>
-            <a href="mailto:soporte@entra.com.ar" className="w-full sm:w-auto">
+            <a href="mailto:soporte@entratickets.com" className="w-full sm:w-auto">
               <Button variant="outline" className="w-full sm:w-auto h-14 px-8 bg-white/[0.03] border border-white/10 hover:border-white/20 hover:bg-white/[0.06] text-white font-heading font-black text-xs uppercase tracking-wide rounded-xl transition-all flex items-center justify-center gap-2.5">
                 <Mail className="w-4 h-4 text-primary" />
                 Soporte por Mail

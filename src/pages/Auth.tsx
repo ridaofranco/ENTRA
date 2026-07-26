@@ -594,7 +594,7 @@ export default function Auth() {
                       WhatsApp
                     </a>
                     <a
-                      href="mailto:organizadores@entra.com.ar"
+                      href="mailto:organizadores@entratickets.com"
                       className="flex-1 h-9 bg-zinc-900 border border-white/5 text-white text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 rounded-lg hover:border-orange-500/30 transition-colors"
                     >
                       <Mail className="w-3.5 h-3.5 text-primary" />
