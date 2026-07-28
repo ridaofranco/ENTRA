@@ -14,7 +14,7 @@ import { getCategoryLabel } from '@/src/lib/categories';
 import PosterFallback from '@/src/components/PosterFallback';
 import { eventPath } from '@/src/lib/slug';
 import { useAuth } from '@/src/context/AuthContext';
-import { formatCurrency } from '@/src/lib/utils';
+import { formatCurrency, isEventFinished } from '@/src/lib/utils';
 
 interface TicketType {
   type: string;
@@ -344,16 +344,21 @@ export default function Comprar() {
               const isScheduled = status === 'scheduled';
               const isPaused = status === 'paused';
               const isPending = status === 'pending';
+              // La fecha manda: un evento que ya paso nunca puede mostrarse ABIERTO.
+              const isFinished = isEventFinished(event);
 
               let badgeText = "ABIERTO";
               let badgeClasses = "border-primary/20 text-primary";
 
-              if (soldOut) {
-                badgeText = "AGOTADO";
-                badgeClasses = "border-white/10 text-muted-foreground bg-white/5";
-              } else if (isDeleted) {
+              if (isDeleted) {
                 badgeText = "ELIMINADO";
                 badgeClasses = "border-red-500/20 text-red-400 bg-red-950/20";
+              } else if (isFinished) {
+                badgeText = "FINALIZADO";
+                badgeClasses = "border-white/10 text-zinc-400 bg-white/5";
+              } else if (soldOut) {
+                badgeText = "AGOTADO";
+                badgeClasses = "border-white/10 text-muted-foreground bg-white/5";
               } else if (isPending) {
                 badgeText = "PENDIENTE";
                 badgeClasses = "border-orange-500/20 text-orange-400 bg-orange-950/20";
@@ -425,7 +430,7 @@ export default function Comprar() {
                           {event.isVenueTBD ? "LUGAR POR CONFIRMAR" : event.venue}
                         </span>
                         <span className="font-heading font-black text-primary text-base">
-                          {isDeleted ? 'ELIMINADO' : isPending ? 'PENDIENTE' : isScheduled ? 'PROGRAMADO' : isPaused ? 'PAUSADO' : soldOut ? 'AGOTADO' : `$${(event.price || 0).toLocaleString('es-AR')}`}
+                          {isDeleted ? 'ELIMINADO' : isFinished ? 'FINALIZADO' : isPending ? 'PENDIENTE' : isScheduled ? 'PROGRAMADO' : isPaused ? 'PAUSADO' : soldOut ? 'AGOTADO' : `$${(event.price || 0).toLocaleString('es-AR')}`}
                         </span>
                       </div>
                     </div>

@@ -7,7 +7,7 @@ import { Badge } from '@/src/components/ui/badge';
 import { Calendar, MapPin, Clock, Share2, Info, Ticket, ChevronRight, Minus, Plus, AlertTriangle, CalendarPlus, Check } from 'lucide-react';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
-import { formatCurrency } from '@/src/lib/utils';
+import { formatCurrency, isEventFinished } from '@/src/lib/utils';
 import PosterFallback from '@/src/components/PosterFallback';
 import { resolveEventId } from '@/src/lib/slug';
 
@@ -127,6 +127,9 @@ export default function EventDetail() {
   const isSoldOut = event?.tickets?.length
     ? event.tickets.every(t => (t.available || 0) <= 0)
     : false;
+
+  // Evento ya finalizado: bloquea la compra aunque entren por URL directa.
+  const isFinished = event ? isEventFinished(event) : false;
 
   if (loading) return <div className="pt-40 text-center">Cargando...</div>;
   if (!event) return <div className="pt-40 text-center">Evento no encontrado</div>;
@@ -363,7 +366,23 @@ export default function EventDetail() {
         {/* Right Column: Tickets */}
         <div className="space-y-6">
           <Card className="glass p-8 rounded-[2.5rem] border-white/10 sticky top-28 shadow-2xl bg-[#09090b]/80 backdrop-blur-xl">
-            {!isEventActive ? (
+            {isFinished ? (
+              /* Event already ended: no purchases allowed */
+              <div className="text-center py-8">
+                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4 border border-white/10">
+                  <Clock className="w-8 h-8 text-zinc-400" />
+                </div>
+                <h3 className="text-xl font-heading font-black uppercase tracking-tight mb-2">Evento finalizado</h3>
+                <p className="text-[#a0a0aa] text-sm leading-relaxed mb-6 font-sans">
+                  Este evento ya pasó y la venta de entradas está cerrada.
+                </p>
+                <Link to="/eventos">
+                  <Button variant="outline" className="font-bold text-xs uppercase tracking-wider border-white/10 hover:border-primary hover:text-primary rounded-xl">
+                    Ver otros eventos
+                  </Button>
+                </Link>
+              </div>
+            ) : !isEventActive ? (
               /* Event is paused — block purchases */
               <div className="text-center py-8">
                 <div className="w-16 h-16 rounded-full bg-yellow-500/10 flex items-center justify-center mx-auto mb-4 border border-yellow-500/20">
