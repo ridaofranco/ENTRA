@@ -418,16 +418,6 @@ export default function AdminDashboard() {
     return '-';
   };
 
-  const toInputDate = (date: any): string => {
-    try {
-      const d = date?.toDate ? date.toDate() : date?.seconds ? new Date(date.seconds * 1000) : null;
-      if (!d) return '';
-      return d.toISOString().slice(0, 16); // yyyy-MM-ddTHH:mm for datetime-local input
-    } catch {
-      return '';
-    }
-  };
-
   const roleColor = (role: string) => {
     switch (role) {
       case 'superadmin': return 'bg-red-500/30 text-red-300 border-red-500/50';
@@ -998,6 +988,23 @@ export default function AdminDashboard() {
   );
 }
 
+// Convierte lo que guarda Firebase (Timestamp, un instante absoluto) al formato
+// "yyyy-MM-ddTHH:mm" EN HORA LOCAL que espera el input datetime-local.
+// Ojo: NUNCA usar toISOString() acá. Devuelve la hora en UTC y en Argentina
+// (UTC-3) corría los horarios +3 horas con solo abrir y guardar el evento.
+// El camino inverso (guardar) ya es correcto: new Date("yyyy-MM-ddTHH:mm")
+// interpreta hora local, igual que la creación de eventos en CreateEvent.
+function toDatetimeLocalValue(date: any): string {
+  try {
+    const d = date?.toDate ? date.toDate() : date?.seconds ? new Date(date.seconds * 1000) : null;
+    if (!d || isNaN(d.getTime())) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch {
+    return '';
+  }
+}
+
 // ==================== EDIT EVENT MODAL COMPONENT ====================
 function EditEventModal({
   event,
@@ -1013,15 +1020,7 @@ function EditEventModal({
   const [form, setForm] = useState<EventData>({ ...event });
   const [ticketToDelete, setTicketToDelete] = useState<number | null>(null);
   const [showSavedFeedback, setShowSavedFeedback] = useState(false);
-  const [dateStr, setDateStr] = useState<string>(() => {
-    try {
-      const d = event.date?.toDate ? event.date.toDate() : event.date?.seconds ? new Date(event.date.seconds * 1000) : null;
-      if (!d) return '';
-      return d.toISOString().slice(0, 16);
-    } catch {
-      return '';
-    }
-  });
+  const [dateStr, setDateStr] = useState<string>(() => toDatetimeLocalValue(event.date));
 
   const updateTicket = (idx: number, field: keyof TicketType, value: any) => {
     const tickets = [...(form.tickets || [])];
