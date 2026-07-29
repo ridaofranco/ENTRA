@@ -82,10 +82,11 @@ export default function Comprar() {
         setEvents(data);
       } catch (error: any) {
         console.error('[Comprar] Error fetching events:', error);
+        const tc = textos().cartelera;
         setFetchError(
           error?.code === 'permission-denied'
-            ? 'Permiso denegado. Revisá las reglas de Firebase Firestore.'
-            : `No se pudieron cargar los eventos: ${error?.message || 'error desconocido'}`
+            ? tc.errorPermisos
+            : tc.errorCargarDetalle(error?.message || tc.errorDesconocido)
         );
       } finally {
         setLoading(false);

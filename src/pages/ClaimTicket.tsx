@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
 import { useAuth } from '@/src/context/AuthContext';
+import { useLang, textos, dateLocale } from '@/src/lib/i18n';
 
 // Generador simple de QR code (UUID style)
 const generateQrCode = () => {
@@ -28,6 +29,8 @@ export default function ClaimTicket() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const lang = useLang();
+  const t = textos(lang);
 
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
@@ -39,8 +42,12 @@ export default function ClaimTicket() {
 
   useEffect(() => {
     const loadTransfer = async () => {
+      // textos() sin argumento lee el idioma vivo del módulo: así el efecto no
+      // depende de `lang` y no se vuelve a pedir la transferencia si el
+      // comprador toca el switcher.
+      const tx = textos().claim;
       if (!token) {
-        setError('Link inválido');
+        setError(tx.linkInvalido);
         setLoading(false);
         return;
       }
@@ -52,7 +59,7 @@ export default function ClaimTicket() {
         const snap = await getDocs(q);
 
         if (snap.empty) {
-          setError('Esta transferencia no existe o el link es inválido.');
+          setError(tx.noExiste);
           setLoading(false);
           return;
         }
@@ -61,13 +68,13 @@ export default function ClaimTicket() {
         const transferData = transferDoc.data();
 
         if (transferData.status === 'claimed') {
-          setError('Este ticket ya fue reclamado por alguien más.');
+          setError(tx.yaReclamado);
           setLoading(false);
           return;
         }
 
         if (transferData.status === 'cancelled') {
-          setError('La transferencia fue cancelada por el remitente.');
+          setError(tx.cancelada);
           setLoading(false);
           return;
         }
@@ -77,7 +84,7 @@ export default function ClaimTicket() {
           ? transferData.eventDate.toDate()
           : new Date(transferData.eventDate);
         if (eventDate && eventDate.getTime() < Date.now()) {
-          setError('Este evento ya pasó. No se puede reclamar el ticket.');
+          setError(tx.eventoPaso);
           setLoading(false);
           return;
         }
@@ -94,7 +101,7 @@ export default function ClaimTicket() {
         setTransferId(transferDoc.id);
       } catch (err: any) {
         console.error('Error cargando transferencia:', err);
-        setError('Error al cargar la transferencia. Intentá de nuevo.');
+        setError(tx.errorCargar);
       } finally {
         setLoading(false);
       }
@@ -106,7 +113,7 @@ export default function ClaimTicket() {
   const handleClaim = async () => {
     if (!user || !transfer || !transferId) return;
     if (user.uid === transfer.fromUserId) {
-      setError('No podés reclamar tu propio ticket.');
+      setError(t.claim.propio);
       return;
     }
     // Validación de email: el usuario logueado tiene que ser el destinatario
@@ -115,9 +122,7 @@ export default function ClaimTicket() {
       (user.email || '').toLowerCase().trim() !==
         String(transfer.toUserEmail).toLowerCase().trim()
     ) {
-      setError(
-        `Este ticket fue enviado a ${transfer.toUserEmail}. Iniciá sesión con esa cuenta para reclamarlo.`
-      );
+      setError(t.claim.enviadoA(transfer.toUserEmail));
       return;
     }
     setClaiming(true);
@@ -150,7 +155,7 @@ export default function ClaimTicket() {
       }, 2500);
     } catch (err: any) {
       console.error('Error reclamando ticket:', err);
-      setError('No se pudo reclamar el ticket. Intentá de nuevo.');
+      setError(t.claim.noSePudo);
     } finally {
       setClaiming(false);
     }
@@ -159,7 +164,7 @@ export default function ClaimTicket() {
   const formatDate = (date: any) => {
     if (!date) return '';
     const d = date?.toDate ? date.toDate() : new Date(date);
-    return d.toLocaleDateString('es-AR', {
+    return d.toLocaleDateString(dateLocale(lang), {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
@@ -188,11 +193,11 @@ export default function ClaimTicket() {
           <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-8 h-8 text-red-500" />
           </div>
-          <h1 className="text-2xl font-heading font-black mb-2">No se puede reclamar</h1>
+          <h1 className="text-2xl font-heading font-black mb-2">{t.claim.noSePuede}</h1>
           <p className="text-sm text-zinc-400 mb-6">{error}</p>
           <Link to="/eventos">
             <button className="px-6 py-3 rounded-xl orange-gradient hover:brightness-110 text-sm font-heading font-black transition">
-              Volver a ENTRÁ
+              {t.claim.volverEntra}
             </button>
           </Link>
         </motion.div>
@@ -212,11 +217,9 @@ export default function ClaimTicket() {
           <div className="w-16 h-16 rounded-2xl bg-green-500/10 border border-green-500/30 flex items-center justify-center mx-auto mb-4">
             <Check className="w-8 h-8 text-green-500" />
           </div>
-          <h1 className="text-2xl font-heading font-black mb-2">¡Ticket reclamado!</h1>
-          <p className="text-sm text-zinc-400 mb-4">
-            Ya es tuyo. Lo vas a ver en tu sección "Mis Tickets".
-          </p>
-          <p className="text-xs text-zinc-500">Redirigiendo...</p>
+          <h1 className="text-2xl font-heading font-black mb-2">{t.claim.reclamadoTitulo}</h1>
+          <p className="text-sm text-zinc-400 mb-4">{t.claim.reclamadoBajada}</p>
+          <p className="text-xs text-zinc-500">{t.claim.redirigiendo}</p>
         </motion.div>
       </div>
     );
@@ -234,13 +237,13 @@ export default function ClaimTicket() {
           <div className="w-16 h-16 rounded-2xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center mx-auto mb-3">
             <Ticket className="w-8 h-8 text-orange-500" />
           </div>
-          <h1 className="text-2xl font-heading font-black mb-1">Te transfirieron un ticket</h1>
+          <h1 className="text-2xl font-heading font-black mb-1">{t.claim.teTransfirieron}</h1>
           <p className="text-sm text-zinc-400">
-            <strong className="text-orange-500">{transfer?.fromUserName || 'Alguien'}</strong> te envió un ticket por ENTRÁ
+            <strong className="text-orange-500">{transfer?.fromUserName || t.claim.alguien}</strong> {t.claim.teEnvioSufijo}
           </p>
           {transfer?.toUserName && (
             <p className="text-xs text-zinc-500 mt-2">
-              Para: <strong className="text-zinc-300">{transfer.toUserName}</strong> ({transfer.toUserEmail})
+              {t.claim.para} <strong className="text-zinc-300">{transfer.toUserName}</strong> ({transfer.toUserEmail})
             </p>
           )}
           {transfer?.toUserNote && (
@@ -262,7 +265,7 @@ export default function ClaimTicket() {
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-xs text-zinc-400">
                 <User className="w-3.5 h-3.5" />
-                <span>Tipo: <strong className="text-orange-500">{transfer?.ticketType}</strong></span>
+                <span>{t.claim.tipo} <strong className="text-orange-500">{transfer?.ticketType}</strong></span>
               </div>
               {transfer?.eventDate && (
                 <div className="flex items-center gap-2 text-xs text-zinc-400">
@@ -286,10 +289,8 @@ export default function ClaimTicket() {
           <div className="mb-4 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex gap-3">
             <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
             <div className="text-xs text-zinc-300 space-y-1">
-              <p className="font-bold text-red-400">Este ticket no es para vos</p>
-              <p>
-                Fue enviado a <strong>{transfer.toUserEmail}</strong>. Tenés que cerrar sesión e iniciar con esa cuenta para poder reclamarlo.
-              </p>
+              <p className="font-bold text-red-400">{t.claim.noEsParaVos}</p>
+              <p>{t.claim.noEsParaVosDetalle(transfer.toUserEmail)}</p>
             </div>
           </div>
         )}
@@ -300,8 +301,8 @@ export default function ClaimTicket() {
             <button className="w-full px-6 py-4 rounded-xl orange-gradient hover:brightness-110 text-sm font-heading font-black transition flex items-center justify-center gap-2">
               <LogIn className="w-4 h-4" />
               {transfer?.toUserEmail
-                ? `Iniciá sesión con ${transfer.toUserEmail}`
-                : 'Iniciá sesión o registrate para reclamar'}
+                ? t.claim.iniciaCon(transfer.toUserEmail)
+                : t.claim.iniciaORegistrate}
             </button>
           </Link>
         ) : (
@@ -312,19 +313,17 @@ export default function ClaimTicket() {
           >
             {claiming ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" /> Reclamando...
+                <Loader2 className="w-4 h-4 animate-spin" /> {t.claim.reclamando}
               </>
             ) : (
               <>
-                <Check className="w-4 h-4" /> Reclamar ticket gratis
+                <Check className="w-4 h-4" /> {t.claim.reclamarGratis}
               </>
             )}
           </button>
         )}
 
-        <p className="text-xs text-zinc-500 text-center mt-4">
-          Al reclamar, el ticket pasa a estar a tu nombre y el QR original del remitente queda invalidado.
-        </p>
+        <p className="text-xs text-zinc-500 text-center mt-4">{t.claim.alReclamar}</p>
       </motion.div>
     </div>
   );
