@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Navbar } from '@/src/components/layout/Navbar';
 import { Footer } from '@/src/components/layout/Footer';
 import { ProtectedRoute } from '@/src/components/auth/ProtectedRoute';
@@ -25,6 +25,7 @@ import Ayuda from '@/src/pages/Ayuda';
 import Demo from '@/src/pages/Demo';
 import Terminos from '@/src/pages/Terminos';
 import Privacidad from '@/src/pages/Privacidad';
+import NotFound from '@/src/pages/NotFound';
 
 export default function App() {
   return (
@@ -45,6 +46,8 @@ export default function App() {
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/auth/login" element={<Auth />} />
             <Route path="/entrar" element={<Auth />} />
+            {/* /login no existía y quedaba en blanco: redirigimos al login real */}
+            <Route path="/login" element={<Navigate to="/auth/login" replace />} />
             <Route path="/claim/:token" element={<ClaimTicket />} />
             <Route path="/contacto" element={<Contact />} />
             
@@ -85,6 +88,9 @@ export default function App() {
                 <AdminDashboard />
               </ProtectedRoute>
             } />
+
+            {/* Catch-all: cualquier URL rota muestra el 404 con salida, no una página vacía */}
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
         <Footer />
