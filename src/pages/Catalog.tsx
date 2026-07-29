@@ -122,6 +122,10 @@ export default function Catalog() {
   const visibleEvents = events.filter(event => {
     const status = event.status || 'active'; // treat missing status as active (for legacy events)
     if (isAdmin && showHiddenAdmin) return true; // admin sees all
+    // Un evento finalizado sale de la cartelera publica por completo, tambien
+    // de la solapa "Pasados". El detalle por URL directa sigue visible con su
+    // badge FINALIZADO. El admin los ve con el toggle "Ver todos".
+    if (isEventFinished(event)) return false;
     return status === 'active' || status === 'paused';
   });
 

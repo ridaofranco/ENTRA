@@ -119,6 +119,10 @@ export default function Comprar() {
     const status = event.status || 'active';
     if (isAdmin && showHiddenAdmin) return true;
     if ((event as any).hidden) return false; // ocultos: solo por link directo
+    // Un evento finalizado sale de la cartelera publica por completo, tambien
+    // de la solapa "Pasados". El detalle por URL directa sigue visible con su
+    // badge FINALIZADO. El admin los ve con el toggle "Ver todos".
+    if (isEventFinished(event)) return false;
     return status === 'active' || status === 'paused';
   });
 
