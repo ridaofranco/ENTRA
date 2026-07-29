@@ -6,7 +6,7 @@ import { Card } from '@/src/components/ui/card';
 import { Input } from '@/src/components/ui/input';
 import { ArrowLeft, CheckCircle2, ShieldCheck, Ticket as TicketIcon, Calendar, MapPin, Copy, Download, Tag, Percent, Trash, X, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { collection, addDoc, Timestamp, doc, getDoc, updateDoc, query, where, getDocs, increment } from 'firebase/firestore';
+import { collection, Timestamp, doc, getDoc, updateDoc, query, where, getDocs } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { cn, formatCurrency } from '@/src/lib/utils';
 import { useAuth } from '@/src/context/AuthContext';
@@ -17,40 +17,6 @@ interface SelectedTicket {
   quantity: number;
 }
 
-interface OrderData {
-  buyerId: string;
-  buyerEmail: string;
-  buyerName: string;
-  buyerDni: string;
-  eventId: string;
-  eventTitle: string;
-  items: SelectedTicket[];
-  subtotal: number;
-  fee: number;
-  total: number;
-  status: 'confirmed';
-  paymentMethod: 'pending';
-  createdAt: any;
-}
-
-interface TicketData {
-  orderId: string;
-  eventId: string;
-  eventTitle: string;
-  buyerId: string;
-  buyerName: string;
-  buyerEmail: string;
-  buyerPhone?: string;
-  buyerDni: string;
-  ticketType: string;
-  price: number;
-  finalPricePaid?: number;
-  status: 'valid';
-  qrCode: string;
-  validDays?: string[];
-  createdAt: any;
-}
-
 interface SuccessState {
   orderId: string;
   tickets: Array<{
@@ -58,15 +24,6 @@ interface SuccessState {
     qrCode: string;
     type: string;
   }>;
-}
-
-// Generate UUID for QR codes
-function generateUUID(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
 }
 
 // QR image URL from a value (uses api.qrserver.com — no dependency needed)
@@ -219,8 +176,13 @@ export default function Checkout() {
     return null;
   }
 
-  // Evento gratuito (reserva sin cobro)
-  const isFreeEvent = Boolean((event as any)?.isFree);
+  // Evento gratuito (reserva sin cobro). Se deriva TAMBIÉN del precio: un
+  // evento con isFree apagado pero todas las entradas en $0 cobra $0 igual
+  // (el server lo resuelve como gratis), así que se muestra como gratis.
+  const isFreeEvent =
+    Boolean((event as any)?.isFree) ||
+    ((selectedTickets || []).length > 0 &&
+      (selectedTickets || []).every((t: any) => !(Number(t.price) > 0)));
 
   // Calculate totals — para multi-día "por jornada", el precio se multiplica por
   // la cantidad de días que eligió el comprador (ticket.days).
@@ -327,257 +289,72 @@ export default function Checkout() {
       // con las reglas de seguridad de Firestore (isValidOrder / isValidTicket).
       const buyerId = user?.uid || 'guest';
 
-      // ====================== COBRO CON MERCADOPAGO ======================
-      // Para eventos PAGOS el cobro y la emisión pasan por el backend de
-      // confianza: /api/create-payment revalida precio y stock en el servidor,
-      // crea la orden en estado 'pending' y devuelve el link de pago. Los tickets
-      // se emiten SOLO cuando el pago se confirma (webhook /api/mp-webhook). El
-      // navegador ya no emite tickets pagos. Los eventos GRATUITOS siguen el
-      // flujo directo de reserva más abajo.
-      if (!isFreeEvent) {
-        const payResp = await fetch('/api/create-payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            eventId: event.id,
-            items: selectedTickets,
-            buyer: {
-              name: buyerInfo.name,
-              email: buyerInfo.email,
-              dni: buyerInfo.dni,
-              phone: buyerInfo.phone || '',
-            },
-            buyerId,
-            discountCode: appliedDiscount?.code || null,
-          }),
+      // ================== TODO PASA POR EL BACKEND DE CONFIANZA ==================
+      // /api/create-payment revalida precio y stock en el servidor y crea la ÚNICA
+      // orden de la compra. Después:
+      // - Evento PAGO: devuelve el link de MercadoPago; los tickets los emite el
+      //   webhook (/api/mp-webhook) cuando el pago se confirma.
+      // - Evento GRATIS (o total $0 por descuento): el server emite los tickets en
+      //   la misma llamada, descuenta stock y manda el mail. Acá solo mostramos el
+      //   resultado. Antes el navegador creaba una SEGUNDA orden y emitía tickets
+      //   por su cuenta: ese era el bug de la doble orden.
+      const payResp = await fetch('/api/create-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId: event.id,
+          items: selectedTickets,
+          buyer: {
+            name: buyerInfo.name,
+            email: buyerInfo.email,
+            dni: buyerInfo.dni,
+            phone: buyerInfo.phone || '',
+          },
+          buyerId,
+          discountCode: appliedDiscount?.code || null,
+        }),
+      });
+      const payData = await payResp.json().catch(() => null);
+      if (!payResp.ok || !payData) {
+        setToast({
+          message: payData?.error || 'No se pudo procesar la compra. Intentá de nuevo.',
+          type: 'error',
         });
-        const payData = await payResp.json().catch(() => null);
-        if (!payResp.ok || !payData) {
-          setToast({
-            message: payData?.error || 'No se pudo iniciar el pago. Intentá de nuevo.',
-            type: 'error',
-          });
-          return;
-        }
-        if (payData.init_point) {
-          // Redirigir a MercadoPago (link de sandbox o real según MP_SANDBOX
-          // en el servidor). Al volver caemos en /checkout?status=... (ver abajo).
-          window.location.href = payData.init_point;
-          return;
-        }
-        // Si el server lo resolvió como gratis (total 0), seguimos al flujo directo.
+        return;
       }
 
-      // Create order document
-      const orderData: any = {
-        buyerId,
-        buyerEmail: buyerInfo.email,
-        buyerName: buyerInfo.name,
-        buyerDni: buyerInfo.dni,
-        buyerPhone: buyerInfo.phone,
-        eventId: event.id,
-        eventTitle: event.title,
-        items: selectedTickets,
-        discountCodeId: appliedDiscount?.id || null,
-        discountCode: appliedDiscount?.code || null,
-        discountAmount: discountAmount,
-        subtotal,
-        fee: platformFee,
-        total,
-        status: 'confirmed',
-        paymentMethod: 'pending',
-        createdAt: Timestamp.now(),
-      };
-
-      const orderDocRef = await addDoc(collection(db, 'orders'), orderData);
-      const orderId = orderDocRef.id;
-
-      // Incrementar contador de uso del código de descuento
-      if (appliedDiscount) {
-        try {
-          const discountRef = doc(db, 'discount_codes', appliedDiscount.id);
-          await updateDoc(discountRef, {
-            usedCount: increment(1),
-            updatedAt: Timestamp.now()
-          });
-        } catch (discountUpdateError) {
-          console.error('Error updating discount usage count:', discountUpdateError);
-          // No bloqueamos la compra si falla el incremento, pero lo logueamos
-        }
+      if (payData.init_point) {
+        // Redirigir a MercadoPago (link de sandbox o real según MP_SANDBOX
+        // en el servidor). Al volver caemos en /checkout?status=... (ver abajo).
+        window.location.href = payData.init_point;
+        return;
       }
 
-      // Create ticket documents
-      const createdTickets: Array<{ id: string; qrCode: string; type: string }> = [];
-      const eventValidDays: string[] = Array.isArray((event as any).validDays) ? (event as any).validDays : [];
-      // "Un QR por día": se emite un ticket/QR por cada jornada elegida.
-      // "Un QR para todo el evento": un solo ticket/QR válido todos los días (1 ingreso por día).
-      const isPerDayMode = Boolean((event as any).isMultiDay) && (event as any).entryMode === 'per_day' && eventValidDays.length > 0;
-
-      const fmtDayKey = (dk: string): string => {
-        try {
-          const [y, m, d] = dk.split('-').map(Number);
-          return new Date(y, m - 1, d).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
-        } catch {
-          return dk;
-        }
-      };
-
-      for (const selectedTicket of selectedTickets) {
-        // Precio por unidad: por día (per_day) o plano (whole_event / single)
-        const perUnit = isFreeEvent ? 0 : (Number(selectedTicket.price) || 0);
-        let discountedPrice = perUnit;
-        if (subtotalOriginal > 0 && discountAmount > 0) {
-          const discountProportion = discountAmount / subtotalOriginal;
-          discountedPrice = Math.max(0, perUnit * (1 - discountProportion));
-        }
-        const fee = discountedPrice * 0.08;
-        const feeConIva = Math.round(fee * 1.21);
-        const finalPricePaid = discountedPrice > 0 ? Math.round((discountedPrice + feeConIva) / (1 - 0.0499)) : 0;
-
-        // per_day → un grupo (= un ticket) por cada día; whole_event/single → un solo grupo
-        const issueGroups: string[][] = isPerDayMode ? eventValidDays.map(dk => [dk]) : [eventValidDays];
-
-        for (let i = 0; i < selectedTicket.quantity; i++) {
-          for (const grpDays of issueGroups) {
-            const qrCode = generateUUID();
-            const dayLabel = isPerDayMode && grpDays[0] ? fmtDayKey(grpDays[0]) : '';
-            const ticketData: TicketData = {
-              orderId,
-              eventId: event.id,
-              eventTitle: event.title,
-              buyerId,
-              buyerName: buyerInfo.name,
-              buyerEmail: buyerInfo.email,
-              buyerPhone: buyerInfo.phone || '',
-              buyerDni: buyerInfo.dni,
-              ticketType: selectedTicket.type,
-              price: perUnit,
-              finalPricePaid,
-              status: 'valid',
-              qrCode,
-              ...(grpDays.length > 0 ? { validDays: grpDays } : {}),
-              createdAt: Timestamp.now(),
-            };
-
-            const ticketDocRef = await addDoc(collection(db, 'tickets'), ticketData);
-            createdTickets.push({
-              id: ticketDocRef.id,
-              qrCode,
-              type: dayLabel ? `${selectedTicket.type} · ${dayLabel}` : selectedTicket.type,
-            });
+      if (payData.free && payData.orderId) {
+        // Reserva gratis confirmada por el server: tickets ya emitidos y mail enviado.
+        // Guardamos dni/phone en el perfil para la próxima compra (best-effort).
+        if (user?.uid && (buyerInfo.dni || buyerInfo.phone)) {
+          try {
+            const updateData: any = { updatedAt: Timestamp.now() };
+            if (buyerInfo.dni) updateData.dni = buyerInfo.dni;
+            if (buyerInfo.phone) updateData.phone = buyerInfo.phone;
+            if (buyerInfo.name) updateData.displayName = buyerInfo.name;
+            await updateDoc(doc(db, 'users', user.uid), updateData);
+          } catch (profileError) {
+            console.error('Error updating profile with buyer data:', profileError);
           }
         }
-      }
 
-      // ==================== DECREMENT TICKET AVAILABILITY ====================
-      try {
-        const eventRef = doc(db, 'events', event.id);
-        const eventSnap = await getDoc(eventRef);
-        if (eventSnap.exists()) {
-          const eventData = eventSnap.data();
-          const currentTickets = eventData.tickets || [];
-
-          const updatedTickets = currentTickets.map((t: any) => {
-            const purchased = selectedTickets.find((st: SelectedTicket) => st.type === t.type);
-            if (purchased) {
-              return {
-                ...t,
-                available: Math.max(0, (t.available || 0) - purchased.quantity),
-              };
-            }
-            return t;
-          });
-
-          const totalQtyPurchased = selectedTickets.reduce(
-            (sum: number, st: SelectedTicket) => sum + st.quantity,
-            0
-          );
-          await updateDoc(eventRef, {
-            tickets: updatedTickets,
-            ticketsSold: (eventData.ticketsSold || 0) + totalQtyPurchased,
-            totalRevenue: (eventData.totalRevenue || 0) + subtotal,
-            updatedAt: Timestamp.now(),
-          });
-          console.log('Ticket availability updated successfully');
-        }
-      } catch (stockError) {
-        console.error('Error updating ticket availability:', stockError);
-      }
-
-      // ==================== SAVE BUYER DATA TO PROFILE ====================
-      // Si el usuario está logueado, guardamos dni y phone en su perfil
-      // para que no tenga que ingresarlos de vuelta en su próxima compra.
-      if (user?.uid && (buyerInfo.dni || buyerInfo.phone)) {
-        try {
-          const userRef = doc(db, 'users', user.uid);
-          const updateData: any = { updatedAt: Timestamp.now() };
-          if (buyerInfo.dni) updateData.dni = buyerInfo.dni;
-          if (buyerInfo.phone) updateData.phone = buyerInfo.phone;
-          if (buyerInfo.name) updateData.displayName = buyerInfo.name;
-          await updateDoc(userRef, updateData);
-          console.log('Profile updated with buyer data');
-        } catch (profileError) {
-          console.error('Error updating profile with buyer data:', profileError);
-          // No abortamos la compra por esto
-        }
-      }
-
-      // ==================== ENVIAR MAIL DE CONFIRMACIÓN ====================
-      // Se dispara apenas se completa la compra. Si el envío falla, NO rompe
-      // la compra: el QR igual se muestra y se puede descargar en pantalla.
-      let emailStatus: 'sent' | 'failed' = 'failed';
-      let emailMessageId: string | null = null;
-      let emailError: string | null = null;
-      try {
-        const emailResp = await fetch('/api/send-ticket-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            buyerName: buyerInfo.name,
-            buyerEmail: buyerInfo.email,
-            buyerDni: buyerInfo.dni,
-            eventTitle: event.title,
-            eventDate: formatEventDate(event.date),
-            eventVenue: event.venue || '',
-            eventLocation: event.location || '',
-            orderId,
-            total,
-            tickets: createdTickets.map((t) => ({ qrCode: t.qrCode, type: t.type })),
-          }),
+        setSuccessState({
+          orderId: payData.orderId,
+          tickets: Array.isArray(payData.tickets) ? payData.tickets : [],
         });
-        const emailJson = await emailResp.json().catch(() => ({ ok: false, error: 'Respuesta inválida' }));
-        emailStatus = emailJson.ok ? 'sent' : 'failed';
-        emailMessageId = emailJson.messageId || null;
-        emailError = emailJson.ok ? null : (emailJson.error || 'Error desconocido');
-      } catch (emailErr) {
-        console.error('[Checkout] No se pudo enviar el mail de confirmación:', emailErr);
-        emailError = emailErr instanceof Error ? emailErr.message : 'Fallo de red';
+        setStep(3);
+        return;
       }
 
-      // Registrar el resultado del envío para poder auditarlo en el dashboard.
-      try {
-        await addDoc(collection(db, 'email_logs'), {
-          orderId,
-          eventId: event.id,
-          eventTitle: event.title,
-          buyerEmail: buyerInfo.email,
-          buyerName: buyerInfo.name,
-          ticketCount: createdTickets.length,
-          status: emailStatus,
-          messageId: emailMessageId,
-          error: emailError,
-          createdAt: Timestamp.now(),
-        });
-      } catch (logErr) {
-        console.error('[Checkout] No se pudo registrar el log de email:', logErr);
-      }
-
-      // Set success state and move to confirmation step
-      setSuccessState({
-        orderId,
-        tickets: createdTickets,
-      });
-      setStep(3);
+      // Respuesta que no es ni link de pago ni reserva gratis: algo salió mal.
+      setToast({ message: 'No se pudo procesar la compra. Intentá de nuevo.', type: 'error' });
     } catch (error) {
       console.error('[Checkout] Error procesando la compra:', error);
       try {

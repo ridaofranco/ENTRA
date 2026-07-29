@@ -85,7 +85,12 @@ export default function EventDetail() {
   // precio se multiplica por la cantidad de días elegidos.
   const isMultiDay = Boolean((event as any)?.isMultiDay);
   const entryMode = (event as any)?.entryMode;
-  const isFree = Boolean((event as any)?.isFree);
+  // Gratis se deriva TAMBIÉN del precio: un evento con isFree apagado pero
+  // todas las entradas en $0 cobra $0 igual (el server lo resuelve como
+  // gratis), así que no tiene sentido mostrarle cargos ni "Total Final".
+  const isFree =
+    Boolean((event as any)?.isFree) ||
+    (Boolean(event?.tickets?.length) && (event?.tickets || []).every(t => !(Number(t.price) > 0)));
   const eventDays: any[] = Array.isArray((event as any)?.days) ? (event as any).days : [];
   // En CUALQUIER evento multi-día el comprador elige los días (no depende del modo).
   // El "modo" (per_day vs whole_event) solo cambia cuántos QR se generan en el checkout.

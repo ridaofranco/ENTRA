@@ -16,6 +16,7 @@
 
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
+import { randomUUID } from 'crypto';
 import { getAdminDb } from './_lib/firebaseAdmin.js';
 import { frenado } from './_rate-limit.js';
 
@@ -25,6 +26,15 @@ const PROCESSOR_GROSSUP = 0.0499; // costo de procesador que absorbe el comprado
 const BASE_URL = process.env.PUBLIC_BASE_URL || 'https://www.entratickets.com';
 
 type IncomingItem = { type: string; quantity: number; days?: number };
+
+function fmtDayKey(dk: string): string {
+  try {
+    const [y, m, d] = dk.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+  } catch {
+    return dk;
+  }
+}
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -166,9 +176,130 @@ export default async function handler(req: any, res: any) {
       await discountRef.update({ usedCount: FieldValue.increment(1), updatedAt: Timestamp.now() }).catch(() => {});
     }
 
-    // --- evento gratis: no pasa por MercadoPago, se confirma directo ---
+    // --- evento gratis (o total $0): no pasa por MercadoPago, se resuelve ACÁ ---
+    // Antes se devolvía {free:true} pelado y el NAVEGADOR seguía con su "flujo
+    // directo": creaba una SEGUNDA orden (la de acá quedaba pending huérfana,
+    // duplicada) y emitía los tickets desde el cliente. Encima, si el evento
+    // tenía isFree apagado pero precio $0 (o descuento del 100%), las reglas de
+    // Firestore ni siquiera dejaban emitir: dos órdenes y cero entradas.
+    // Ahora la reserva gratis usa el mismo patrón que el webhook de pago: UNA
+    // transacción que valida y descuenta stock, emite los tickets con QR de
+    // servidor y confirma la orden. El mail sale desde acá con el secreto
+    // interno (el navegador ya no llama a send-ticket-email para esto).
     if (isFree || total === 0) {
-      return res.status(200).json({ free: true, orderId: orderRef.id });
+      const emitted: Array<{ id: string; qrCode: string; type: string }> = [];
+      try {
+        await db.runTransaction(async (tx) => {
+          const evSnap = await tx.get(eventSnap.ref);
+          const ev: any = evSnap.data() || {};
+          const evTickets: any[] = Array.isArray(ev.tickets) ? ev.tickets : [];
+
+          // 1) validar y descontar stock (los gratis también se agotan)
+          let totalQty = 0;
+          const updatedTickets = evTickets.map((t) => {
+            const bought = normalizedItems.find((it) => it.type === t.type);
+            if (!bought) return t;
+            const avail = typeof t.available === 'number' ? t.available : Infinity;
+            if (avail < bought.quantity) throw new Error(`Sin stock de "${t.type}"`);
+            totalQty += bought.quantity;
+            return { ...t, available: avail === Infinity ? t.available : Math.max(0, avail - bought.quantity) };
+          });
+          tx.update(eventSnap.ref, {
+            tickets: updatedTickets,
+            ticketsSold: (ev.ticketsSold || 0) + totalQty,
+            updatedAt: Timestamp.now(),
+          });
+
+          // 2) emitir tickets (un QR por jornada si es per_day; uno para todo si no)
+          for (const it of normalizedItems) {
+            const issueGroups: string[][] = isPerDay ? validDays.map((dk) => [dk]) : [validDays];
+            for (let i = 0; i < it.quantity; i++) {
+              for (const grpDays of issueGroups) {
+                const qrCode = randomUUID();
+                const dayLabel = isPerDay && grpDays[0] ? fmtDayKey(grpDays[0]) : '';
+                const newRef = db.collection('tickets').doc();
+                const ticketData: any = {
+                  orderId: orderRef.id,
+                  eventId,
+                  eventTitle: event.title,
+                  buyerId: buyerId || 'guest',
+                  buyerName: buyer.name,
+                  buyerEmail: buyer.email,
+                  buyerPhone: buyer.phone || '',
+                  buyerDni: buyer.dni,
+                  ticketType: it.type,
+                  price: 0,
+                  status: 'valid',
+                  qrCode,
+                  createdAt: Timestamp.now(),
+                  purchasedAt: Timestamp.now(),
+                };
+                if (grpDays.length > 0) ticketData.validDays = grpDays;
+                tx.set(newRef, ticketData);
+                emitted.push({ id: newRef.id, qrCode, type: dayLabel ? `${it.type} · ${dayLabel}` : it.type });
+              }
+            }
+          }
+
+          // 3) confirmar la orden (la ÚNICA orden de la reserva)
+          tx.update(orderRef, {
+            status: 'confirmed',
+            paymentMethod: 'free',
+            paidAt: Timestamp.now(),
+          });
+        });
+      } catch (txErr: any) {
+        // La orden quedó pending y no se emitió nada: se puede reintentar.
+        console.error(`[create-payment] reserva gratis falló: orden=${orderRef.id}`, txErr?.message || txErr);
+        return res.status(409).json({ error: txErr?.message?.startsWith('Sin stock') ? txErr.message : 'No se pudo confirmar la reserva. Intentá de nuevo.' });
+      }
+
+      // 4) mail de confirmación, igual que el webhook: awaiteado y con el
+      // resultado guardado en la orden para poder auditarlo desde el panel.
+      let emailStatus = 'failed';
+      let emailError: string | null = null;
+      try {
+        const eventDateText = event.date?.toDate
+          ? event.date.toDate().toLocaleDateString('es-AR', {
+              weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+              timeZone: 'America/Argentina/Buenos_Aires',
+            })
+          : '';
+        const emailResp = await fetch(`${BASE_URL}/api/send-ticket-email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(process.env.INTERNAL_API_SECRET
+              ? { 'x-internal-secret': process.env.INTERNAL_API_SECRET }
+              : {}),
+          },
+          body: JSON.stringify({
+            orderId: orderRef.id,
+            eventId,
+            eventTitle: event.title,
+            eventDate: eventDateText,
+            eventVenue: event.venue || '',
+            eventLocation: event.location || '',
+            buyerEmail: buyer.email,
+            buyerName: buyer.name,
+            buyerDni: buyer.dni,
+            total: 0,
+            tickets: emitted.map((t) => ({ qrCode: t.qrCode, type: t.type })),
+          }),
+        });
+        if (emailResp.ok) {
+          emailStatus = 'sent';
+        } else {
+          emailError = `HTTP ${emailResp.status}: ${(await emailResp.text().catch(() => '')).slice(0, 300)}`;
+        }
+      } catch (e: any) {
+        emailError = e?.message || String(e);
+        console.error('[create-payment] email de reserva gratis falló:', emailError);
+      }
+      await orderRef.update({ emailStatus, emailError, emailSentAt: Timestamp.now() }).catch(() => {});
+
+      console.log(`[create-payment] reserva GRATIS ok: orden=${orderRef.id} buyer=${buyer.email} tickets=${emitted.length} email=${emailStatus}`);
+      return res.status(200).json({ free: true, orderId: orderRef.id, tickets: emitted });
     }
 
     // --- 6) crear la preferencia de pago en MercadoPago ---
