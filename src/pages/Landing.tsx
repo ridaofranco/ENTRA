@@ -93,7 +93,7 @@ export default function Landing() {
             className="space-y-8"
           >
             <div className="space-y-4">
-              <h1 className="text-5xl sm:text-7xl md:text-8xl lg:text-[100px] font-heading font-black tracking-tighter leading-[0.9] sm:leading-[0.85] uppercase select-none break-words">
+              <h1 className="text-[clamp(2rem,11vw,3rem)] sm:text-7xl md:text-8xl lg:text-[100px] font-heading font-black tracking-tighter leading-[0.9] sm:leading-[0.85] uppercase select-none break-words">
                 Acceso a<br />
                 <span className="orange-text-gradient">experiencias</span><br />
                 en vivo.
