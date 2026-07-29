@@ -73,6 +73,11 @@ export default function CreateEvent() {
     { date: '', startTime: '', endTime: '' },
   ]);
 
+  // Fin del evento (opcional): datetime-local en HORA LOCAL. Si el productor lo
+  // carga, la venta termina exactamente ahi; si queda vacio, el evento se da por
+  // finalizado 3 horas despues del inicio (regla central en lib/utils isEventFinished).
+  const [endDateTime, setEndDateTime] = useState('');
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -255,6 +260,20 @@ export default function CreateEvent() {
         eventDate = new Date(`${formData.date}T${timeVal}`);
       }
 
+      // Fin explicito (solo eventos de un dia con fecha confirmada). El input
+      // datetime-local se interpreta en hora local con new Date(), igual que el
+      // inicio: NUNCA pasar por toISOString() aca (corria los horarios 3 horas).
+      let explicitEnd: Date | null = null;
+      if (!isMultiDay && !isDateProximamente && endDateTime) {
+        explicitEnd = new Date(endDateTime);
+        if (isNaN(explicitEnd.getTime())) explicitEnd = null;
+        if (explicitEnd && explicitEnd.getTime() <= eventDate.getTime()) {
+          alert('El fin del evento no puede ser anterior (ni igual) al inicio. Revisá la fecha y hora de fin.');
+          setLoading(false);
+          return;
+        }
+      }
+
       // Create a copy of formData without the 'time' field which is not needed in Firestore
       const { time, ...restFormData } = formData;
       if (isVenueProximamente) {
@@ -275,6 +294,7 @@ export default function CreateEvent() {
         isFree: isFreeEvent,
         date: Timestamp.fromDate(eventDate),
         ...multiDayExtra,
+        ...(explicitEnd ? { endDate: Timestamp.fromDate(explicitEnd) } : {}),
         isDateTBD: isMultiDay ? false : isDateProximamente,
         isTimeTBD: isMultiDay ? false : (isTimeProximamente || isDateProximamente),
         isVenueTBD: isVenueProximamente,
@@ -409,6 +429,7 @@ export default function CreateEvent() {
             </div>
 
             {!isMultiDay ? (
+            <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <div className="flex justify-between items-center mb-1">
@@ -466,6 +487,24 @@ export default function CreateEvent() {
                 />
               </div>
             </div>
+
+            {/* Fin del evento (opcional) */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                Fin del evento <span className="text-primary/70 normal-case tracking-normal">(opcional)</span>
+              </label>
+              <Input
+                type="datetime-local"
+                disabled={isDateProximamente}
+                className="bg-white/5 border-white/10 h-14 rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed text-white [color-scheme:dark]"
+                value={isDateProximamente ? '' : endDateTime}
+                onChange={e => setEndDateTime(e.target.value)}
+              />
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                A esta hora termina la venta y el evento sale de la cartelera. Si lo dejás vacío, se da por finalizado 3 horas después del inicio.
+              </p>
+            </div>
+            </>
             ) : (
             <div className="space-y-5">
               {/* Mismo horario para todos los días */}
@@ -528,7 +567,7 @@ export default function CreateEvent() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button type="button" onClick={() => setEntryMode('whole_event')} className={`text-left p-4 rounded-2xl border transition-all ${entryMode === 'whole_event' ? 'border-primary bg-primary/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}>
                     <p className="text-sm font-heading font-black">Un QR para todo el evento</p>
-                    <p className="text-[11px] text-muted-foreground mt-1">Entra todos los días con el mismo QR — una vez por día (no se reusa el mismo día).</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">Entra todos los días con el mismo QR, una vez por día (no se reusa el mismo día).</p>
                   </button>
                   <button type="button" onClick={() => setEntryMode('per_day')} className={`text-left p-4 rounded-2xl border transition-all ${entryMode === 'per_day' ? 'border-primary bg-primary/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}>
                     <p className="text-sm font-heading font-black">Un QR por día</p>

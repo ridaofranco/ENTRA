@@ -7,7 +7,7 @@ import {
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/src/context/AuthContext';
 import { db } from '@/src/lib/firebase';
-import { collection, getDocs, doc, updateDoc, setDoc, getDoc, Timestamp, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, setDoc, getDoc, Timestamp, onSnapshot, deleteField } from 'firebase/firestore';
 import { Card } from '@/src/components/ui/card';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
@@ -39,6 +39,10 @@ interface EventData {
   organizerPlan?: string;
   commissionRate?: number;
   date: any;
+  // Fin del evento (opcional): si existe, la venta termina exactamente ahi.
+  // Sin endDate, el evento se da por finalizado 3hs despues del inicio.
+  endDate?: any;
+  isMultiDay?: boolean;
   venue?: string;
   location?: string;
   image?: string;
@@ -394,12 +398,24 @@ export default function AdminDashboard() {
       } else if (updated.date?.toDate) {
         payload.date = updated.date;
       }
+      // Fin del evento: Date = lo cargo el admin, null = lo vacio (se borra el
+      // campo y vuelve la regla de inicio + 3hs). Timestamp/undefined = no tocar
+      // (asi los multi-dia conservan su endDate automatico).
+      let localEndDate: any = updated.endDate;
+      if (updated.endDate instanceof Date) {
+        localEndDate = Timestamp.fromDate(updated.endDate);
+        payload.endDate = localEndDate;
+      } else if (updated.endDate === null) {
+        localEndDate = undefined;
+        payload.endDate = deleteField();
+      }
       if (updated.price !== undefined) {
         payload.price = Number(updated.price) || 0;
       }
 
       await updateDoc(doc(db, 'events', updated.id), payload);
-      setEvents(prev => prev.map(e => (e.id === updated.id ? { ...e, ...payload, date: payload.date || e.date } : e)));
+      // Ojo: en el estado local no puede quedar el sentinel deleteField()
+      setEvents(prev => prev.map(e => (e.id === updated.id ? { ...e, ...payload, date: payload.date || e.date, endDate: 'endDate' in payload ? localEndDate : e.endDate } : e)));
       setEditingEvent(null);
     } catch (error: any) {
       console.error('Error saving event:', error);
@@ -1021,6 +1037,10 @@ function EditEventModal({
   const [ticketToDelete, setTicketToDelete] = useState<number | null>(null);
   const [showSavedFeedback, setShowSavedFeedback] = useState(false);
   const [dateStr, setDateStr] = useState<string>(() => toDatetimeLocalValue(event.date));
+  // Fin del evento (opcional). Mismo patron que el inicio: el input se llena en
+  // HORA LOCAL con toDatetimeLocalValue (nunca toISOString, que corria +3hs) y
+  // al guardar new Date(str) interpreta hora local.
+  const [endDateStr, setEndDateStr] = useState<string>(() => toDatetimeLocalValue(event.endDate));
 
   const updateTicket = (idx: number, field: keyof TicketType, value: any) => {
     const tickets = [...(form.tickets || [])];
@@ -1051,6 +1071,21 @@ function EditEventModal({
     const updated = { ...form };
     if (dateStr) {
       updated.date = new Date(dateStr);
+    }
+    // Fin del evento (solo eventos de un dia; los multi-dia lo manejan solos)
+    if (!event.isMultiDay) {
+      if (endDateStr) {
+        const end = new Date(endDateStr);
+        const start = dateStr ? new Date(dateStr) : (event.date?.toDate ? event.date.toDate() : null);
+        if (!isNaN(end.getTime()) && start && end.getTime() <= start.getTime()) {
+          alert('El fin del evento no puede ser anterior (ni igual) al inicio. Revisá la fecha y hora de fin.');
+          return;
+        }
+        updated.endDate = end;
+      } else {
+        // Vacio = borrar el campo: vuelve la regla de inicio + 3 horas
+        updated.endDate = null;
+      }
     }
     await onSave(updated);
     setShowSavedFeedback(true);
@@ -1118,6 +1153,22 @@ function EditEventModal({
               />
             </div>
           </div>
+
+          {/* Fin del evento (opcional, solo eventos de un dia) */}
+          {!event.isMultiDay && (
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Fin del evento (opcional)</label>
+              <input
+                type="datetime-local"
+                value={endDateStr}
+                onChange={e => setEndDateStr(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl h-12 px-4 text-sm focus:outline-none focus:border-primary/50 [color-scheme:dark]"
+              />
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                A esta hora termina la venta y el evento sale de la cartelera. Si lo dejás vacío, se da por finalizado 3 horas después del inicio.
+              </p>
+            </div>
+          )}
 
           {/* Venue + Location */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

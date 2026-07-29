@@ -157,6 +157,9 @@ export default function EventDashboard() {
   const [editEntryMode, setEditEntryMode] = useState<'per_day' | 'whole_event'>('whole_event');
   const [editDate, setEditDate] = useState('');
   const [editTime, setEditTime] = useState('');
+  // Fin del evento (opcional), formato datetime-local "yyyy-MM-ddTHH:mm" en hora
+  // local (mismo patron que el inicio: nunca toISOString, corria los horarios 3hs)
+  const [editEndStr, setEditEndStr] = useState('');
   const [editDays, setEditDays] = useState<Array<{ date: string; startTime: string; endTime: string }>>([]);
   const [editImageUploading, setEditImageUploading] = useState(false);
   const [editImageError, setEditImageError] = useState('');
@@ -390,6 +393,13 @@ export default function EventDashboard() {
     const main = tsToParts(event.date);
     setEditDate(main.date);
     setEditTime(main.time);
+    // Fin explicito solo para eventos de un dia (en multi-dia lo maneja la ultima jornada)
+    if (!event.isMultiDay && event.endDate) {
+      const endP = tsToParts(event.endDate);
+      setEditEndStr(endP.date ? `${endP.date}T${endP.time || '00:00'}` : '');
+    } else {
+      setEditEndStr('');
+    }
     if (event.isMultiDay && Array.isArray(event.days) && event.days.length > 0) {
       setEditDays(event.days.map((d: any) => {
         const p = tsToParts(d.date);
@@ -474,6 +484,25 @@ export default function EventDashboard() {
           update.date = Timestamp.fromDate(new Date(`${editDate}T${(editTime || '00:00')}:00`));
         }
         update.isMultiDay = false;
+        // Fin del evento: si lo cargo, ahi termina la venta; si lo dejo vacio,
+        // se borra el campo y vuelve la regla de inicio + 3 horas.
+        if (editEndStr) {
+          const end = new Date(editEndStr);
+          const start = editDate ? new Date(`${editDate}T${(editTime || '00:00')}:00`) : null;
+          if (isNaN(end.getTime())) {
+            setSaveError('El fin del evento tiene un formato inválido. Revisalo o dejalo vacío.');
+            setIsSaving(false);
+            return;
+          }
+          if (start && end.getTime() <= start.getTime()) {
+            setSaveError('El fin del evento no puede ser anterior (ni igual) al inicio. Revisá la fecha y hora de fin.');
+            setIsSaving(false);
+            return;
+          }
+          update.endDate = Timestamp.fromDate(end);
+        } else {
+          update.endDate = deleteField();
+        }
       }
 
       // Defensa: Firestore rechaza valores undefined → los quitamos
@@ -855,7 +884,7 @@ export default function EventDashboard() {
     const price = Number(ticket.price) || 0;
     const buyerName = ticket.buyerName || 'Hola';
 
-    const subject = `Devolución en proceso — ${eventTitle}`;
+    const subject = `Devolución en proceso: ${eventTitle}`;
     const body =
 `Hola ${buyerName},
 
@@ -2155,16 +2184,26 @@ El equipo de ENTRÁ`;
 
               {/* FECHA(S) */}
               {!editIsMultiDay ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-1">Fecha</label>
-                    <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500/50 [color-scheme:dark]" />
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-1">Fecha</label>
+                      <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500/50 [color-scheme:dark]" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-1">Hora</label>
+                      <input type="time" value={editTime} onChange={e => setEditTime(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500/50 [color-scheme:dark]" />
+                    </div>
                   </div>
                   <div>
-                    <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-1">Hora</label>
-                    <input type="time" value={editTime} onChange={e => setEditTime(e.target.value)}
+                    <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 block mb-1">Fin del evento (opcional)</label>
+                    <input type="datetime-local" value={editEndStr} onChange={e => setEditEndStr(e.target.value)}
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500/50 [color-scheme:dark]" />
+                    <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed">
+                      A esta hora termina la venta y el evento sale de la cartelera. Si lo dejás vacío, se da por finalizado 3 horas después del inicio.
+                    </p>
                   </div>
                 </div>
               ) : (

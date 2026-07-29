@@ -130,13 +130,15 @@ export default function Comprar() {
       event.venue?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       event.location?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'Todos' || event.category === selectedCategory;
-    
-    const eventDate = event.date?.toDate ? event.date.toDate() : event.date?.seconds ? new Date(event.date.seconds * 1000) : null;
-    const now = new Date();
-    const matchesTime = timeFilter === 'all' || 
-                       (timeFilter === 'upcoming' && eventDate && eventDate >= now) ||
-                       (timeFilter === 'past' && eventDate && eventDate < now);
-                       
+
+    // La regla del fin del evento (endDate explicito o inicio + 3hs) decide en
+    // que solapa cae: un evento finalizado ya no aparece entre lo que esta a la
+    // venta ("Proximos", la vista por defecto) y pasa a "Pasados".
+    const finished = isEventFinished(event);
+    const matchesTime = timeFilter === 'all' ||
+                       (timeFilter === 'upcoming' && !finished) ||
+                       (timeFilter === 'past' && finished);
+
     return matchesSearch && matchesCategory && matchesTime;
   });
 
@@ -327,7 +329,7 @@ export default function Comprar() {
             <Music className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
             <h3 className="text-xl font-heading font-black uppercase tracking-tight">Todavía no hay eventos</h3>
             <p className="text-muted-foreground text-sm max-w-sm mx-auto leading-relaxed mt-2 font-sans">
-              Volvé pronto — se vienen cosas buenas. Nos vemos adentro.
+              Volvé pronto, se vienen cosas buenas. Nos vemos adentro.
             </p>
           </motion.div>
         ) : (

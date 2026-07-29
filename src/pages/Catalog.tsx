@@ -11,7 +11,7 @@ import {
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
 import { useAuth } from '@/src/context/AuthContext';
-import { formatCurrency } from '@/src/lib/utils';
+import { formatCurrency, isEventFinished } from '@/src/lib/utils';
 
 interface TicketType {
   type: string;
@@ -135,13 +135,14 @@ export default function Catalog() {
       event.venue?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       event.location?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'Todos' || event.category === selectedCategory;
-    
-    const eventDate = event.date?.toDate ? event.date.toDate() : event.date?.seconds ? new Date(event.date.seconds * 1000) : null;
-    const now = new Date();
-    const matchesTime = timeFilter === 'all' || 
-                       (timeFilter === 'upcoming' && eventDate && eventDate >= now) ||
-                       (timeFilter === 'past' && eventDate && eventDate < now);
-                       
+
+    // Un evento finalizado (endDate explicito o inicio + 3hs) no aparece entre
+    // lo que esta a la venta ("Proximos", la vista por defecto): pasa a "Pasados".
+    const finished = isEventFinished(event);
+    const matchesTime = timeFilter === 'all' ||
+                       (timeFilter === 'upcoming' && !finished) ||
+                       (timeFilter === 'past' && finished);
+
     return matchesSearch && matchesCategory && matchesTime;
   });
 

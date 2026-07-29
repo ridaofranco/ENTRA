@@ -15,10 +15,11 @@ export function formatCurrency(amount: number) {
 }
 
 // ==================== FIN DE EVENTO ====================
-// Fin real de un evento: endDate si existe (lo guardan los eventos multi-dia);
-// si no, 3 horas despues del inicio, el mismo criterio que usa el .ics de
-// "agregar al calendario" en el detalle. Ese margen evita cortar la venta en
-// puerta apenas arranca el evento.
+// REGLA DE PRODUCTO (unica fuente de verdad, usarla en badges, bloqueos y listados):
+// - Si el productor cargo una hora de fin (endDate), el evento finaliza exactamente ahi.
+//   Los eventos multi-dia tambien guardan endDate (el ultimo dia).
+// - Si no hay endDate, el evento se da por finalizado 3 horas despues del inicio.
+//   Ese margen evita cortar la venta en puerta apenas arranca el evento.
 export function getEventEnd(event: { date?: any; endDate?: any }): Date | null {
   const toDate = (raw: any): Date | null => {
     const d = raw?.toDate

@@ -12,6 +12,7 @@ import { useAuth } from '@/src/context/AuthContext';
 import HeroAtmosphere from '@/src/components/HeroAtmosphere';
 import PosterFallback from '@/src/components/PosterFallback';
 import { eventPath } from '@/src/lib/slug';
+import { isEventFinished } from '@/src/lib/utils';
 
 interface Event {
   id: string;
@@ -38,7 +39,9 @@ export default function Landing() {
         const snapshot = await getDocs(collection(db, 'events'));
         const all = snapshot.docs
           .map(d => ({ id: d.id, ...d.data() }) as Event)
-          .filter(e => (!e.status || e.status === 'active') && !(e as any).hidden)
+          // Un evento finalizado no puede seguir ofreciendose en la home:
+          // sale de la cartelera (el detalle por URL directa sigue visible).
+          .filter(e => (!e.status || e.status === 'active') && !(e as any).hidden && !isEventFinished(e))
           .sort((a, b) => {
             const da = a.date?.toDate?.()?.getTime?.() || 0;
             const db2 = b.date?.toDate?.()?.getTime?.() || 0;
@@ -208,7 +211,7 @@ export default function Landing() {
             <Music className="w-10 h-10 text-primary mx-auto opacity-40" />
             <h3 className="font-heading font-black text-xl uppercase">Pronto</h3>
             <p className="text-sm text-muted-foreground leading-relaxed font-sans">
-              Lo que viene se anuncia acá. Volvé pronto — se vienen cosas buenas.
+              Lo que viene se anuncia acá. Volvé pronto, se vienen cosas buenas.
             </p>
           </div>
         )}
