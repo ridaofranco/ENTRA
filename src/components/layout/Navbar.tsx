@@ -4,10 +4,14 @@ import { Menu, X, User, Search, LogOut } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/src/context/AuthContext';
+import { useLang, textos } from '@/src/lib/i18n';
+import { LangSwitcher } from '@/src/components/LangSwitcher';
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const lang = useLang();
+  const t = textos(lang);
   const { user, profile, logout } = useAuth();
   const isOrganizer = profile?.role === 'organizer' || profile?.role === 'admin' || profile?.role === 'superadmin';
   const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin';
@@ -21,9 +25,9 @@ export function Navbar() {
   }, []);
 
   const navLinks = [
-    { to: '/eventos', label: 'Eventos', show: true, highlight: false },
-    { to: '/productores', label: 'Productores', show: true, highlight: false },
-    { to: '/ayuda', label: 'Ayuda', show: true, highlight: false },
+    { to: '/eventos', label: t.nav.eventos, show: true, highlight: false },
+    { to: '/productores', label: t.nav.productores, show: true, highlight: false },
+    { to: '/ayuda', label: t.nav.ayuda, show: true, highlight: false },
     { to: '/dashboard', label: 'Dashboard', show: isOrganizer, highlight: false },
     { to: '/crear-evento', label: 'Crear Evento', show: isOrganizer, highlight: false },
     { to: '/control-acceso', label: 'Control Acceso', show: isOrganizer, highlight: false },
@@ -57,6 +61,7 @@ export function Navbar() {
       </div>
 
       <div className="flex items-center gap-3 sm:gap-4">
+        <LangSwitcher className="hidden sm:flex" />
         <Link to="/eventos">
           <Button variant="ghost" size="icon" className="hidden sm:flex text-muted-foreground hover:text-primary">
             <Search className="w-5 h-5" />
@@ -122,6 +127,7 @@ export function Navbar() {
               <LogOut className="w-4 h-4" /> Cerrar sesión
             </button>
           )}
+          <LangSwitcher className="mt-3 px-2" />
         </div>
       )}
     </nav>

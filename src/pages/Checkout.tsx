@@ -10,6 +10,7 @@ import { collection, Timestamp, doc, getDoc, updateDoc, query, where, getDocs } 
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { cn, formatCurrency } from '@/src/lib/utils';
 import { useAuth } from '@/src/context/AuthContext';
+import { useLang, textos, dateLocale } from '@/src/lib/i18n';
 
 interface SelectedTicket {
   type: string;
@@ -35,6 +36,8 @@ export default function Checkout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const lang = useLang();
+  const t = textos(lang);
 
   const { event, selectedTickets } = location.state || {};
 
@@ -131,20 +134,20 @@ export default function Checkout() {
 
           <div className="space-y-2">
             <h1 className="text-3xl font-heading font-black tracking-tighter uppercase">
-              {isSuccess ? '¡Pago confirmado!'
-                : isPending ? 'Pago en proceso'
-                : 'El pago no se completó'}
+              {isSuccess ? t.checkout.pagoConfirmado
+                : isPending ? t.checkout.pagoEnProceso
+                : t.checkout.pagoNoCompletado}
             </h1>
             <p className="text-muted-foreground text-sm leading-relaxed">
               {isSuccess
-                ? 'Estamos generando tus entradas. Te las enviamos por email y quedan disponibles en tu perfil. Puede tardar unos segundos en impactar.'
+                ? t.checkout.retornoOk
                 : isPending
-                ? 'MercadoPago todavía está acreditando el pago. Cuando se apruebe, te enviamos las entradas por email automáticamente.'
-                : 'No se realizó ningún cobro. Podés intentar la compra de nuevo cuando quieras.'}
+                ? t.checkout.retornoPendiente
+                : t.checkout.retornoFallo}
             </p>
             {orderShort && (
               <p className="text-xs text-muted-foreground pt-2">
-                Orden #{orderShort}
+                {t.checkout.ordenNro(orderShort)}
               </p>
             )}
           </div>
@@ -152,11 +155,11 @@ export default function Checkout() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
             {isSuccess || isPending ? (
               <Button onClick={() => navigate('/perfil')} className="rounded-full font-bold">
-                Ver mis entradas
+                {t.checkout.verMisEntradas}
               </Button>
             ) : (
               <Button onClick={() => navigate('/eventos')} className="rounded-full font-bold">
-                Volver a los eventos
+                {t.checkout.volverEventos}
               </Button>
             )}
             <Button
@@ -164,7 +167,7 @@ export default function Checkout() {
               onClick={() => navigate('/')}
               className="rounded-full hover:bg-primary/10 hover:text-primary"
             >
-              Ir al inicio
+              {t.checkout.irInicio}
             </Button>
           </div>
         </Card>
@@ -225,7 +228,7 @@ export default function Checkout() {
       const querySnapshot = await getDocs(q);
       
       if (querySnapshot.empty) {
-        setDiscountError('Código inválido o no disponible');
+        setDiscountError(t.checkout.codigoInvalido);
         return;
       }
 
@@ -234,13 +237,13 @@ export default function Checkout() {
 
       // Validar expiración
       if (discountData.validUntil && discountData.validUntil.toDate() < new Date()) {
-        setDiscountError('Este código ha expirado');
+        setDiscountError(t.checkout.codigoExpirado);
         return;
       }
 
       // Validar usos
       if (discountData.maxUses && discountData.usedCount >= discountData.maxUses) {
-        setDiscountError('Este código ya alcanzó su límite de usos');
+        setDiscountError(t.checkout.codigoLimite);
         return;
       }
 
@@ -263,10 +266,10 @@ export default function Checkout() {
         amount
       });
       setDiscountCodeInput('');
-      setToast({ message: '¡Código aplicado con éxito!', type: 'success' });
+      setToast({ message: t.checkout.codigoAplicado, type: 'success' });
     } catch (error) {
       console.error('Error validating discount:', error);
-      setDiscountError('Error al validar el código');
+      setDiscountError(t.checkout.codigoError);
     } finally {
       setIsValidatingDiscount(false);
     }
@@ -279,7 +282,7 @@ export default function Checkout() {
 
   const handleConfirmPurchase = async () => {
     if (!buyerInfo.name || !buyerInfo.email || !buyerInfo.dni) {
-      setToast({ message: 'Por favor completa todos los campos', type: 'error' });
+      setToast({ message: t.checkout.completaCampos, type: 'error' });
       return;
     }
 
@@ -317,7 +320,7 @@ export default function Checkout() {
       const payData = await payResp.json().catch(() => null);
       if (!payResp.ok || !payData) {
         setToast({
-          message: payData?.error || 'No se pudo procesar la compra. Intentá de nuevo.',
+          message: payData?.error || t.checkout.compraError,
           type: 'error',
         });
         return;
@@ -354,7 +357,7 @@ export default function Checkout() {
       }
 
       // Respuesta que no es ni link de pago ni reserva gratis: algo salió mal.
-      setToast({ message: 'No se pudo procesar la compra. Intentá de nuevo.', type: 'error' });
+      setToast({ message: t.checkout.compraError, type: 'error' });
     } catch (error) {
       console.error('[Checkout] Error procesando la compra:', error);
       try {
@@ -363,7 +366,7 @@ export default function Checkout() {
         // handleFirestoreError re-lanza para loguear; lo absorbemos para poder
         // mostrarle el toast al usuario en vez de cortar la ejecución.
       }
-      setToast({ message: 'Error al procesar la compra. Por favor intenta nuevamente.', type: 'error' });
+      setToast({ message: t.checkout.compraError2, type: 'error' });
     } finally {
       setIsProcessing(false);
     }
@@ -371,7 +374,7 @@ export default function Checkout() {
 
   const formatEventDate = (date: any) => {
     if (date?.toDate) {
-      return date.toDate().toLocaleDateString('es-AR', {
+      return date.toDate().toLocaleDateString(dateLocale(lang), {
         weekday: 'short',
         day: 'numeric',
         month: 'short',
@@ -390,10 +393,10 @@ export default function Checkout() {
     const orderShort = successState.orderId.substring(0, 8).toUpperCase();
 
     const html = `<!DOCTYPE html>
-<html lang="es">
+<html lang="${lang}">
 <head>
 <meta charset="UTF-8">
-<title>Entradas ENTRA - ${event.title}</title>
+<title>${lang === 'es' ? 'Entradas ENTRA' : 'ENTRA Tickets'} - ${event.title}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -563,26 +566,26 @@ ${successState.tickets.map((ticket, i) => `
     </div>
     <div class="info-section">
       <div class="info-row">
-        <div class="info-label">Titular</div>
+        <div class="info-label">${t.checkout.titular}</div>
         <div class="info-value">${buyerInfo.name}</div>
       </div>
       <div class="info-row">
-        <div class="info-label">DNI</div>
+        <div class="info-label">${t.checkout.dni}</div>
         <div class="info-value small">${buyerInfo.dni}</div>
       </div>
       <div class="info-row">
-        <div class="info-label">Fecha</div>
+        <div class="info-label">${t.checkout.ticketFecha}</div>
         <div class="info-value small">${eventDateStr}</div>
       </div>
       <div class="info-row">
-        <div class="info-label">Lugar</div>
+        <div class="info-label">${t.checkout.ticketLugar}</div>
         <div class="info-value small">${event.venue || ''}${event.location ? ', ' + event.location : ''}</div>
       </div>
     </div>
   </div>
   <div class="ticket-footer">
-    <span class="status">VÁLIDO</span>
-    <span class="order-badge">Orden #${orderShort} · ${i + 1}/${successState.tickets.length}</span>
+    <span class="status">${t.checkout.ticketValido}</span>
+    <span class="order-badge">${t.checkout.ordenNro(orderShort)} · ${i + 1}/${successState.tickets.length}</span>
     <span class="brand-footer">ENTRA</span>
   </div>
 </div>
@@ -611,16 +614,16 @@ ${successState.tickets.map((ticket, i) => `
       exit={{ opacity: 0, x: 20 }}
       className="space-y-6"
     >
-      <h2 className="text-2xl font-heading font-black tracking-tighter">Tus Datos</h2>
+      <h2 className="text-2xl font-heading font-black tracking-tighter">{t.checkout.tusDatos}</h2>
 
       {!user && (
         <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4">
           <p className="text-sm text-primary font-bold mb-3">
-            Inicia sesión para una compra más rápida
+            {t.checkout.loginRapida}
           </p>
           <Link to="/auth/login">
             <Button className="w-full orange-gradient border-none font-heading font-black rounded-xl h-11">
-              Iniciar Sesión
+              {t.checkout.iniciarSesion}
             </Button>
           </Link>
         </div>
@@ -629,12 +632,12 @@ ${successState.tickets.map((ticket, i) => `
       <div className="space-y-4">
         <div className="space-y-2">
           <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Nombre Completo
+            {t.checkout.nombreCompleto}
           </label>
           <Input
             value={buyerInfo.name}
             onChange={(e) => setBuyerInfo({ ...buyerInfo, name: e.target.value })}
-            placeholder="Como figura en tu documento"
+            placeholder={t.checkout.nombrePlaceholder}
             className="bg-white/5 border-white/10 h-12 rounded-2xl"
           />
         </div>
@@ -642,38 +645,38 @@ ${successState.tickets.map((ticket, i) => `
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-              Email
+              {t.checkout.email}
             </label>
             <Input
               type="email"
               value={buyerInfo.email}
               onChange={(e) => setBuyerInfo({ ...buyerInfo, email: e.target.value })}
-              placeholder="tu@email.com"
+              placeholder={t.checkout.emailPlaceholder}
               className="bg-white/5 border-white/10 h-12 rounded-2xl"
             />
           </div>
 
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-              DNI
+              {t.checkout.dni}
             </label>
             <Input
               value={buyerInfo.dni}
               onChange={(e) => setBuyerInfo({ ...buyerInfo, dni: e.target.value })}
-              placeholder="Sin puntos ni espacios"
+              placeholder={t.checkout.dniPlaceholder}
               className="bg-white/5 border-white/10 h-12 rounded-2xl"
             />
           </div>
 
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-              Teléfono
+              {t.checkout.telefono}
             </label>
             <Input
               type="tel"
               value={buyerInfo.phone}
               onChange={(e) => setBuyerInfo({ ...buyerInfo, phone: e.target.value })}
-              placeholder="Ej: 1155443322"
+              placeholder={t.checkout.telefonoPlaceholder}
               className="bg-white/5 border-white/10 h-12 rounded-2xl"
             />
           </div>
@@ -685,7 +688,7 @@ ${successState.tickets.map((ticket, i) => `
         onClick={() => setStep(2)}
         className="w-full h-14 orange-gradient border-none font-heading font-black text-lg rounded-xl"
       >
-        Siguiente: Revisar y Confirmar
+        {t.checkout.siguiente}
       </Button>
     </motion.div>
   );
@@ -698,24 +701,24 @@ ${successState.tickets.map((ticket, i) => `
       exit={{ opacity: 0, x: 20 }}
       className="space-y-6"
     >
-      <h2 className="text-2xl font-heading font-black tracking-tighter">Revisar Compra</h2>
+      <h2 className="text-2xl font-heading font-black tracking-tighter">{t.checkout.revisarCompra}</h2>
 
       <div className="space-y-4">
         <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
           <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4">
-            Datos del Comprador
+            {t.checkout.datosComprador}
           </h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Nombre:</span>
+              <span className="text-muted-foreground">{t.checkout.nombreLabel}</span>
               <span className="font-bold">{buyerInfo.name}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Email:</span>
+              <span className="text-muted-foreground">{t.checkout.emailLabel}</span>
               <span className="font-bold">{buyerInfo.email}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">DNI:</span>
+              <span className="text-muted-foreground">{t.checkout.dniLabel}</span>
               <span className="font-bold">{buyerInfo.dni}</span>
             </div>
           </div>
@@ -724,13 +727,13 @@ ${successState.tickets.map((ticket, i) => `
             onClick={() => setStep(1)}
             className="w-full mt-4 text-xs font-bold"
           >
-            Editar
+            {t.checkout.editar}
           </Button>
         </div>
 
         <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
           <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4">
-            Entradas
+            {t.checkout.entradasTitulo}
           </h3>
           <div className="space-y-2">
             {selectedTickets.map((ticket: SelectedTicket, index: number) => (
@@ -753,14 +756,14 @@ ${successState.tickets.map((ticket, i) => `
           onClick={() => setStep(1)}
           className="h-12 px-6 font-bold"
         >
-          Volver
+          {t.checkout.volver}
         </Button>
         <Button
           disabled={isProcessing}
           onClick={handleConfirmPurchase}
           className="flex-grow h-12 orange-gradient border-none font-heading font-black rounded-xl"
         >
-          {isProcessing ? 'Procesando...' : (isFreeEvent ? 'Confirmar Reserva' : 'Confirmar Compra')}
+          {isProcessing ? t.checkout.procesando : (isFreeEvent ? t.checkout.confirmarReserva : t.checkout.confirmarCompra)}
         </Button>
       </div>
     </motion.div>
@@ -780,13 +783,13 @@ ${successState.tickets.map((ticket, i) => `
         </div>
         <div className="space-y-2">
           <h2 className="text-4xl font-heading font-black tracking-tighter">
-            {isFreeEvent ? '¡Reserva Confirmada!' : '¡Compra Exitosa!'}
+            {isFreeEvent ? t.checkout.reservaConfirmada : t.checkout.compraExitosa}
           </h2>
           <p className="text-lg text-muted-foreground">
-            Orden #{successState.orderId.substring(0, 8).toUpperCase()}
+            {t.checkout.ordenNro(successState.orderId.substring(0, 8).toUpperCase())}
           </p>
           <p className="text-sm text-muted-foreground">
-            {successState.tickets.length} {successState.tickets.length === 1 ? 'entrada generada' : 'entradas generadas'}
+            {successState.tickets.length} {t.checkout.entradasGeneradas(successState.tickets.length)}
           </p>
         </div>
       </div>
@@ -797,7 +800,7 @@ ${successState.tickets.map((ticket, i) => `
         className="w-full h-14 orange-gradient border-none font-heading font-black text-base rounded-xl flex items-center justify-center gap-3"
       >
         <Download className="w-5 h-5" />
-        Descargar {successState.tickets.length === 1 ? 'mi entrada' : `mis ${successState.tickets.length} entradas`} (PDF imprimible)
+        {t.checkout.descargarEntradas(successState.tickets.length)}
       </Button>
 
       {/* Tickets con QR visual grande */}
@@ -811,7 +814,7 @@ ${successState.tickets.map((ticket, i) => `
             <div className="orange-gradient p-5 flex items-center justify-between">
               <div className="text-white">
                 <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">
-                  Entrada #{index + 1} de {successState.tickets.length}
+                  {t.checkout.entradaDe(index + 1, successState.tickets.length)}
                 </p>
                 <p className="text-lg font-heading font-black leading-tight">
                   {event.title}
@@ -838,10 +841,10 @@ ${successState.tickets.map((ticket, i) => `
                 </div>
                 <div className="pt-3 border-t border-white/10">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Titular
+                    {t.checkout.titular}
                   </p>
                   <p className="text-sm font-bold">{buyerInfo.name}</p>
-                  <p className="text-xs text-muted-foreground">DNI {buyerInfo.dni}</p>
+                  <p className="text-xs text-muted-foreground">{t.checkout.dniPrefix(buyerInfo.dni)}</p>
                 </div>
                 <div className="flex gap-2 pt-2">
                   <button
@@ -851,14 +854,14 @@ ${successState.tickets.map((ticket, i) => `
                     className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors px-3 py-1.5 rounded-lg bg-white/5 border border-white/10"
                   >
                     <Copy className="w-3 h-3" />
-                    Copiar código
+                    {t.checkout.copiarCodigo}
                   </button>
                   <button
                     onClick={handleDownloadTickets}
                     className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors px-3 py-1.5 rounded-lg bg-white/5 border border-white/10"
                   >
                     <Download className="w-3 h-3" />
-                    Descargar PDF
+                    {t.checkout.descargarPDF}
                   </button>
                 </div>
               </div>
@@ -885,17 +888,17 @@ ${successState.tickets.map((ticket, i) => `
 
       <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4">
         <p className="text-sm text-primary font-bold mb-2">
-          ¡Listo! Tus entradas están acá 👇
+          {t.checkout.listoTitulo}
         </p>
         <p className="text-xs text-primary/80">
-          Guardá o descargá el QR y presentalo en la puerta. También te mandamos una copia a {buyerInfo.email}; si no la ves, revisá el spam o descargá las entradas desde acá.
+          {t.checkout.listoBajada(buyerInfo.email)}
         </p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
         <Link to="/perfil" className="flex-grow">
           <Button className="w-full orange-gradient border-none font-heading font-black h-12 rounded-xl">
-            Ver Mis Entradas
+            {t.checkout.verMisEntradasBtn}
           </Button>
         </Link>
         <Link to="/eventos" className="flex-grow">
@@ -903,7 +906,7 @@ ${successState.tickets.map((ticket, i) => `
             variant="outline"
             className="w-full h-12 rounded-xl border-white/10 font-heading font-black"
           >
-            Seguir Explorando
+            {t.checkout.seguirExplorando}
           </Button>
         </Link>
       </div>
@@ -927,7 +930,7 @@ ${successState.tickets.map((ticket, i) => `
               </Button>
             </Link>
             <h1 className="text-3xl font-heading font-black tracking-tighter uppercase">
-              {step === 3 ? 'Compra Completada' : 'Finalizar Compra'}
+              {step === 3 ? t.checkout.compraCompletada : t.checkout.finalizarCompra}
             </h1>
           </div>
 
@@ -1018,7 +1021,7 @@ ${successState.tickets.map((ticket, i) => `
                {/* Tickets Summary */}
               <div className="space-y-3">
                 <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                  Entradas
+                  {t.checkout.entradasTitulo}
                 </h4>
                 <div className="space-y-3">
                   {selectedTickets.map((ticket: SelectedTicket, i: number) => {
@@ -1036,7 +1039,7 @@ ${successState.tickets.map((ticket, i) => `
                           </span>
                           {ticket.quantity > 1 && (
                             <span className="block text-[10px] text-muted-foreground/80 font-sans">
-                              {formatCurrency(basePrice)} c/u
+                              {formatCurrency(basePrice)} {t.checkout.cadaUno}
                             </span>
                           )}
                         </div>
@@ -1062,7 +1065,7 @@ ${successState.tickets.map((ticket, i) => `
                         <Input
                           value={discountCodeInput}
                           onChange={(e) => setDiscountCodeInput(e.target.value.toUpperCase())}
-                          placeholder="CÓDIGO"
+                          placeholder={t.checkout.codigoPlaceholder}
                           className="pl-9 bg-white/5 border-white/10 h-10 rounded-xl text-xs font-bold"
                           onKeyDown={(e) => e.key === 'Enter' && handleApplyDiscount()}
                         />
@@ -1072,7 +1075,7 @@ ${successState.tickets.map((ticket, i) => `
                         disabled={!discountCodeInput.trim() || isValidatingDiscount}
                         className="h-10 px-4 orange-gradient border-none font-heading font-black text-xs rounded-xl"
                       >
-                        {isValidatingDiscount ? <Loader2 className="w-4 h-4 animate-spin" /> : 'APLICAR'}
+                        {isValidatingDiscount ? <Loader2 className="w-4 h-4 animate-spin" /> : t.checkout.aplicar}
                       </Button>
                     </div>
                     {discountError && (
@@ -1089,7 +1092,7 @@ ${successState.tickets.map((ticket, i) => `
                       </div>
                       <div>
                         <p className="text-[10px] font-bold uppercase tracking-widest text-green-500">
-                          Descuento aplicado
+                          {t.checkout.descuentoAplicado}
                         </p>
                         <p className="text-sm font-black text-white">
                           {appliedDiscount.code}

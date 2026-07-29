@@ -10,6 +10,7 @@ import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { formatCurrency, isEventFinished } from '@/src/lib/utils';
 import PosterFallback from '@/src/components/PosterFallback';
 import { resolveEventId } from '@/src/lib/slug';
+import { useLang, textos, dateLocale } from '@/src/lib/i18n';
 
 interface TicketType {
   type: string;
@@ -38,6 +39,9 @@ interface Event {
 
 export default function EventDetail() {
   const { id } = useParams();
+  const lang = useLang();
+  const t = textos(lang);
+  const loc = dateLocale(lang);
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -136,19 +140,19 @@ export default function EventDetail() {
   // Evento ya finalizado: bloquea la compra aunque entren por URL directa.
   const isFinished = event ? isEventFinished(event) : false;
 
-  if (loading) return <div className="pt-40 text-center">Cargando...</div>;
-  if (!event) return <div className="pt-40 text-center">Evento no encontrado</div>;
+  if (loading) return <div className="pt-40 text-center">{t.comun.cargando}</div>;
+  if (!event) return <div className="pt-40 text-center">{t.evento.noEncontrado}</div>;
 
   // Deleted events: show not found (buyer should not see them at all)
   if (event.status === 'deleted') {
     return (
       <div className="pt-40 text-center max-w-md mx-auto px-6">
         <AlertTriangle className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-        <h2 className="text-2xl font-heading font-black mb-2">Evento no disponible</h2>
-        <p className="text-muted-foreground mb-6">Este evento fue eliminado y ya no está disponible.</p>
+        <h2 className="text-2xl font-heading font-black mb-2">{t.evento.eliminadoTitulo}</h2>
+        <p className="text-muted-foreground mb-6">{t.evento.eliminadoBajada}</p>
         <Link to="/eventos">
           <Button variant="outline" className="font-bold border-white/10 hover:border-primary hover:text-primary">
-            Ver otros eventos
+            {t.comun.verOtrosEventos}
           </Button>
         </Link>
       </div>
@@ -161,7 +165,7 @@ export default function EventDetail() {
     const url = window.location.href;
     const shareData = {
       title: event.title,
-      text: `${event.title} — conseguí tus entradas en ENTRÁ`,
+      text: t.evento.shareTexto(event.title),
       url,
     };
     try {
@@ -250,26 +254,28 @@ export default function EventDetail() {
                     const ds = (event as any).days;
                     const f = (x: any) => {
                       const dt = x?.date?.toDate ? x.date.toDate() : (x?.date?.seconds ? new Date(x.date.seconds * 1000) : null);
-                      return dt ? dt.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }) : '';
+                      return dt ? dt.toLocaleDateString(loc, { day: 'numeric', month: 'short' }) : '';
                     };
-                    return `Del ${f(ds[0])} al ${f(ds[ds.length - 1])}`;
+                    return t.evento.rangoFechas(f(ds[0]), f(ds[ds.length - 1]));
                   })()
                 : event.isDateTBD
-                ? "PROXIMAMENTE"
-                : eventDate?.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                ? t.comun.proximamente
+                : eventDate?.toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             </div>
             <div className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary" />
               {(event as any).isMultiDay
-                ? `${(event as any).days?.length || ''} jornadas`
+                ? t.evento.jornadasCortas((event as any).days?.length || 0)
                 : event.isTimeTBD || event.isDateTBD
-                ? "PROXIMAMENTE"
-                : `${eventDate?.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}hs`}
+                ? t.comun.proximamente
+                : lang === 'es'
+                ? `${eventDate?.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}hs`
+                : eventDate?.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
             </div>
             <div className="flex items-center gap-2">
               <MapPin className="w-5 h-5 text-primary" />
-              {event.isVenueTBD 
-                ? "LUGAR POR CONFIRMAR" 
+              {event.isVenueTBD
+                ? t.comun.lugarPorConfirmar
                 : `${event.venue}, ${event.location}`}
             </div>
           </div>
@@ -286,21 +292,21 @@ export default function EventDetail() {
               className="flex items-center gap-2 h-11 px-5 rounded-xl bg-white/[0.03] border border-white/10 text-white text-sm font-bold hover:bg-white/[0.06] hover:border-white/20 transition-all"
             >
               {linkCopied ? <Check className="w-4 h-4 text-primary" /> : <Share2 className="w-4 h-4" />}
-              {linkCopied ? 'Link copiado' : 'Compartir'}
+              {linkCopied ? t.evento.linkCopiado : t.evento.compartir}
             </button>
             <button
               onClick={handleAddToCalendar}
               className="flex items-center gap-2 h-11 px-5 rounded-xl bg-white/[0.03] border border-white/10 text-white text-sm font-bold hover:bg-white/[0.06] hover:border-white/20 transition-all"
             >
               <CalendarPlus className="w-4 h-4" />
-              Agregar al calendario
+              {t.evento.agregarCalendario}
             </button>
           </div>
 
           <section>
             <h2 className="text-2xl font-heading font-black mb-6 flex items-center gap-3">
               <Info className="w-6 h-6 text-primary" />
-              Sobre el evento
+              {t.evento.sobreEvento}
             </h2>
             <p className="text-muted-foreground leading-relaxed text-lg whitespace-pre-line">
               {event.description}
@@ -311,7 +317,7 @@ export default function EventDetail() {
             <section>
               <h2 className="text-2xl font-heading font-black mb-6 uppercase tracking-tight text-white flex items-center gap-3">
                 <Calendar className="w-6 h-6 text-primary" />
-                Jornadas ({(event as any).days.length} días)
+                {t.evento.jornadasTitulo((event as any).days.length)}
               </h2>
               <div className="space-y-3">
                 {(event as any).days.map((d: any, i: number) => {
@@ -323,11 +329,11 @@ export default function EventDetail() {
                       </div>
                       <div className="min-w-0">
                         <p className="font-heading font-black text-white capitalize leading-tight">
-                          {dt ? dt.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }) : 'Fecha a confirmar'}
+                          {dt ? dt.toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long' }) : t.comun.fechaAConfirmar}
                         </p>
                         {(d?.startTime || d?.endTime) && (
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {d.startTime}{d.endTime ? ` a ${d.endTime}` : ''} hs
+                            {t.evento.horaRango(d.startTime || '', d.endTime)}
                           </p>
                         )}
                       </div>
@@ -340,7 +346,7 @@ export default function EventDetail() {
 
           <section>
             <h2 className="text-2xl font-heading font-black mb-6 uppercase tracking-tight text-white">
-              Ubicación
+              {t.evento.ubicacion}
             </h2>
             <div className="relative glass rounded-3xl h-80 flex items-center justify-center text-muted-foreground overflow-hidden border border-white/5">
               <img 
@@ -350,7 +356,7 @@ export default function EventDetail() {
                 referrerPolicy="no-referrer"
               />
               <div className="absolute bg-[#09090b]/90 backdrop-blur-md p-8 rounded-3xl border border-white/10 text-center max-w-sm">
-                <p className="font-heading font-black uppercase text-xl text-primary">{event.isVenueTBD ? "LUGAR POR CONFIRMAR" : event.venue}</p>
+                <p className="font-heading font-black uppercase text-xl text-primary">{event.isVenueTBD ? t.comun.lugarPorConfirmar : event.venue}</p>
                 <p className="text-sm text-muted-foreground/80 font-sans mt-2">{event.location}</p>
                 {!event.isVenueTBD && (
                   <a 
@@ -359,7 +365,7 @@ export default function EventDetail() {
                     rel="noopener noreferrer"
                   >
                     <Button variant="link" className="text-primary hover:text-primary/85 font-black text-xs uppercase tracking-wider mt-4">
-                      Ver en Google Maps &rarr;
+                      {t.evento.verMaps} &rarr;
                     </Button>
                   </a>
                 )}
@@ -378,13 +384,13 @@ export default function EventDetail() {
                 <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4 border border-red-500/20">
                   <AlertTriangle className="w-8 h-8 text-red-500" />
                 </div>
-                <h3 className="text-xl font-heading font-black uppercase tracking-tight mb-2">Evento cancelado</h3>
+                <h3 className="text-xl font-heading font-black uppercase tracking-tight mb-2">{t.evento.canceladoTitulo}</h3>
                 <p className="text-[#a0a0aa] text-sm leading-relaxed mb-6 font-sans">
-                  El organizador canceló este evento. Si tenías entrada, te mandamos un mail con los detalles.
+                  {t.evento.canceladoBajada}
                 </p>
                 <Link to="/eventos">
                   <Button variant="outline" className="font-bold text-xs uppercase tracking-wider border-white/10 hover:border-primary hover:text-primary rounded-xl">
-                    Ver otros eventos
+                    {t.comun.verOtrosEventos}
                   </Button>
                 </Link>
               </div>
@@ -394,13 +400,13 @@ export default function EventDetail() {
                 <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4 border border-white/10">
                   <Clock className="w-8 h-8 text-zinc-400" />
                 </div>
-                <h3 className="text-xl font-heading font-black uppercase tracking-tight mb-2">Evento finalizado</h3>
+                <h3 className="text-xl font-heading font-black uppercase tracking-tight mb-2">{t.evento.finalizadoTitulo}</h3>
                 <p className="text-[#a0a0aa] text-sm leading-relaxed mb-6 font-sans">
-                  Este evento ya pasó y la venta de entradas está cerrada.
+                  {t.evento.finalizadoBajada}
                 </p>
                 <Link to="/eventos">
                   <Button variant="outline" className="font-bold text-xs uppercase tracking-wider border-white/10 hover:border-primary hover:text-primary rounded-xl">
-                    Ver otros eventos
+                    {t.comun.verOtrosEventos}
                   </Button>
                 </Link>
               </div>
@@ -410,13 +416,13 @@ export default function EventDetail() {
                 <div className="w-16 h-16 rounded-full bg-yellow-500/10 flex items-center justify-center mx-auto mb-4 border border-yellow-500/20">
                   <AlertTriangle className="w-8 h-8 text-yellow-500" />
                 </div>
-                <h3 className="text-xl font-heading font-black uppercase tracking-tight mb-2">Venta pausada</h3>
+                <h3 className="text-xl font-heading font-black uppercase tracking-tight mb-2">{t.evento.pausadoTitulo}</h3>
                 <p className="text-[#a0a0aa] text-sm leading-relaxed mb-6 font-sans">
-                  El organizador pausó temporalmente la venta de entradas. Volvé a revisar en un rato.
+                  {t.evento.pausadoBajada}
                 </p>
                 <Link to="/eventos">
                   <Button variant="outline" className="font-bold text-xs uppercase tracking-wider border-white/10 hover:border-primary hover:text-primary rounded-xl">
-                    Ver otros eventos
+                    {t.comun.verOtrosEventos}
                   </Button>
                 </Link>
               </div>
@@ -426,13 +432,13 @@ export default function EventDetail() {
                 <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4 border border-red-500/20">
                   <Ticket className="w-8 h-8 text-red-500" />
                 </div>
-                <h3 className="text-xl font-heading font-black text-red-500 uppercase tracking-widest mb-2">SOLD OUT</h3>
+                <h3 className="text-xl font-heading font-black text-red-500 uppercase tracking-widest mb-2">{t.evento.soldOutTitulo}</h3>
                 <p className="text-[#a0a0aa] text-sm leading-relaxed mb-6 font-sans">
-                  Todas las entradas disponibles de todas las tandas fueron vendidas. ¡Nos vemos adentro!
+                  {t.evento.soldOutBajada}
                 </p>
                 <Link to="/eventos">
                   <Button variant="outline" className="font-bold text-xs uppercase tracking-wider border-white/10 hover:border-primary hover:text-primary rounded-xl">
-                    Ver cartelera
+                    {t.evento.verCartelera}
                   </Button>
                 </Link>
               </div>
@@ -440,12 +446,12 @@ export default function EventDetail() {
               /* Event is active — show ticket selector */
               <>
                 <h3 className="text-2xl font-heading font-black uppercase tracking-tight mb-8">
-                  {isFree ? 'RESERVÁ TU LUGAR' : 'ENTRADAS'}
+                  {isFree ? t.evento.reservaTuLugar : t.evento.entradas}
                 </h3>
 
                 {isPerDay && (
                   <div className="mb-8">
-                    <p className="text-[11px] uppercase tracking-widest text-primary font-bold mb-3">Elegí tus días</p>
+                    <p className="text-[11px] uppercase tracking-widest text-primary font-bold mb-3">{t.evento.elegiDias}</p>
                     <div className="flex flex-wrap gap-2">
                       {eventDays.map((d, i) => {
                         const dt = d?.date?.toDate ? d.date.toDate() : (d?.date?.seconds ? new Date(d.date.seconds * 1000) : null);
@@ -457,24 +463,24 @@ export default function EventDetail() {
                             onClick={() => toggleDay(i)}
                             className={`px-3.5 py-2.5 rounded-xl border text-left transition-all ${active ? 'border-primary bg-primary/15 text-white' : 'border-white/10 bg-white/5 text-zinc-300 hover:border-white/20'}`}
                           >
-                            <span className="block text-[10px] uppercase tracking-wider opacity-70">Día {i + 1}</span>
+                            <span className="block text-[10px] uppercase tracking-wider opacity-70">{t.evento.diaN(i + 1)}</span>
                             <span className="block text-sm font-heading font-black capitalize">
-                              {dt ? dt.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' }) : `Día ${i + 1}`}
+                              {dt ? dt.toLocaleDateString(loc, { weekday: 'short', day: 'numeric', month: 'short' }) : t.evento.diaN(i + 1)}
                             </span>
                           </button>
                         );
                       })}
                     </div>
                     <p className="text-[10px] text-muted-foreground mt-2">
-                      {isFree ? 'Reservás solo los días que vas a ir.' : 'Pagás solo por los días que elegís.'}
+                      {isFree ? t.evento.reservasSoloDias : t.evento.pagasSoloDias}
                     </p>
                   </div>
                 )}
 
                 <div className="space-y-4 mb-8">
-                  {event.tickets.map((t, idx) => {
-                    const ticketTypeLower = t.type.toLowerCase();
-                    const isPreSaleTicket = t.isEarlyBird || 
+                  {event.tickets.map((tk, idx) => {
+                    const ticketTypeLower = tk.type.toLowerCase();
+                    const isPreSaleTicket = tk.isEarlyBird ||
                                             ticketTypeLower.includes('preventa') || 
                                             ticketTypeLower.includes('pre venta') || 
                                             ticketTypeLower.includes('pre-venta') || 
@@ -499,22 +505,22 @@ export default function EventDetail() {
                       ? !isPreSaleTicket 
                       : (isPreSaleTicket || !hasAnyPreSale);
 
-                    const isTicketSoldOut = (t.available || 0) <= 0;
-                    
-                    let statusLabel = "ACCESO ABIERTO";
+                    const isTicketSoldOut = (tk.available || 0) <= 0;
+
+                    let statusLabel = t.evento.estadoAbierto;
                     let statusClasses = "text-primary border-primary/20 bg-primary/5";
-                    
+
                     if (isTicketSoldOut) {
-                      statusLabel = "AGOTADO";
+                      statusLabel = t.evento.estadoAgotado;
                       statusClasses = "text-red-400 border-red-500/20 bg-red-950/10";
                     } else if (isPreSaleTicket && event.officialSaleLaunched) {
-                      statusLabel = "FINALIZADO";
+                      statusLabel = t.evento.estadoFinalizado;
                       statusClasses = "text-zinc-500 border-white/5 bg-white/[0.02]";
                     } else if (!isVisible) {
-                      statusLabel = "PRÓXIMA TANDA";
+                      statusLabel = t.evento.estadoProximaTanda;
                       statusClasses = "text-zinc-400 border-white/10 bg-white/5";
-                    } else if (t.available < 10) {
-                      statusLabel = "ÚLTIMOS ACCESOS";
+                    } else if (tk.available < 10) {
+                      statusLabel = t.evento.estadoUltimos;
                       statusClasses = "text-orange-400 border-orange-500/20 bg-orange-950/10";
                     }
 
@@ -527,9 +533,9 @@ export default function EventDetail() {
                           <div className="space-y-1">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-heading font-black text-lg text-white uppercase tracking-tight">
-                                {t.type}
+                                {tk.type}
                               </span>
-                              {t.isEarlyBird && (
+                              {tk.isEarlyBird && (
                                 <span className="text-[8px] font-sans font-extrabold tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded">
                                   EARLY BIRD
                                 </span>
@@ -541,7 +547,7 @@ export default function EventDetail() {
                             </span>
 
                             <div className="text-primary font-heading font-black text-2xl pt-2">
-                              {isFree ? 'Gratis' : formatCurrency(Number(t.price) || 0)}
+                              {isFree ? t.comun.gratis : formatCurrency(Number(tk.price) || 0)}
                             </div>
                           </div>
 
@@ -551,19 +557,19 @@ export default function EventDetail() {
                               size="icon"
                               disabled={!isVisible || isTicketSoldOut}
                               className="w-8 h-8 rounded-lg hover:bg-primary/20 hover:text-primary disabled:opacity-35"
-                              onClick={() => updateQty(t.type, -1)}
+                              onClick={() => updateQty(tk.type, -1)}
                             >
                               <Minus className="w-3.5 h-3.5" />
                             </Button>
                             <span className="font-heading font-black text-base min-w-[20px] text-center text-white">
-                              {quantities[t.type] || 0}
+                              {quantities[tk.type] || 0}
                             </span>
                             <Button
                               variant="ghost"
                               size="icon"
-                              disabled={!isVisible || isTicketSoldOut || (quantities[t.type] || 0) >= Math.min(t.available, 4)}
+                              disabled={!isVisible || isTicketSoldOut || (quantities[tk.type] || 0) >= Math.min(tk.available, 4)}
                               className="w-8 h-8 rounded-lg hover:bg-primary/20 hover:text-primary disabled:opacity-35"
-                              onClick={() => updateQty(t.type, 1)}
+                              onClick={() => updateQty(tk.type, 1)}
                             >
                               <Plus className="w-3.5 h-3.5" />
                             </Button>
@@ -577,17 +583,17 @@ export default function EventDetail() {
                 <div className="pt-6 border-t border-white/10 space-y-4">
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground/80 font-medium font-sans">Subtotal</span>
+                      <span className="text-muted-foreground/80 font-medium font-sans">{t.comun.subtotal}</span>
                       <span className="font-bold text-white font-sans">{formatCurrency(subtotalVal)}</span>
                     </div>
                     {subtotalVal > 0 && (
                       <div className="space-y-1.5 border-t border-white/5 pt-2">
                         <div className="flex justify-between text-xs text-muted-foreground/75 font-sans">
-                          <span>Cargo de Servicio (8% + IVA)</span>
+                          <span>{t.evento.cargoServicio}</span>
                           <span>{formatCurrency(feeEntraConIva)}</span>
                         </div>
                         <div className="flex justify-between text-xs text-muted-foreground/75 font-sans">
-                          <span>Costo Procesador (4.99%)</span>
+                          <span>{t.evento.costoProcesador}</span>
                           <span>{formatCurrency(processorFee)}</span>
                         </div>
                       </div>
@@ -597,10 +603,10 @@ export default function EventDetail() {
                   <div className="border-t border-white/5 pt-3 flex justify-between items-end">
                     <div>
                       <div className="text-[10px] uppercase tracking-[0.2em] text-[#a0a0aa] font-bold font-sans">
-                        {isFree ? 'Reserva' : 'Total Final'} ({totalQty} {totalQty === 1 ? 'entrada' : 'entradas'}{isPerDay ? ` · ${dayCount} día${dayCount === 1 ? '' : 's'}` : ''})
+                        {isFree ? t.evento.reserva : t.evento.totalFinal} ({totalQty} {t.evento.entradasCount(Number(totalQty))}{isPerDay ? ` · ${t.evento.diasCount(dayCount)}` : ''})
                       </div>
                       <div className="text-3xl font-heading font-black orange-text-gradient mt-1">
-                        {isFree ? 'Gratis' : formatCurrency(finalCalculatedTotal)}
+                        {isFree ? t.comun.gratis : formatCurrency(finalCalculatedTotal)}
                       </div>
                     </div>
                     <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary rounded-xl">
@@ -610,7 +616,7 @@ export default function EventDetail() {
 
                   {needsDays && Number(totalQty) > 0 && (
                     <p className="text-[11px] text-center text-orange-400 font-bold uppercase tracking-wide">
-                      Elegí al menos un día arriba
+                      {t.evento.elegiUnDia}
                     </p>
                   )}
 
@@ -645,12 +651,12 @@ export default function EventDetail() {
                       disabled={totalQty === 0 || needsDays}
                       className="w-full h-16 orange-gradient border-none font-heading font-black text-2xl uppercase tracking-wider rounded-xl disabled:opacity-50 disabled:grayscale"
                     >
-                      {isFree ? 'RESERVAR' : 'ENTRÁ'}
+                      {isFree ? t.evento.botonReservar : t.evento.botonComprar}
                       <ChevronRight className="ml-2 w-6 h-6" />
                     </Button>
                   </Link>
                   <p className="text-[10px] text-center text-muted-foreground uppercase tracking-widest font-bold">
-                    {isFree ? 'Reserva sin cargo · Sin registro obligatorio · nos vemos adentro' : 'Compra segura · Sin registro obligatorio · nos vemos adentro'}
+                    {isFree ? t.evento.notaReserva : t.evento.notaCompra}
                   </p>
                 </div>
               </>

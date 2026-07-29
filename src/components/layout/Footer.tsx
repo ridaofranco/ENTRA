@@ -1,6 +1,10 @@
 import { Link } from 'react-router-dom';
+import { useLang, textos } from '@/src/lib/i18n';
+import { LangSwitcher } from '@/src/components/LangSwitcher';
 
 export function Footer() {
+  const lang = useLang();
+  const t = textos(lang);
   return (
     <footer className="bg-[#09090b] border-t border-white/5 py-16 px-6 font-sans">
       <div className="max-w-7xl mx-auto flex flex-col items-center text-center space-y-8">
@@ -17,12 +21,13 @@ export function Footer() {
 
         {/* Links */}
         <div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-4 text-xs uppercase tracking-wider text-muted-foreground font-bold">
-          <Link to="/eventos" className="hover:text-primary transition-colors">Eventos</Link>
-          <Link to="/productores" className="hover:text-primary transition-colors">Productores</Link>
-          <Link to="/ayuda" className="hover:text-primary transition-colors">Ayuda</Link>
-          <Link to="/contacto" className="hover:text-primary transition-colors">Sobre Nosotros</Link>
-          <Link to="/terminos" className="hover:text-primary transition-colors">Términos</Link>
-          <Link to="/privacidad" className="hover:text-primary transition-colors">Privacidad</Link>
+          <Link to="/eventos" className="hover:text-primary transition-colors">{t.footer.eventos}</Link>
+          <Link to="/productores" className="hover:text-primary transition-colors">{t.footer.productores}</Link>
+          <Link to="/ayuda" className="hover:text-primary transition-colors">{t.footer.ayuda}</Link>
+          <Link to="/contacto" className="hover:text-primary transition-colors">{t.footer.sobre}</Link>
+          <Link to="/terminos" className="hover:text-primary transition-colors">{t.footer.terminos}</Link>
+          <Link to="/privacidad" className="hover:text-primary transition-colors">{t.footer.privacidad}</Link>
+          <LangSwitcher />
         </div>
 
         {/* Contacts */}

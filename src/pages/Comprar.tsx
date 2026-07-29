@@ -15,6 +15,7 @@ import PosterFallback from '@/src/components/PosterFallback';
 import { eventPath } from '@/src/lib/slug';
 import { useAuth } from '@/src/context/AuthContext';
 import { formatCurrency, isEventFinished } from '@/src/lib/utils';
+import { useLang, textos, dateLocale } from '@/src/lib/i18n';
 
 interface TicketType {
   type: string;
@@ -41,6 +42,8 @@ interface Event {
 
 export default function Comprar() {
   const { user, profile } = useAuth();
+  const lang = useLang();
+  const t = textos(lang);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -94,7 +97,7 @@ export default function Comprar() {
 
   const formatDate = (date: any) => {
     if (date?.toDate) {
-      return date.toDate().toLocaleDateString('es-AR', {
+      return date.toDate().toLocaleDateString(dateLocale(lang), {
         weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
       });
     }
@@ -103,7 +106,7 @@ export default function Comprar() {
 
   const formatScheduled = (date: any) => {
     if (date?.toDate) {
-      return date.toDate().toLocaleString('es-AR', {
+      return date.toDate().toLocaleString(dateLocale(lang), {
         day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
       });
     }
@@ -165,13 +168,13 @@ export default function Comprar() {
             className="space-y-4"
           >
             <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-primary">
-              CARTELERA OFICIAL
+              {t.cartelera.kicker}
             </span>
             <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-[6rem] font-heading font-black tracking-tighter leading-none uppercase">
-              Lo que <span className="orange-text-gradient">viene.</span>
+              {t.cartelera.tituloA}<span className="orange-text-gradient">{t.cartelera.tituloB}</span>
             </h1>
             <p className="text-lg text-muted-foreground/80 max-w-2xl mx-auto leading-relaxed font-sans mt-4">
-              Comprá tus entradas en segundos, con precio claro desde el principio y un QR oficial que nadie te puede clonar.
+              {t.cartelera.bajada}
             </p>
           </motion.div>
         </div>
@@ -181,25 +184,12 @@ export default function Comprar() {
       <section className="max-w-7xl mx-auto px-6 mb-16">
         <div className="border border-white/5 bg-white/[0.01] rounded-[2rem] p-8 md:p-10">
           <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] mb-6 text-center md:text-left">
-            Por qué comprar en ENTRÁ
+            {t.cartelera.porQueTitulo}
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                title: "Precio claro de entrada.",
-                desc: "Ves cada peso desde el inicio. El costo total está a la vista, sin cargos fantasma de último momento en el checkout."
-              },
-              {
-                title: "Tu entrada segura.",
-                desc: "QR único e intransferible que no se clona. Si decidís no ir, podés transferirla de forma oficial y el tuyo deja de existir."
-              },
-              {
-                title: "Comprá sin crearte cuenta.",
-                desc: "No necesitás validar mails ni recordar contraseñas. Pagás con Mercado Pago como invitado y te enviamos tu QR al mail/WhatsApp."
-              }
-            ].map((item, i) => (
+            {t.cartelera.beneficios.map((item, i) => (
               <div key={i} className="space-y-2">
-                <h4 className="font-heading font-bold text-lg text-white uppercase tracking-tight">{item.title}</h4>
+                <h4 className="font-heading font-bold text-lg text-white uppercase tracking-tight">{item.titulo}</h4>
                 <p className="text-sm text-muted-foreground leading-relaxed font-sans">{item.desc}</p>
               </div>
             ))}
@@ -254,7 +244,7 @@ export default function Comprar() {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Buscá por evento, artista o lugar..."
+                placeholder={t.cartelera.buscarPlaceholder}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full h-14 pl-12 pr-4 bg-white/[0.02] border border-white/10 rounded-[1.25rem] text-sm font-medium placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
@@ -272,7 +262,7 @@ export default function Comprar() {
                       : 'bg-white/5 border border-white/10 text-muted-foreground hover:border-primary/30 hover:text-white'
                   }`}
                 >
-                  {cat}
+                  {cat === 'Todos' ? t.cartelera.categoriaTodos : cat}
                 </button>
               ))}
             </div>
@@ -280,22 +270,22 @@ export default function Comprar() {
 
           <div className="w-full lg:w-72 flex-shrink-0">
             <div className="bg-white/5 border border-white/10 rounded-2xl p-1 flex">
-              {(['upcoming', 'past', 'all'] as const).map(t => (
+              {(['upcoming', 'past', 'all'] as const).map(tf => (
                 <button
-                  key={t}
-                  onClick={() => setTimeFilter(t)}
+                  key={tf}
+                  onClick={() => setTimeFilter(tf)}
                   className={`flex-1 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
-                    timeFilter === t
+                    timeFilter === tf
                       ? 'orange-gradient text-white'
                       : 'text-muted-foreground hover:text-white'
                   }`}
                 >
-                  {t === 'upcoming' ? 'Próximos' : t === 'past' ? 'Pasados' : 'Todos'}
+                  {tf === 'upcoming' ? t.cartelera.tabProximos : tf === 'past' ? t.cartelera.tabPasados : t.cartelera.tabTodos}
                 </button>
               ))}
             </div>
             <p className="text-[10px] text-center text-muted-foreground mt-2 uppercase tracking-widest font-bold">
-              Filtrar por fecha
+              {t.cartelera.filtrarPorFecha}
             </p>
           </div>
         </div>
@@ -308,7 +298,7 @@ export default function Comprar() {
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-bold text-red-500">Error al cargar eventos</p>
+                <p className="text-sm font-bold text-red-500">{t.cartelera.errorCargarTitulo}</p>
                 <p className="text-xs text-muted-foreground mt-1">{fetchError}</p>
               </div>
             </div>
@@ -331,9 +321,9 @@ export default function Comprar() {
             className="text-center py-20"
           >
             <Music className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <h3 className="text-xl font-heading font-black uppercase tracking-tight">Todavía no hay eventos</h3>
+            <h3 className="text-xl font-heading font-black uppercase tracking-tight">{t.cartelera.vacioTitulo}</h3>
             <p className="text-muted-foreground text-sm max-w-sm mx-auto leading-relaxed mt-2 font-sans">
-              Volvé pronto, se vienen cosas buenas. Nos vemos adentro.
+              {t.cartelera.vacioBajada}
             </p>
           </motion.div>
         ) : (
@@ -353,29 +343,29 @@ export default function Comprar() {
               // La fecha manda: un evento que ya paso nunca puede mostrarse ABIERTO.
               const isFinished = isEventFinished(event);
 
-              let badgeText = "ABIERTO";
+              let badgeText = t.cartelera.badgeAbierto;
               let badgeClasses = "border-primary/20 text-primary";
 
               if (isDeleted) {
-                badgeText = "ELIMINADO";
+                badgeText = t.cartelera.badgeEliminado;
                 badgeClasses = "border-red-500/20 text-red-400 bg-red-950/20";
               } else if (isFinished) {
-                badgeText = "FINALIZADO";
+                badgeText = t.cartelera.badgeFinalizado;
                 badgeClasses = "border-white/10 text-zinc-400 bg-white/5";
               } else if (soldOut) {
-                badgeText = "AGOTADO";
+                badgeText = t.cartelera.badgeAgotado;
                 badgeClasses = "border-white/10 text-muted-foreground bg-white/5";
               } else if (isPending) {
-                badgeText = "PENDIENTE";
+                badgeText = t.cartelera.badgePendiente;
                 badgeClasses = "border-orange-500/20 text-orange-400 bg-orange-950/20";
               } else if (isScheduled) {
-                badgeText = "PROGRAMADO";
+                badgeText = t.cartelera.badgeProgramado;
                 badgeClasses = "border-blue-500/20 text-blue-400 bg-blue-950/20";
               } else if (isPaused) {
-                badgeText = "VENTA PAUSADA";
+                badgeText = t.cartelera.badgePausado;
                 badgeClasses = "border-yellow-500/20 text-yellow-500 bg-yellow-950/20";
               } else if (totalAvailable > 0 && totalAvailable <= 15) {
-                badgeText = "ÚLTIMAS ENTRADAS";
+                badgeText = t.cartelera.badgeUltimas;
                 badgeClasses = "border-orange-500/30 text-orange-400 bg-orange-950/20";
               }
 
@@ -422,7 +412,7 @@ export default function Comprar() {
                         {/* Location details inside visual overlay */}
                         <div className="absolute bottom-6 left-6 right-6 space-y-1 text-white">
                           <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] font-sans">
-                            {event.isDateTBD ? "PROXIMAMENTE" : formatDate(event.date)}
+                            {event.isDateTBD ? t.comun.proximamente : formatDate(event.date)}
                           </p>
                           <h3 className="text-xl md:text-2xl font-heading font-black tracking-tight uppercase leading-none">
                             {event.title}
@@ -433,10 +423,10 @@ export default function Comprar() {
                       {/* Poster labeling below */}
                       <div className="px-2 flex justify-between items-center text-sm">
                         <span className="text-muted-foreground font-sans tracking-wide">
-                          {event.isVenueTBD ? "LUGAR POR CONFIRMAR" : event.venue}
+                          {event.isVenueTBD ? t.comun.lugarPorConfirmar : event.venue}
                         </span>
                         <span className="font-heading font-black text-primary text-base">
-                          {isDeleted ? 'ELIMINADO' : isFinished ? 'FINALIZADO' : isPending ? 'PENDIENTE' : isScheduled ? 'PROGRAMADO' : isPaused ? 'PAUSADO' : soldOut ? 'AGOTADO' : `$${(event.price || 0).toLocaleString('es-AR')}`}
+                          {isDeleted ? t.cartelera.badgeEliminado : isFinished ? t.cartelera.badgeFinalizado : isPending ? t.cartelera.badgePendiente : isScheduled ? t.cartelera.badgeProgramado : isPaused ? t.cartelera.badgePausadoCorto : soldOut ? t.cartelera.badgeAgotado : `$${(event.price || 0).toLocaleString('es-AR')}`}
                         </span>
                       </div>
                     </div>
@@ -453,14 +443,14 @@ export default function Comprar() {
         <Card className="glass rounded-[3rem] border-white/10 p-12 space-y-6 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent pointer-events-none" />
           <div className="relative space-y-4">
-            <h3 className="text-2xl md:text-4xl font-heading font-black tracking-tight">¿Organizás eventos?</h3>
+            <h3 className="text-2xl md:text-4xl font-heading font-black tracking-tight">{t.cartelera.ctaOrganizasTitulo}</h3>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              Vendé tus entradas en ENTRÁ y cobrá el 100% neto del valor de tu ticket sin costos sorpresivos.
+              {t.cartelera.ctaOrganizasBajada}
             </p>
             <div>
               <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
                 <Button className="h-12 px-8 orange-gradient border-none font-heading font-black rounded-xl hover:brightness-110">
-                  Quiero vender entradas
+                  {t.cartelera.ctaOrganizasBoton}
                 </Button>
               </a>
             </div>
