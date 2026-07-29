@@ -55,6 +55,8 @@ export const TransferTicketModal = ({
   const [error, setError] = useState<string | null>(null);
   const [transferLink, setTransferLink] = useState<string>('');
   const [copied, setCopied] = useState(false);
+  // Estado del mail automático al destinatario (informativo, no bloquea nada)
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle');
 
   // Datos del destinatario
   const [recipientName, setRecipientName] = useState('');
@@ -161,6 +163,22 @@ export const TransferTicketModal = ({
       setTransferLink(link);
       setStep('success');
       if (onTransferCreated) onTransferCreated();
+
+      // Mail automático al destinatario con el link de reclamo (y confirmación
+      // al que transfiere). El server busca la transferencia real por token, no
+      // confía en datos del navegador. Si falla NO rompe nada: la pantalla de
+      // éxito ya tiene el link para compartir por WhatsApp/mail a mano.
+      setEmailStatus('sending');
+      fetch('/api/send-transfer-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      })
+        .then(async (r) => {
+          const data = await r.json().catch(() => null);
+          setEmailStatus(r.ok && data?.ok ? 'sent' : 'failed');
+        })
+        .catch(() => setEmailStatus('failed'));
     } catch (err: any) {
       console.error('Error creando transferencia:', err);
       setError('No se pudo crear la transferencia. Intentá de nuevo.');
@@ -541,6 +559,32 @@ export const TransferTicketModal = ({
                   </div>
                 </div>
               </div>
+
+              {/* Estado del mail automático al destinatario */}
+              {emailStatus !== 'idle' && (
+                <div
+                  className={`p-3 rounded-xl border flex items-center gap-2 ${
+                    emailStatus === 'sent'
+                      ? 'bg-green-500/5 border-green-500/30'
+                      : emailStatus === 'failed'
+                      ? 'bg-yellow-500/5 border-yellow-500/30'
+                      : 'bg-white/5 border-white/10'
+                  }`}
+                >
+                  {emailStatus === 'sending' && <Loader2 className="w-4 h-4 animate-spin text-zinc-400 flex-shrink-0" />}
+                  {emailStatus === 'sent' && <Check className="w-4 h-4 text-green-500 flex-shrink-0" />}
+                  {emailStatus === 'failed' && <AlertCircle className="w-4 h-4 text-yellow-500 flex-shrink-0" />}
+                  <p className="text-xs text-zinc-300">
+                    {emailStatus === 'sending' && 'Le estamos mandando el link por mail...'}
+                    {emailStatus === 'sent' && (
+                      <>Le mandamos el link por mail a <strong>{recipientEmail}</strong>. Igual podés compartirlo vos:</>
+                    )}
+                    {emailStatus === 'failed' && (
+                      <>No pudimos mandarle el mail automático: compartile el link vos por WhatsApp o mail.</>
+                    )}
+                  </p>
+                </div>
+              )}
 
               {/* Link + compartir */}
               <div className="space-y-3">

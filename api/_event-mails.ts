@@ -180,3 +180,141 @@ export async function sendEventCancelledEmail(d: EventCancelledData): Promise<bo
     return false;
   }
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// 2) TRANSFERENCIA DE TICKET
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface TransferEmailData {
+  fromName?: string | null;
+  fromEmail?: string | null;
+  toName?: string | null;
+  toEmail: string;
+  eventTitle: string;
+  eventDate?: string | null;
+  eventVenue?: string | null;
+  ticketType?: string | null;
+  note?: string | null;
+  claimUrl: string;
+}
+
+// Mail al RECEPTOR: le llegó una entrada, con el link de reclamo.
+export function buildTransferReceivedHTML(d: TransferEmailData): string {
+  const nombre = firstNameOf(d.toName);
+  const remitente = String(d.fromName || '').trim() || 'Alguien';
+
+  const notaHtml = d.note
+    ? `
+    <tr><td style="padding:20px 32px 0 32px;">
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation" bgcolor="#FFF7ED" style="background-color:#FFF7ED;border-radius:14px;border:1px solid #FED7AA;">
+        <tr><td style="padding:16px 20px;">
+          <p style="margin:0 0 6px 0;font-size:10px;font-weight:800;color:#EA580C;letter-spacing:2px;text-transform:uppercase;">${esc(remitente)} te dej&oacute; una nota</p>
+          <p style="margin:0;font-size:14px;color:#3F3F46;line-height:1.5;font-style:italic;">&ldquo;${esc(d.note)}&rdquo;</p>
+        </td></tr>
+      </table>
+    </td></tr>`
+    : '';
+
+  return (
+    shellOpen(
+      `${esc(remitente)} te transfiri&oacute; una entrada`,
+      `${remitente} te transfirió su entrada para ${d.eventTitle}. Reclamala con este link.`,
+    ) +
+    hero(
+      { texto: 'Te transfirieron una entrada', bg: '#E7F8EE', color: '#16A34A' },
+      '&iexcl;Ten&eacute;s una entrada!',
+      `${nombre ? esc(nombre) + ': ' : ''}<b style="color:#18181B;">${esc(remitente)}</b> te transfiri&oacute; su entrada${d.ticketType ? ` <b style="color:#18181B;">${esc(d.ticketType)}</b>` : ''} para <b style="color:#18181B;">${esc(d.eventTitle)}</b>. Reclamala y queda a tu nombre, con un QR nuevo.`,
+    ) +
+    eventCard({
+      etiqueta: 'Tu evento',
+      titulo: d.eventTitle,
+      lineas: [
+        d.eventDate ? `&#128197;&nbsp; ${esc(d.eventDate)}` : null,
+        d.eventVenue ? `&#128205;&nbsp; ${esc(d.eventVenue)}` : null,
+        d.ticketType ? `&#127903;&#65039;&nbsp; Entrada ${esc(d.ticketType)}` : null,
+      ],
+    }) +
+    notaHtml +
+    botonPrimario(d.claimUrl, 'Reclamar mi entrada') +
+    seccion('C&oacute;mo funciona', [
+      `Abr&iacute; el link e inici&aacute; sesi&oacute;n (o cre&aacute; tu cuenta) con este mismo mail: <b style="color:#18181B;">${esc(d.toEmail)}</b>.`,
+      'Solo ese mail puede reclamar la entrada: si el link se filtra, nadie m&aacute;s lo puede usar.',
+      'Al reclamarla se genera un QR nuevo a tu nombre y el anterior queda invalidado.',
+    ]) +
+    shellClose(`Hola, me transfirieron una entrada para ${d.eventTitle} y tengo una consulta.`)
+  );
+}
+
+// Mail al que TRANSFIRIÓ: confirmación de que el link salió.
+export function buildTransferSentHTML(d: TransferEmailData): string {
+  const nombre = firstNameOf(d.fromName);
+  const destinatario = String(d.toName || '').trim() || d.toEmail;
+
+  return (
+    shellOpen(
+      `Le enviamos tu entrada a ${esc(destinatario)}`,
+      `Le mandamos a ${destinatario} el link para reclamar tu entrada de ${d.eventTitle}.`,
+    ) +
+    hero(
+      { texto: 'Transferencia en camino', bg: '#FFF1E8', color: '#EA580C' },
+      'Tu entrada ya viaja',
+      `${nombre ? esc(nombre) + ': ' : ''}le mandamos a <b style="color:#18181B;">${esc(destinatario)}</b> (${esc(d.toEmail)}) el link para reclamar tu entrada${d.ticketType ? ` <b style="color:#18181B;">${esc(d.ticketType)}</b>` : ''} de <b style="color:#18181B;">${esc(d.eventTitle)}</b>.`,
+    ) +
+    eventCard({
+      etiqueta: 'Entrada transferida',
+      titulo: d.eventTitle,
+      lineas: [
+        d.eventDate ? `&#128197;&nbsp; ${esc(d.eventDate)}` : null,
+        d.eventVenue ? `&#128205;&nbsp; ${esc(d.eventVenue)}` : null,
+      ],
+    }) +
+    seccion('Tenelo en cuenta', [
+      'Mientras no la reclame, pod&eacute;s cancelar la transferencia desde tu perfil.',
+      'Cuando la reclame, tu QR queda invalidado y se emite uno nuevo a su nombre.',
+      `Solo ${esc(d.toEmail)} puede reclamarla, aunque el link se comparta.`,
+    ]) +
+    botonPrimario(`${PUBLIC_URL}/perfil`, 'Ver mi perfil') +
+    shellClose(`Hola, transferí una entrada de ${d.eventTitle} y tengo una consulta.`)
+  );
+}
+
+/**
+ * Manda el mail al receptor (con el link de reclamo) y, si salió, la
+ * confirmación al que transfirió. Devuelve si salió el del receptor, que es el
+ * que importa. Nunca tira.
+ */
+export async function sendTransferEmails(d: TransferEmailData): Promise<{ receptor: boolean; remitente: boolean }> {
+  let receptor = false;
+  let remitente = false;
+  try {
+    if (!d.toEmail) return { receptor, remitente };
+    const remitenteNombre = String(d.fromName || '').trim() || 'Alguien';
+    const r = await deliver({
+      to: d.toEmail,
+      subject: `${remitenteNombre} te transfirió una entrada para ${d.eventTitle}`,
+      html: buildTransferReceivedHTML(d),
+      attachments: [],
+    });
+    receptor = !!r.ok;
+    if (!r.ok) console.error('[event-mails] transferencia (receptor) no salió:', r.error);
+  } catch (e) {
+    console.error('[event-mails] error mandando transferencia (receptor):', e instanceof Error ? e.message : String(e));
+  }
+  // La confirmación al remitente es secundaria: solo si el principal salió.
+  if (receptor && d.fromEmail) {
+    try {
+      const destinatario = String(d.toName || '').trim() || d.toEmail;
+      const r2 = await deliver({
+        to: d.fromEmail,
+        subject: `Le enviamos tu entrada de ${d.eventTitle} a ${destinatario}`,
+        html: buildTransferSentHTML(d),
+        attachments: [],
+      });
+      remitente = !!r2.ok;
+      if (!r2.ok) console.error('[event-mails] transferencia (remitente) no salió:', r2.error);
+    } catch (e) {
+      console.error('[event-mails] error mandando transferencia (remitente):', e instanceof Error ? e.message : String(e));
+    }
+  }
+  return { receptor, remitente };
+}
