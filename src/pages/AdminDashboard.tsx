@@ -69,6 +69,8 @@ export default function AdminDashboard() {
   const [updatingPlanId, setUpdatingPlanId] = useState<string | null>(null);
   const [resnapshotId, setResnapshotId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ type: 'user' | 'event'; id: string; title?: string } | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState<{ id: string; title?: string } | null>(null);
+  const [cancellingEvent, setCancellingEvent] = useState(false);
   const [editingEvent, setEditingEvent] = useState<EventData | null>(null);
   const [savingEvent, setSavingEvent] = useState(false);
   const [eventFilter, setEventFilter] = useState<'all' | 'pending' | 'active' | 'paused' | 'scheduled' | 'deleted'>('all');
@@ -329,6 +331,40 @@ export default function AdminDashboard() {
     }
   };
 
+  // CANCELAR evento: pasa por el server (/api/notify-event-cancelled), que
+  // verifica la identidad, marca status 'cancelled' y les avisa por mail a
+  // todos los que tienen entradas vigentes. Distinto de "eliminar": acá el
+  // evento se cae de verdad y los compradores TIENEN que enterarse.
+  const handleCancelEvent = async (eventId: string) => {
+    if (!user) return;
+    try {
+      setCancellingEvent(true);
+      const idToken = await user.getIdToken();
+      const resp = await fetch('/api/notify-event-cancelled', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken, eventId }),
+      });
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok || !data?.ok) {
+        alert(data?.error || 'No se pudo cancelar el evento.');
+        return;
+      }
+      setEvents(prev => prev.map(e => (e.id === eventId ? { ...e, status: 'cancelled' } : e)));
+      setConfirmCancel(null);
+      alert(
+        data.already
+          ? 'El evento ya estaba cancelado y los compradores ya habían sido avisados.'
+          : `Evento cancelado. Avisamos por mail a ${data.notified} comprador${data.notified === 1 ? '' : 'es'}${data.failed ? ` (${data.failed} envíos fallaron, revisá los logs)` : ''}.`
+      );
+    } catch (error) {
+      console.error('Error cancelando evento:', error);
+      alert('No se pudo cancelar el evento.');
+    } finally {
+      setCancellingEvent(false);
+    }
+  };
+
   // SOFT delete — keeps data in Firestore so we can restore
   const handleDeleteEvent = async (eventId: string) => {
     try {
@@ -450,6 +486,7 @@ export default function AdminDashboard() {
       case 'paused': return { label: 'Pausado', cls: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' };
       case 'scheduled': return { label: 'Programado', cls: 'bg-blue-500/20 text-blue-400 border-blue-500/30' };
       case 'deleted': return { label: 'Eliminado', cls: 'bg-red-500/20 text-red-400 border-red-500/30' };
+      case 'cancelled': return { label: 'Cancelado', cls: 'bg-red-500/20 text-red-400 border-red-500/30' };
       default: return { label: status || 'Activo', cls: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30' };
     }
   };
@@ -918,6 +955,15 @@ export default function AdminDashboard() {
                                     Activar
                                   </button>
                                 ) : null}
+                                {['active', 'paused'].includes(e.status || 'active') && (
+                                  <button
+                                    onClick={() => setConfirmCancel({ id: e.id, title: e.title })}
+                                    className="px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-bold transition"
+                                    title="Cancelar el evento y avisar por mail a todos los compradores"
+                                  >
+                                    Cancelar evento
+                                  </button>
+                                )}
                               </>
                             )}
                             {isDeleted ? (
@@ -956,6 +1002,44 @@ export default function AdminDashboard() {
           onClose={() => setEditingEvent(null)}
           onSave={handleSaveEvent}
         />
+      )}
+
+      {/* ==================== CONFIRM CANCEL EVENT MODAL ==================== */}
+      {confirmCancel && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-zinc-900 border border-white/10 p-8 rounded-[2.5rem] max-w-md w-full text-center space-y-6"
+          >
+            <div className="w-20 h-20 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-10 h-10" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-black mb-2">¿Cancelar el evento?</h3>
+              <p className="text-zinc-400 text-sm">
+                <strong className="text-white">{confirmCancel.title}</strong> se marcará como cancelado, saldrá de la venta y{' '}
+                <strong className="text-white">se les avisará por mail a todos los que tienen entradas</strong>. Esta acción no se puede deshacer.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmCancel(null)}
+                disabled={cancellingEvent}
+                className="flex-1 px-6 py-4 rounded-2xl bg-white/5 hover:bg-white/10 font-bold transition disabled:opacity-50"
+              >
+                Volver
+              </button>
+              <button
+                onClick={() => handleCancelEvent(confirmCancel.id)}
+                disabled={cancellingEvent}
+                className="flex-1 px-6 py-4 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold transition disabled:opacity-50"
+              >
+                {cancellingEvent ? 'Cancelando...' : 'Cancelar y avisar'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
 
       {/* ==================== CONFIRM DELETE MODAL ==================== */}

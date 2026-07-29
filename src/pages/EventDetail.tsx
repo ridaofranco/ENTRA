@@ -371,7 +371,24 @@ export default function EventDetail() {
         {/* Right Column: Tickets */}
         <div className="space-y-6">
           <Card className="glass p-8 rounded-[2.5rem] border-white/10 sticky top-28 shadow-2xl bg-[#09090b]/80 backdrop-blur-xl">
-            {isFinished ? (
+            {event.status === 'cancelled' ? (
+              /* Evento cancelado: compra bloqueada y aviso claro (prioridad
+                 sobre "finalizado": un evento cancelado nunca ocurrió) */
+              <div className="text-center py-8">
+                <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+                  <AlertTriangle className="w-8 h-8 text-red-500" />
+                </div>
+                <h3 className="text-xl font-heading font-black uppercase tracking-tight mb-2">Evento cancelado</h3>
+                <p className="text-[#a0a0aa] text-sm leading-relaxed mb-6 font-sans">
+                  El organizador canceló este evento. Si tenías entrada, te mandamos un mail con los detalles.
+                </p>
+                <Link to="/eventos">
+                  <Button variant="outline" className="font-bold text-xs uppercase tracking-wider border-white/10 hover:border-primary hover:text-primary rounded-xl">
+                    Ver otros eventos
+                  </Button>
+                </Link>
+              </div>
+            ) : isFinished ? (
               /* Event already ended: no purchases allowed */
               <div className="text-center py-8">
                 <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4 border border-white/10">
