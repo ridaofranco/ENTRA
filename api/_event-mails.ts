@@ -318,3 +318,66 @@ export async function sendTransferEmails(d: TransferEmailData): Promise<{ recept
   }
   return { receptor, remitente };
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// 3) RECORDATORIO: MAÑANA ES EL EVENTO
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface ReminderData {
+  buyerName?: string | null;
+  buyerEmail: string;
+  eventTitle: string;
+  eventDate?: string | null;
+  eventVenue?: string | null;
+  ticketCount: number;
+}
+
+export function buildEventReminderHTML(d: ReminderData): string {
+  const nombre = firstNameOf(d.buyerName);
+  const n = Math.max(1, Number(d.ticketCount) || 1);
+  const entradas = n === 1 ? 'tu entrada lista' : `tus ${n} entradas listas`;
+
+  return (
+    shellOpen(`Es ma&ntilde;ana: ${esc(d.eventTitle)}`, `Mañana es ${d.eventTitle} y tu entrada ya está lista. Tu QR te espera.`) +
+    hero(
+      { texto: 'Falta 1 d&iacute;a', bg: '#FFF1E8', color: '#EA580C' },
+      '&iexcl;Es ma&ntilde;ana!',
+      `${nombre ? esc(nombre) + ': ' : ''}ma&ntilde;ana es <b style="color:#18181B;">${esc(d.eventTitle)}</b> y ten&eacute;s ${entradas}. Nos vemos adentro.`,
+    ) +
+    eventCard({
+      etiqueta: 'Tu evento',
+      titulo: d.eventTitle,
+      lineas: [
+        d.eventDate ? `&#128197;&nbsp; ${esc(d.eventDate)}` : null,
+        d.eventVenue ? `&#128205;&nbsp; ${esc(d.eventVenue)}` : null,
+        `&#127903;&#65039;&nbsp; ${n === 1 ? '1 entrada' : `${n} entradas`} a tu nombre`,
+      ],
+    }) +
+    seccion('Para entrar sin demoras', [
+      `Tu QR est&aacute; en el mail de compra (asunto: &ldquo;Tu entrada para ${esc(d.eventTitle)}&rdquo;) y en tu perfil.`,
+      'Mostralo desde el celular: no hace falta imprimir nada.',
+      'Llev&aacute; tu DNI, puede pedirse en la puerta.',
+      'Lleg&aacute; con tiempo para evitar la fila del acceso.',
+    ]) +
+    botonPrimario(`${PUBLIC_URL}/perfil`, 'Ver mis entradas') +
+    shellClose(`Hola, mañana tengo mi entrada para ${d.eventTitle} y tengo una consulta.`)
+  );
+}
+
+/** Manda el recordatorio a UN comprador. Nunca tira. */
+export async function sendEventReminderEmail(d: ReminderData): Promise<boolean> {
+  try {
+    if (!d.buyerEmail) return false;
+    const r = await deliver({
+      to: d.buyerEmail,
+      subject: `Es mañana: ${d.eventTitle}`,
+      html: buildEventReminderHTML(d),
+      attachments: [],
+    });
+    if (!r.ok) console.error('[event-mails] recordatorio no salió:', r.error);
+    return !!r.ok;
+  } catch (e) {
+    console.error('[event-mails] error mandando recordatorio:', e instanceof Error ? e.message : String(e));
+    return false;
+  }
+}

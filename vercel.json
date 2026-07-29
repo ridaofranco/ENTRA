@@ -1,4 +1,10 @@
 {
+  "crons": [
+    {
+      "path": "/api/cron/recordatorio-evento",
+      "schedule": "0 12 * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/__/auth/:path*",
