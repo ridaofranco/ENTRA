@@ -1112,7 +1112,7 @@ ${successState.tickets.map((ticket, i) => `
 
                 <div className="space-y-3 pt-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
+                    <span className="text-muted-foreground">{t.comun.subtotal}</span>
                     <div className="text-right">
                       {appliedDiscount && (
                         <p className="text-xs text-muted-foreground line-through opacity-50">
@@ -1127,7 +1127,11 @@ ${successState.tickets.map((ticket, i) => `
                     <div className="flex justify-between text-sm text-green-500">
                       <span className="flex items-center gap-1">
                         <Tag className="w-3 h-3" />
-                        Descuento ({appliedDiscount.type === 'percentage' ? `${appliedDiscount.value}%` : 'Fijo'})
+                        {t.checkout.descuentoLinea(
+                          appliedDiscount.type === 'percentage'
+                            ? `${appliedDiscount.value}%`
+                            : t.checkout.descuentoFijo
+                        )}
                       </span>
                       <span className="font-bold">-{formatCurrency(discountAmount)}</span>
                     </div>

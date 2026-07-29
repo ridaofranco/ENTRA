@@ -136,6 +136,9 @@ const es = {
     tabTodos: 'Todos',
     filtrarPorFecha: 'Filtrar por fecha',
     errorCargarTitulo: 'Error al cargar eventos',
+    errorPermisos: 'Permiso denegado. Revisá las reglas de Firebase Firestore.',
+    errorCargarDetalle: (m: string) => `No se pudieron cargar los eventos: ${m}`,
+    errorDesconocido: 'error desconocido',
     vacioTitulo: 'Todavía no hay eventos',
     vacioBajada: 'Volvé pronto, se vienen cosas buenas. Nos vemos adentro.',
     badgeAbierto: 'ABIERTO',
@@ -151,6 +154,8 @@ const es = {
     ctaOrganizasBajada:
       'Vendé tus entradas en ENTRÁ y cobrá el 100% neto del valor de tu ticket sin costos sorpresivos.',
     ctaOrganizasBoton: 'Quiero vender entradas',
+    // Texto que se precarga en el WhatsApp del CTA de productores.
+    ctaOrganizasWhatsapp: '¡Hola! Quiero vender mis eventos con ENTRÁ',
   },
   evento: {
     noEncontrado: 'Evento no encontrado',
@@ -201,6 +206,9 @@ const es = {
     notaReserva: 'Reserva sin cargo · Sin registro obligatorio · nos vemos adentro',
     notaCompra: 'Compra segura · Sin registro obligatorio · nos vemos adentro',
     shareTexto: (t: string) => `${t} — conseguí tus entradas en ENTRÁ`,
+    // Archivo .ics de "Agregar al calendario": lo abre la app de calendario del comprador.
+    icsDescripcion: 'Evento en ENTRÁ',
+    icsArchivo: 'evento',
   },
   checkout: {
     pagoConfirmado: '¡Pago confirmado!',
@@ -364,6 +372,9 @@ const en: typeof es = {
     tabTodos: 'All',
     filtrarPorFecha: 'Filter by date',
     errorCargarTitulo: 'Error loading events',
+    errorPermisos: 'Permission denied. Check your Firebase Firestore rules.',
+    errorCargarDetalle: (m: string) => `We couldn't load the events: ${m}`,
+    errorDesconocido: 'unknown error',
     vacioTitulo: 'No events yet',
     vacioBajada: 'Check back soon — good things are coming. See you inside.',
     badgeAbierto: 'ON SALE',
@@ -379,6 +390,7 @@ const en: typeof es = {
     ctaOrganizasBajada:
       'Sell your tickets on ENTRÁ and keep 100% of your ticket price, with no surprise costs.',
     ctaOrganizasBoton: 'I want to sell tickets',
+    ctaOrganizasWhatsapp: "Hi! I'd like to sell my events with ENTRÁ",
   },
   evento: {
     noEncontrado: 'Event not found',
@@ -428,6 +440,8 @@ const en: typeof es = {
     notaReserva: 'Free reservation · No sign-up required · see you inside',
     notaCompra: 'Secure checkout · No sign-up required · see you inside',
     shareTexto: (t: string) => `${t} — get your tickets on ENTRÁ`,
+    icsDescripcion: 'Event on ENTRÁ',
+    icsArchivo: 'event',
   },
   checkout: {
     pagoConfirmado: 'Payment confirmed!',
