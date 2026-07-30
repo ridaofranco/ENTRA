@@ -97,6 +97,7 @@ const es = {
     sobre: 'Sobre Nosotros',
     terminos: 'Términos',
     privacidad: 'Privacidad',
+    blog: 'Blog',
   },
   comun: {
     cargando: 'Cargando...',
@@ -333,6 +334,7 @@ const en: typeof es = {
     sobre: 'About Us',
     terminos: 'Terms',
     privacidad: 'Privacy',
+    blog: 'Blog',
   },
   comun: {
     cargando: 'Loading...',

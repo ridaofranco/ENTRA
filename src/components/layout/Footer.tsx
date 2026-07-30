@@ -27,6 +27,9 @@ export function Footer() {
           <Link to="/contacto" className="hover:text-primary transition-colors">{t.footer.sobre}</Link>
           <Link to="/terminos" className="hover:text-primary transition-colors">{t.footer.terminos}</Link>
           <Link to="/privacidad" className="hover:text-primary transition-colors">{t.footer.privacidad}</Link>
+          {/* El blog vive fuera de la SPA (HTML estáticos en public/blog), así que va con
+              <a> y no con <Link>: React Router no conoce esa ruta y mostraría el 404. */}
+          <a href="/blog" className="hover:text-primary transition-colors">{t.footer.blog}</a>
           <LangSwitcher />
         </div>
 

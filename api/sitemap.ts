@@ -25,6 +25,12 @@ const FIJAS: Array<[string, string, string]> = [
   ['/productores', 'monthly', '0.8'],
   ['/ayuda', 'monthly', '0.5'],
   ['/contacto', 'monthly', '0.5'],
+  // Blog: HTML estáticos en public/blog, servidos por el rewrite /blog/:slug -> .html.
+  // Van a mano porque son pocos y no cambian solos; al sumar un post, agregarlo acá.
+  ['/blog', 'weekly', '0.6'],
+  ['/blog/como-elegir-ticketera-comisiones', 'monthly', '0.6'],
+  ['/blog/evento-cancelado-reprogramado-transferir-entrada', 'monthly', '0.6'],
+  ['/blog/entradas-truchas-duplicadas-puerta', 'monthly', '0.6'],
   ['/terminos', 'yearly', '0.2'],
   ['/privacidad', 'yearly', '0.2'],
 ];
