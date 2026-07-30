@@ -35,6 +35,11 @@ const FIJAS: Array<[string, string, string]> = [
   ['/blog/no-me-llego-la-entrada-al-mail', 'monthly', '0.6'],
   ['/blog/evento-cancelado-reprogramado-transferir-entrada', 'monthly', '0.6'],
   ['/blog/entradas-truchas-duplicadas-puerta', 'monthly', '0.6'],
+  ['/blog/promocionar-evento-medir-ventas', 'monthly', '0.6'],
+  ['/blog/organizar-primer-evento-checklist', 'monthly', '0.6'],
+  ['/blog/control-de-acceso-dia-del-evento', 'monthly', '0.6'],
+  ['/blog/para-que-sirve-el-qr-de-tu-entrada', 'monthly', '0.6'],
+  ['/blog/me-olvide-el-celular-entrar-al-evento', 'monthly', '0.6'],
   ['/terminos', 'yearly', '0.2'],
   ['/privacidad', 'yearly', '0.2'],
 ];
