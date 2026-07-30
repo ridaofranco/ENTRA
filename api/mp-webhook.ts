@@ -101,8 +101,16 @@ export default async function handler(req: any, res: any) {
       const oid = payment.external_reference;
       if (oid) {
         const ref = getAdminDb().collection('orders').doc(oid);
+        // `status_detail` es el motivo real del rechazo y hasta ahora se descartaba.
+        // Sin él no se puede distinguir un "llamá a tu banco a autorizar" (la venta
+        // más recuperable que hay) de un "no lo reintentes con esa tarjeta". Se guarda
+        // en la orden para el mail de abajo y para poder mirarlo en el panel después.
         await ref
-          .update({ paymentStatus: payment.status, mpPaymentId: String(paymentId) })
+          .update({
+            paymentStatus: payment.status,
+            mpPaymentId: String(paymentId),
+            paymentStatusDetail: (payment as any).status_detail || null,
+          })
           .catch(() => {});
 
         // AVISO DE PAGO RECHAZADO. Hoy al que le rebota la tarjeta no le llega
@@ -126,6 +134,7 @@ export default async function handler(req: any, res: any) {
                 eventDate: o.eventDate ?? null,
                 totalText: Number.isFinite(total) ? `$${total.toLocaleString('es-AR')}` : null,
                 retryUrl: o.eventId ? `${BASE_URL}/evento/${o.eventId}` : BASE_URL,
+                statusDetail: (payment as any).status_detail || null,
               });
               if (ok) {
                 await ref.update({ paymentFailedEmailAt: new Date().toISOString() }).catch(() => {});
