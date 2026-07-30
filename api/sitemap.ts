@@ -29,6 +29,10 @@ const FIJAS: Array<[string, string, string]> = [
   // Van a mano porque son pocos y no cambian solos; al sumar un post, agregarlo acá.
   ['/blog', 'weekly', '0.6'],
   ['/blog/como-elegir-ticketera-comisiones', 'monthly', '0.6'],
+  ['/blog/poner-precio-entradas-tandas-preventa', 'monthly', '0.6'],
+  ['/blog/datos-ventas-ticketera-productor', 'monthly', '0.6'],
+  ['/blog/comprar-entradas-sin-estafas', 'monthly', '0.6'],
+  ['/blog/no-me-llego-la-entrada-al-mail', 'monthly', '0.6'],
   ['/blog/evento-cancelado-reprogramado-transferir-entrada', 'monthly', '0.6'],
   ['/blog/entradas-truchas-duplicadas-puerta', 'monthly', '0.6'],
   ['/terminos', 'yearly', '0.2'],
