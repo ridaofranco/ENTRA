@@ -12,6 +12,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
 import { getCategoryLabel } from '@/src/lib/categories';
 import PosterFallback from '@/src/components/PosterFallback';
+import { WhatsAppIcon } from '@/src/components/icons/WhatsAppIcon';
 import { eventPath } from '@/src/lib/slug';
 import { useAuth } from '@/src/context/AuthContext';
 import { formatCurrency, isEventFinished } from '@/src/lib/utils';
@@ -321,11 +322,26 @@ export default function Comprar() {
             animate={{ opacity: 1 }}
             className="text-center py-20"
           >
+            {/* Dos vacios distintos: si la cartelera esta vacia de verdad, el unico que puede
+                convertir aca es un productor, asi que se le pide su evento en vez de pedirle
+                paciencia. Si hay eventos y los tapo un filtro, eso es otra cosa y se dice. */}
             <Music className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <h3 className="text-xl font-heading font-black uppercase tracking-tight">{t.cartelera.vacioTitulo}</h3>
+            <h3 className="text-xl font-heading font-black uppercase tracking-tight">
+              {events.length === 0 ? t.cartelera.vacioTitulo : t.cartelera.sinResultadosTitulo}
+            </h3>
             <p className="text-muted-foreground text-sm max-w-sm mx-auto leading-relaxed mt-2 font-sans">
-              {t.cartelera.vacioBajada}
+              {events.length === 0 ? t.cartelera.vacioBajada : t.cartelera.sinResultadosBajada}
             </p>
+            {events.length === 0 && (
+              <div className="mt-6">
+                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+                  <Button className="h-12 px-8 orange-gradient border-none text-white rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase text-xs tracking-wide gap-2">
+                    <WhatsAppIcon className="w-4 h-4" />
+                    {t.cartelera.vacioCta}
+                  </Button>
+                </a>
+              </div>
+            )}
           </motion.div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

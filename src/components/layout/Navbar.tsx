@@ -86,11 +86,17 @@ export function Navbar() {
           </div>
         ) : null}
 
-        <Link to={user ? "/perfil" : "/auth/login"}>
-          <Button className="orange-gradient border-none text-white px-5 sm:px-8 py-5 text-xs sm:text-sm uppercase tracking-wide rounded-xl transition-all hover:brightness-110 font-heading font-black">
-            ENTRÁ
-          </Button>
-        </Link>
+        {/* El boton mas destacado del sitio no puede ser una puerta al login: el visitante
+            nuevo no tiene cuenta y el producto presume de no necesitarla. Queda como acceso
+            secundario y con el nombre de lo que hace. Al usuario logueado ya lo lleva a su
+            perfil el avatar de al lado, asi que aca no se repite. */}
+        {!user && (
+          <Link to="/auth/login" className="hidden sm:block">
+            <Button variant="outline" className="bg-white/[0.03] border border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20 px-5 sm:px-7 py-5 text-xs sm:text-sm uppercase tracking-wide rounded-xl transition-all font-heading font-black">
+              {t.nav.cuenta}
+            </Button>
+          </Link>
+        )}
 
         <Button
           variant="ghost"
@@ -119,6 +125,17 @@ export function Navbar() {
               {l.label}
             </Link>
           ))}
+          {/* En movil el acceso a la cuenta vive aca y no en la barra: arriba solo compite
+              con el CTA del hero, y el que ya es cliente lo busca en el menu. */}
+          {!user && (
+            <Link
+              to="/auth/login"
+              onClick={() => setMobileOpen(false)}
+              className="py-3 px-2 rounded-lg text-sm font-heading font-black uppercase tracking-wide text-muted-foreground hover:bg-white/5 transition-colors"
+            >
+              {t.nav.cuenta}
+            </Link>
+          )}
           {user && (
             <button
               onClick={() => { setMobileOpen(false); logout(); }}

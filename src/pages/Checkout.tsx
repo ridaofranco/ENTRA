@@ -616,15 +616,20 @@ ${successState.tickets.map((ticket, i) => `
     >
       <h2 className="text-2xl font-heading font-black tracking-tighter">{t.checkout.tusDatos}</h2>
 
+      {/* Aca es donde mas gente abandona, asi que lo destacado tiene que ser el permiso
+          para seguir sin cuenta (que es lo que el sistema hace de verdad: la compra va con
+          buyerId 'guest' y Profile busca las entradas por buyerEmail, no por cuenta).
+          El login queda como link chico para el que ya la tiene. */}
       {!user && (
-        <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4">
-          <p className="text-sm text-primary font-bold mb-3">
-            {t.checkout.loginRapida}
+        <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4 space-y-2">
+          <p className="text-sm text-primary font-bold">
+            {t.checkout.invitadoTitulo}
           </p>
-          <Link to="/auth/login">
-            <Button className="w-full orange-gradient border-none font-heading font-black rounded-xl h-11">
-              {t.checkout.iniciarSesion}
-            </Button>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {t.checkout.invitadoTexto}
+          </p>
+          <Link to="/auth/login" className="inline-block text-xs text-muted-foreground underline hover:text-primary transition-colors">
+            {t.checkout.yaTengoCuenta}
           </Link>
         </div>
       )}
