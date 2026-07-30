@@ -11,8 +11,12 @@ import { seedEventsIfMissing } from '@/src/services/eventService';
 import { useAuth } from '@/src/context/AuthContext';
 import HeroAtmosphere from '@/src/components/HeroAtmosphere';
 import PosterFallback from '@/src/components/PosterFallback';
+import { WhatsAppIcon } from '@/src/components/icons/WhatsAppIcon';
 import { eventPath } from '@/src/lib/slug';
 import { isEventFinished } from '@/src/lib/utils';
+
+// Mismo numero y mismo mensaje que usa la pagina de Productores.
+const whatsappProductores = 'https://wa.me/5491171540675?text=Hola!%20Quiero%20vender%20mis%20eventos%20con%20ENTRÁ';
 
 interface Event {
   id: string;
@@ -30,6 +34,14 @@ export default function Landing() {
   const { user } = useAuth();
   const [featuredEvents, setFeaturedEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // La home cambia de cara segun haya o no cartelera.
+  // Sin eventos a la venta, el unico visitante que puede dejar plata es un productor,
+  // asi que el hero le habla a el. Cuando entra el primer evento vuelve solo al modo
+  // comprador, sin que nadie tenga que acordarse de deshacer nada.
+  // Arranca en modo productor a proposito: es el estado real mientras la cartelera este
+  // vacia, y asi no parpadea en el caso de hoy (que es el 100% de las visitas).
+  const modoProductor = loading || featuredEvents.length === 0;
 
   useEffect(() => {
     const init = async () => {
@@ -92,26 +104,63 @@ export default function Landing() {
             transition={{ duration: 0.8 }}
             className="space-y-8"
           >
-            <div className="space-y-4">
-              <h1 className="text-[clamp(2rem,11vw,3rem)] sm:text-7xl md:text-8xl lg:text-[100px] font-heading font-black tracking-tighter leading-[0.9] sm:leading-[0.85] uppercase select-none break-words">
-                Acceso a<br />
-                <span className="orange-text-gradient">experiencias</span><br />
-                en vivo.
-              </h1>
-            </div>
+            {modoProductor ? (
+              <>
+                <div className="space-y-6">
+                  <h1 className="text-[clamp(2rem,10vw,2.75rem)] sm:text-6xl md:text-7xl lg:text-[84px] font-heading font-black tracking-tighter leading-[0.95] sm:leading-[0.88] uppercase select-none break-words">
+                    Tu ticketera.<br />
+                    Vos cobrás<br />
+                    el <span className="orange-text-gradient">100%</span>.
+                  </h1>
+                  <p className="max-w-2xl text-base sm:text-lg text-muted-foreground leading-relaxed font-sans">
+                    Publicás tu evento y tu público compra sin crearse cuenta. Los cargos los paga
+                    el comprador, así vos cobrás el precio completo de tu entrada. En la puerta
+                    validás cada QR desde el celular.
+                  </p>
+                </div>
 
-            <div className="flex flex-wrap gap-4 pt-4">
-              <Link to={user ? "/perfil" : "/auth/login"}>
-                <Button className="h-14 px-10 orange-gradient border-none text-white text-base rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
-                  ENTRÁ
-                </Button>
-              </Link>
-              <Link to="/eventos">
-                <Button variant="outline" className="h-14 px-10 rounded-xl bg-white/[0.03] border border-white/10 text-white text-base hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide">
-                  Ver eventos
-                </Button>
-              </Link>
-            </div>
+                <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 pt-4">
+                  <a href={whatsappProductores} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+                    <Button className="w-full sm:w-auto h-14 px-6 sm:px-10 orange-gradient border-none text-white text-sm sm:text-base rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide gap-2">
+                      <WhatsAppIcon className="w-5 h-5 shrink-0" />
+                      Quiero vender mis entradas
+                    </Button>
+                  </a>
+                  <Link to="/eventos" className="w-full sm:w-auto">
+                    <Button variant="outline" className="w-full sm:w-auto h-14 px-6 sm:px-10 rounded-xl bg-white/[0.03] border border-white/10 text-white text-sm sm:text-base hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide">
+                      Ver la cartelera
+                    </Button>
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-6">
+                  <h1 className="text-[clamp(2rem,11vw,3rem)] sm:text-7xl md:text-8xl lg:text-[100px] font-heading font-black tracking-tighter leading-[0.9] sm:leading-[0.85] uppercase select-none break-words">
+                    Acceso a<br />
+                    <span className="orange-text-gradient">experiencias</span><br />
+                    en vivo.
+                  </h1>
+                  <p className="max-w-xl text-base sm:text-lg text-muted-foreground leading-relaxed font-sans">
+                    Comprá sin crearte cuenta. Te mandamos el QR al mail y con ese mismo mail
+                    después ves tus entradas en Mis Tickets.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 pt-4">
+                  <Link to="/eventos" className="w-full sm:w-auto">
+                    <Button className="w-full sm:w-auto h-14 px-6 sm:px-10 orange-gradient border-none text-white text-sm sm:text-base rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
+                      Ver la cartelera
+                    </Button>
+                  </Link>
+                  <Link to={user ? "/perfil" : "/auth/login"} className="w-full sm:w-auto">
+                    <Button variant="outline" className="w-full sm:w-auto h-14 px-6 sm:px-10 rounded-xl bg-white/[0.03] border border-white/10 text-white text-sm sm:text-base hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide">
+                      Mis tickets
+                    </Button>
+                  </Link>
+                </div>
+              </>
+            )}
           </motion.div>
         </div>
       </section>
@@ -207,12 +256,22 @@ export default function Landing() {
             })}
           </div>
         ) : (
+          /* Cartelera vacia: en vez de pedirle paciencia al que llega, se le pide algo.
+             El unico que puede convertir con la cartelera vacia es un productor. */
           <div className="glass rounded-[2rem] border-white/5 p-16 text-center max-w-xl mx-auto space-y-4">
             <Music className="w-10 h-10 text-primary mx-auto opacity-40" />
-            <h3 className="font-heading font-black text-xl uppercase">Pronto</h3>
+            <h3 className="font-heading font-black text-xl uppercase">¿Tu evento acá?</h3>
             <p className="text-sm text-muted-foreground leading-relaxed font-sans">
-              Lo que viene se anuncia acá. Volvé pronto, se vienen cosas buenas.
+              Estamos abriendo la cartelera. Si producís, publicá el tuyo y sos de los primeros.
             </p>
+            <div className="pt-2">
+              <a href={whatsappProductores} target="_blank" rel="noopener noreferrer">
+                <Button className="h-12 px-8 orange-gradient border-none text-white rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase text-xs tracking-wide gap-2">
+                  <WhatsAppIcon className="w-4 h-4" />
+                  Publicar mi evento
+                </Button>
+              </a>
+            </div>
           </div>
         )}
       </section>
