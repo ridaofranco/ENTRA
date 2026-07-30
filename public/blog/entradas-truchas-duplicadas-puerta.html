@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="color-scheme" content="dark" />
+  <title>Cómo Evitar Entradas Truchas y Duplicadas en la Puerta | ENTRÁ</title>
+  <meta name="description" content="El fraude real no es la falsificación: es la misma entrada usada dos veces. Cómo lo frena un QR único validado en tiempo real y qué protocolo necesitás en la puerta." />
+  <link rel="canonical" href="https://www.entratickets.com/blog/entradas-truchas-duplicadas-puerta" />
+  <link rel="icon" type="image/png" href="/pwa-192.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="stylesheet" href="/blog.css" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="ENTRÁ" />
+  <meta property="og:title" content="Cómo evitar entradas truchas y duplicadas en la puerta" />
+  <meta property="og:description" content="El fraude real no es la falsificación: es la misma entrada usada dos veces. Cómo frenarlo." />
+  <meta property="og:url" content="https://www.entratickets.com/blog/entradas-truchas-duplicadas-puerta" />
+  <meta property="og:image" content="https://www.entratickets.com/og-image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "Cómo evitar entradas truchas y duplicadas en la puerta",
+    "description": "El fraude real no es la falsificación: es la misma entrada usada dos veces. Cómo lo frena un QR único validado en tiempo real y qué protocolo necesitás en la puerta.",
+    "inLanguage": "es-AR",
+    "datePublished": "2026-07-29",
+    "dateModified": "2026-07-29",
+    "author": { "@type": "Organization", "name": "SOMOS DER", "url": "https://somosder.ar" },
+    "publisher": { "@type": "Organization", "name": "ENTRÁ", "url": "https://www.entratickets.com/" },
+    "mainEntityOfPage": "https://www.entratickets.com/blog/entradas-truchas-duplicadas-puerta",
+    "image": "https://www.entratickets.com/og-image.png"
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      { "@type": "Question", "name": "¿Cómo se evita que entren con una captura de pantalla de una entrada ajena?", "acceptedAnswer": { "@type": "Answer", "text": "Con un QR de un solo uso validado contra una base central. La captura contiene el mismo código que el original, así que el primero que llega entra y el segundo escaneo lo rechaza. En ENTRÁ el escáner devuelve DENEGADO · YA UTILIZADO junto con hace cuánto ingresó ese código, que es el dato que necesita el personal de puerta para resolver la situación sin discutir." } },
+      { "@type": "Question", "name": "¿Sirve de algo imprimir la entrada o mostrarla desde el celular?", "acceptedAnswer": { "@type": "Answer", "text": "Es indistinto: lo que se valida es el código, no el soporte. Un PDF impreso y la pantalla del celular tienen el mismo código y el mismo comportamiento. Lo que define la seguridad es que el código sea único, de un solo uso y se valide contra una base compartida por todas las puertas." } },
+      { "@type": "Question", "name": "¿Qué pasa si se cae internet en la puerta?", "acceptedAnswer": { "@type": "Answer", "text": "En ENTRÁ el control de acceso sigue funcionando sin conexión: el escáner marca el ticket como usado en su caché local al instante, así que el próximo escaneo del mismo QR lo ve usado incluso offline, y la sincronización con el servidor ocurre sola al reconectar. De todos modos, un evento serio lleva conectividad de respaldo: la contingencia es un plan, no una función." } },
+      { "@type": "Question", "name": "¿Cómo funciona el control en eventos de varios días?", "acceptedAnswer": { "@type": "Answer", "text": "La entrada se valida por jornada: el sistema chequea que el día sea uno de los habilitados para ese ticket y que la persona no haya ingresado ya ese día. Si el día no corresponde, se rechaza; si ya ingresó hoy, se rechaza como duplicado. La entrada no se quema de una: sirve en cada día habilitado." } }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-in">
+      <a class="word" href="/">ENTR<b>Á</b></a>
+      <a class="btn btn-ghost" href="/blog">Blog</a>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <article>
+      <p class="kicker">Guía</p>
+      <h1>Cómo evitar entradas truchas y duplicadas en la puerta</h1>
+      <p class="meta">Por SOMOS DER · 29 de julio de 2026 · 6 min de lectura</p>
+
+      <p class="lead">Cuando un productor dice "quiero evitar entradas truchas", casi nunca está hablando de falsificación sofisticada. El fraude real en la puerta es mucho más aburrido y mucho más frecuente: <b>la misma entrada, usada dos veces</b>.</p>
+
+      <p>Alguien manda la captura del QR por WhatsApp para que entre un amigo. Alguien vende por fuera una entrada que ya usó. Alguien reenvía el mail de compra a tres personas. En los tres casos el código es legítimo: lo que falla no es el papel, es el control.</p>
+
+      <h2>El problema no es el papel, es el control</h2>
+      <p>Un ticket impreso en una imprenta de primera se puede fotocopiar. Un QR se puede capturar. Ningún soporte es seguro por sí mismo. <b>Lo único que hace segura a una entrada es que su código sea único, de un solo uso y se valide contra una base que comparten todas las puertas.</b></p>
+      <p>Ahí está la diferencia con la lista en papel: la lista no impide que la misma entrada se use dos veces, no deja registro de a qué hora entró cada uno, y con volumen genera cola.</p>
+
+      <h2>Qué tiene que rechazar el escáner (y cómo)</h2>
+      <p>Un control de acceso serio no dice solamente "sí" o "no". Tiene que distinguir <b>por qué</b> rechaza, porque cada caso se resuelve distinto en la puerta. En ENTRÁ el escáner distingue estos casos:</p>
+      <ul>
+        <li><b>Ticket de otro evento.</b> El QR es válido, pero no acá. Pasa más de lo que parece cuando un productor hace varias fechas.</li>
+        <li><b>Ticket cancelado o devuelto.</b> La entrada existió, pero ya no es válida.</li>
+        <li><b>Ya utilizado.</b> El caso más común. El sistema devuelve <code>DENEGADO · YA UTILIZADO</code> <b>y hace cuánto ingresó</b> ese código.</li>
+        <li><b>No válido hoy</b> (en eventos de varios días). El ticket está bien, pero esa jornada no está habilitada.</li>
+        <li><b>Ya ingresó hoy</b> (multi-día). La entrada sirve en cada día habilitado, pero una sola vez por día: no se quema de una.</li>
+      </ul>
+      <p>Ese "ingresó hace 8 minutos" parece un detalle y es el dato más útil de todos: le da al personal de puerta algo concreto que decir, y convierte una discusión en un hecho.</p>
+
+      <h2>Cada intento queda registrado</h2>
+      <p>Todo escaneo, autorizado o denegado, queda en el historial de ingresos del evento: qué código, qué tipo de entrada, a qué hora y con qué resultado. Sirve para tres cosas:</p>
+      <ol>
+        <li><b>Resolver en el momento</b>: ver por dónde y cuándo entró el código que ahora aparece duplicado.</li>
+        <li><b>Tener evidencia</b> si alguien reclama después.</li>
+        <li><b>Detectar patrones</b>: si aparecen muchos duplicados del mismo tipo de entrada o de la misma venta, hay algo para revisar.</li>
+      </ol>
+
+      <h2>Que se caiga internet no puede voltear la puerta</h2>
+      <p>Es la pregunta que separa a un control serio del resto. En ENTRÁ el escáner <b>marca el ticket como usado en su caché local al instante</b>, así que el próximo escaneo del mismo QR lo ve usado incluso sin conexión, y la sincronización con el servidor se hace sola al reconectar.</p>
+      <p>Dicho eso: la contingencia es un plan, no una función. Un evento con miles de personas satura la red móvil. Conviene igual llevar conectividad de respaldo y probarla antes de que abra la puerta, no cuando ya hay cola.</p>
+
+      <h2>Dale a tu público un camino legítimo</h2>
+      <p>Buena parte de las capturas que circulan no son mala fe: es gente que no puede ir y quiere pasarle la entrada a alguien. Si no le das una forma de hacerlo, la va a hacer igual, mal.</p>
+      <p>Por eso importa habilitar la <b>transferencia oficial</b>: al transferir, el código anterior se invalida y se genera un QR nuevo para quien la recibe. La captura vieja deja de servir sola. Es la manera de bajar el fraude sin pelearte con tu público.</p>
+
+      <h2>La tecnología es la mitad: el protocolo es la otra</h2>
+      <p>El sistema te dice que el QR está duplicado. Lo que pasa después lo define tu operación, y conviene tenerlo escrito <b>antes</b> del evento:</p>
+      <ul>
+        <li><b>Quién decide.</b> Que el personal de puerta no tenga que improvisar ni buscar a alguien.</li>
+        <li><b>Dónde se resuelve.</b> Un punto al costado, fuera de la fila. Un rechazo discutido en la puerta frena a todos los que vienen atrás.</li>
+        <li><b>Qué se le dice a la persona.</b> Con el dato del historial: a qué hora ingresó ese código y por qué puerta.</li>
+        <li><b>Qué se hace con el caso.</b> A quién se escala, qué se registra.</li>
+      </ul>
+
+      <h2>Checklist rápido</h2>
+      <ul>
+        <li>Un código <b>único por entrada</b>, de un solo uso.</li>
+        <li>Validación contra una <b>base compartida</b> por todas las puertas.</li>
+        <li>Rechazos que distinguen el motivo, con <b>hora del ingreso previo</b>.</li>
+        <li><b>Historial</b> de todos los intentos, autorizados y denegados.</li>
+        <li>Funcionamiento <b>sin conexión</b> y conectividad de respaldo probada.</li>
+        <li><b>Transferencia oficial</b> habilitada.</li>
+        <li><b>Protocolo de puerta</b> escrito y conocido por el equipo.</li>
+      </ul>
+
+      <h2>Preguntas frecuentes</h2>
+      <details open>
+        <summary>¿Cómo se evita que entren con una captura de pantalla de una entrada ajena?</summary>
+        <p>Con un QR de un solo uso validado contra una base central. La captura contiene el mismo código que el original, así que el primero que llega entra y el segundo escaneo lo rechaza. En ENTRÁ el escáner devuelve DENEGADO · YA UTILIZADO junto con hace cuánto ingresó ese código, que es el dato que necesita el personal de puerta para resolver la situación sin discutir.</p>
+      </details>
+      <details>
+        <summary>¿Sirve de algo imprimir la entrada o mostrarla desde el celular?</summary>
+        <p>Es indistinto: lo que se valida es el código, no el soporte. Un PDF impreso y la pantalla del celular tienen el mismo código y el mismo comportamiento. Lo que define la seguridad es que el código sea único, de un solo uso y se valide contra una base compartida por todas las puertas.</p>
+      </details>
+      <details>
+        <summary>¿Qué pasa si se cae internet en la puerta?</summary>
+        <p>En ENTRÁ el control de acceso sigue funcionando sin conexión: el escáner marca el ticket como usado en su caché local al instante, así que el próximo escaneo del mismo QR lo ve usado incluso offline, y la sincronización con el servidor ocurre sola al reconectar. De todos modos, un evento serio lleva conectividad de respaldo: la contingencia es un plan, no una función.</p>
+      </details>
+      <details>
+        <summary>¿Cómo funciona el control en eventos de varios días?</summary>
+        <p>La entrada se valida por jornada: el sistema chequea que el día sea uno de los habilitados para ese ticket y que la persona no haya ingresado ya ese día. Si el día no corresponde, se rechaza; si ya ingresó hoy, se rechaza como duplicado. La entrada no se quema de una: sirve en cada día habilitado.</p>
+      </details>
+
+      <div class="cta">
+        <h2>Controlá la puerta con ENTRÁ</h2>
+        <p>Cada entrada emitida por ENTRÁ es un QR único de un solo uso, con control de acceso integrado y sin costo extra: escaneás desde el celular, el sistema rechaza duplicados con el detalle de a qué hora ingresó ese código, y todo queda registrado.</p>
+        <a class="btn btn-primary" href="/productores">Mirá cómo funciona para productores</a>
+      </div>
+
+      <div class="more">
+        <p class="kicker">Seguir leyendo</p>
+        <a href="/blog/como-elegir-ticketera-comisiones">Cómo elegir una ticketera: qué mirar de las comisiones →</a>
+        <a href="/blog/evento-cancelado-reprogramado-transferir-entrada">Se canceló o se pasó de fecha el evento: qué pasa con tu entrada →</a>
+      </div>
+    </article>
+  </div>
+
+  <footer>
+    <div class="wrap foot-in">
+      <a class="word" href="/" style="font-size:1.1rem;">ENTR<b>Á</b></a>
+      <span>Ticketera con control de acceso · por <a href="https://somosder.ar">SOMOS DER</a></span>
+      <a href="/">Inicio →</a>
+    </div>
+  </footer>
+</body>
+</html>
