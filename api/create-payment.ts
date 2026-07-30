@@ -36,6 +36,53 @@ function fmtDayKey(dk: string): string {
   }
 }
 
+/**
+ * DATOS DEL COMPRADOR PARA EL ANTIFRAUDE DE MERCADO PAGO
+ *
+ * Soporte de MP (ticket WCS-43463, 2026-07-30) revisó nuestros 4 primeros pagos y
+ * marcó un patrón: los aprobados tenían contexto del comprador, y el rechazado por
+ * `cc_rejected_high_risk` entró como anónimo. Su recomendación concreta fue mandar
+ * el payer y los items completos, porque cada dato es una señal más para el motor
+ * de riesgo. Nosotros ya le pedimos al comprador nombre, mail, DNI (los tres
+ * obligatorios) y teléfono, y hasta hoy solo le mandábamos nombre y mail.
+ *
+ * Domicilio (payer.address) NO se manda porque no lo pedimos, y sumar campos al
+ * checkout es exactamente lo que baja la conversión. Queda como decisión de producto.
+ *
+ * Las tres funciones de abajo son deliberadamente conservadoras: si un dato no se
+ * puede interpretar con certeza, se omite. Nunca inventan un valor, porque un dato
+ * inventado le miente al antifraude y es peor que no mandar nada.
+ */
+
+/** "Juan Carlos Pérez" → { name: "Juan", surname: "Carlos Pérez" }. Un solo token: sin apellido. */
+function partirNombre(completo: string): { name: string; surname?: string } {
+  const partes = String(completo).trim().split(/\s+/).filter(Boolean);
+  if (partes.length <= 1) return { name: partes[0] || '' };
+  return { name: partes[0], surname: partes.slice(1).join(' ') };
+}
+
+/** DNI argentino: solo dígitos, y solo si el largo es verosímil (7 u 8). */
+function identificacion(dni: string): { type: string; number: string } | null {
+  const soloDigitos = String(dni).replace(/\D/g, '');
+  if (soloDigitos.length < 7 || soloDigitos.length > 8) return null;
+  return { type: 'DNI', number: soloDigitos };
+}
+
+/**
+ * Teléfono argentino. Se separa el código de área SOLO cuando se puede afirmar:
+ * los 10 dígitos que arrancan en 11 son AMBA. En cualquier otro caso se manda el
+ * número completo sin área, en vez de adivinar un corte y mandar un área falsa.
+ */
+function telefono(bruto: string): { area_code?: string; number: string } | null {
+  let d = String(bruto).replace(/\D/g, '');
+  if (!d) return null;
+  if (d.startsWith('54')) d = d.slice(2);        // +54
+  if (d.length === 11 && d.startsWith('9')) d = d.slice(1); // el 9 de celular
+  if (d.length < 8) return null;
+  if (d.length === 10 && d.startsWith('11')) return { area_code: '11', number: d.slice(2) };
+  return { number: d };
+}
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido' });
@@ -308,15 +355,39 @@ export default async function handler(req: any, res: any) {
       return res.status(500).json({ error: 'Falta la credencial de cobro en el servidor.' });
     }
     const mp = new MercadoPagoConfig({ accessToken: sellerToken });
+
+    // El detalle de lo que se compró, para la descripción del ítem: "2x General, 1x VIP".
+    const detalleEntradas = normalizedItems.map((i) => `${i.quantity}x ${i.type}`).join(', ');
+    // picture_url solo si es absoluta: una ruta relativa no la puede resolver MP.
+    const imagenEvento = typeof event.image === 'string' && /^https?:\/\//.test(event.image)
+      ? event.image
+      : undefined;
+
+    const nombrePartido = partirNombre(buyer.name);
+    const docComprador = identificacion(buyer.dni);
+    const telComprador = buyer.phone ? telefono(buyer.phone) : null;
+
     const prefBody: any = {
       items: [{
         id: eventId,
         title: `Entradas · ${event.title}`.slice(0, 250),
+        // Los 4 campos que pidió MP en el ticket WCS-43463. Van en UN solo ítem a
+        // propósito: el total incluye los cargos, y MP exige que la suma de los
+        // items sea igual al monto de la transacción. Partirlo por tipo de entrada
+        // haría que no cierre.
+        description: `${detalleEntradas} · ${event.title}`.slice(0, 250),
+        category_id: 'tickets',
+        ...(imagenEvento ? { picture_url: imagenEvento } : {}),
         quantity: 1,
         unit_price: total,
         currency_id: 'ARS',
       }],
-      payer: { name: buyer.name, email: buyer.email },
+      payer: {
+        ...nombrePartido,
+        email: buyer.email,
+        ...(docComprador ? { identification: docComprador } : {}),
+        ...(telComprador ? { phone: telComprador } : {}),
+      },
       external_reference: orderRef.id,
       // En marketplace el pago vive en la cuenta del PRODUCTOR, así que pasamos su
       // id en la URL del webhook para poder consultar el pago con el token correcto.
@@ -334,8 +405,25 @@ export default async function handler(req: any, res: any) {
     if (isMarketplace) {
       prefBody.marketplace_fee = feeConIva;
     }
-    const preference = await new Preference(mp).create({ body: prefBody });
-    console.log(`[create-payment] orden=${orderRef.id} buyer=${buyer.email} split=${isMarketplace} organizer=${organizerId} fee=${feeConIva} total=${total} pref=${preference.id} notif=${prefBody.notification_url}`);
+    // RED DE SEGURIDAD. Los datos de arriba son señales para el antifraude, no algo
+    // sin lo cual no se pueda cobrar: si MP rechazara la preferencia por alguno de
+    // esos campos, perder la venta sería mucho peor que perder la señal. Entonces se
+    // reintenta UNA vez con el cuerpo mínimo, que es exactamente el que funcionaba
+    // antes de este cambio. Si el que falla es el cuerpo mínimo, ahí sí es un error
+    // real y sube como siempre.
+    let preference: any;
+    let datosCompletos = true;
+    try {
+      preference = await new Preference(mp).create({ body: prefBody });
+    } catch (errPref: any) {
+      datosCompletos = false;
+      console.error('[create-payment] la preferencia con datos completos fallo, reintento con lo minimo:', errPref?.message || errPref);
+      const minimo = { ...prefBody };
+      minimo.items = [{ id: eventId, title: `Entradas · ${event.title}`.slice(0, 250), quantity: 1, unit_price: total, currency_id: 'ARS' }];
+      minimo.payer = { name: buyer.name, email: buyer.email };
+      preference = await new Preference(mp).create({ body: minimo });
+    }
+    console.log(`[create-payment] orden=${orderRef.id} buyer=${buyer.email} split=${isMarketplace} organizer=${organizerId} fee=${feeConIva} total=${total} pref=${preference.id} notif=${prefBody.notification_url} datosAntifraude=${datosCompletos ? 'completos' : 'MINIMOS(fallback)'} doc=${docComprador ? 'si' : 'no'} tel=${telComprador ? 'si' : 'no'}`);
 
     // MP_SANDBOX=true → devolvemos el link de PRUEBA (sandbox_init_point) para testear el
     // flujo completo con tarjetas de prueba, sin cobrar de verdad. Sin la flag, link real.
