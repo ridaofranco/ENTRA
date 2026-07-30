@@ -10,25 +10,33 @@ const whatsappNumber = '5491171540675';
 const whatsappUrl = `https://wa.me/${whatsappNumber}?text=Hola!%20Necesito%20ayuda%20con%20una%20entrada%20de%20ENTRÁ`;
 
 const faqs = [
-  { 
-    q: '¿Cómo entro a mi evento?', 
-    a: 'Con el QR de tu entrada, que podés mostrar directo desde tu celular. Lo tenés siempre disponible en tu mail de confirmación, WhatsApp, o ingresando directamente con tu acceso a ENTRÁ.' 
+  {
+    q: '¿Cómo entro a mi evento?',
+    a: 'Con el QR de tu entrada, que mostrás desde el celular. Lo tenés en tres lugares: en el mail de confirmación (el QR viene dentro del mensaje y además hay un PDF adjunto con todas las entradas de la compra), en la pantalla de confirmación apenas terminás de comprar, y en "Mis Tickets" dentro de tu perfil. En la puerta se escanea una sola vez: si el mismo código se intenta usar de nuevo, el sistema lo rechaza.'
   },
-  { 
-    q: 'No me llegó la entrada, ¿qué hago?', 
-    a: 'La entrega de las entradas por mail y WhatsApp es inmediata. Si no la ves en tu bandeja, revisá siempre la carpeta de Spam o Correo no deseado. Si pasaron más de 10 minutos o ingresaste mal tu correo, contactanos por WhatsApp con tu nombre y DNI, y te la re-enviamos al toque.' 
+  {
+    q: 'No me llegó la entrada, ¿qué hago?',
+    a: 'La entrada se emite cuando el pago queda aprobado: si Mercado Pago lo dejó pendiente de acreditación, el mail sale solo cuando se acredita. Si el pago ya está aprobado, buscá en tu correo por el nombre del evento o por la palabra ENTRÁ (revisá Spam y, si usás Gmail, la pestaña Promociones). Si aun así no aparece, entrá a tu perfil: la entrada está ahí igual, mirá la pregunta de abajo. Y si escribiste mal tu mail al comprar, escribinos por WhatsApp con tu nombre, tu DNI y el número de orden que quedó en la pantalla de confirmación: esa corrección la hacemos nosotros a mano.'
   },
-  { 
-    q: '¿Puedo transferir mi entrada a un amigo?', 
-    a: 'Sí, de forma 100% oficial y segura desde tu sección de perfil. Cuando transferís una entrada por ENTRÁ, el sistema invalida tu código anterior y genera un QR totalmente nuevo para tu amigo. Se terminaron los engaños de la reventa con PDFs duplicados.' 
+  {
+    q: 'Compré como invitado, sin crear cuenta. ¿Dónde veo mi entrada?',
+    a: 'Entrá con el MISMO mail que pusiste al comprar. En ENTRÁ las entradas se buscan por correo electrónico, no por cuenta: creás la cuenta (o iniciás sesión) con ese mail exacto y tus entradas aparecen solas en "Mis Tickets", con el QR para mostrar en la puerta y el botón para descargarlas. No hay trámite ni hay que esperar a que alguien te las asigne.'
   },
-  { 
-    q: '¿Qué métodos de pago puedo usar?', 
-    a: 'Podés pagar de forma segura con dinero en cuenta, transferencia, tarjetas de débito o crédito a través de Mercado Pago. El precio final es siempre claro, sin sorpresas de cargos ocultos al checkout.' 
+  {
+    q: '¿Puedo transferir mi entrada a otra persona?',
+    a: 'Sí, de forma oficial desde "Mis Tickets" en tu perfil. Cargás el nombre, el mail y el teléfono de la persona, y el sistema genera un link de reclamo: le llega por mail y además podés pasárselo vos por WhatsApp. Cuando esa persona lo reclama iniciando sesión con ESE mail, tu código queda invalidado y se genera un QR nuevo a su nombre. Tres cosas a tener en cuenta: solo ese mail puede reclamarlo, no se puede transferir si el evento ya pasó, y el organizador puede tener las transferencias deshabilitadas en su evento.'
   },
-  { 
-    q: 'Soy organizador, ¿cómo publico un evento?', 
-    a: 'Es extremadamente fácil. Escribinos a organizadores@entratickets.com o mandanos un mensaje por WhatsApp. Te activamos tu cuenta oficial para empezar a emitir entradas, trackear ventas en tiempo real y gestionar la permanencia en segundos.' 
+  {
+    q: '¿Cómo pago y qué me cobran?',
+    a: 'El pago lo procesa Mercado Pago, con los medios que tengas habilitados en tu cuenta al momento de pagar. Sobre el precio de la entrada se suma un cargo por servicio, que incluye el servicio de ENTRÁ y el procesamiento del pago. Ese cargo se muestra en el detalle del checkout antes de que confirmes: el total que ves ahí es el que se cobra, no se agrega nada después. En los eventos gratuitos la reserva no tiene ningún cargo.'
+  },
+  {
+    q: 'Se canceló o se reprogramó el evento, ¿qué pasa con mi entrada?',
+    a: 'Cuando un evento se cancela en la plataforma, sale un mail de aviso a todos los que compraron. La política de reintegro la define el organizador, que es el responsable del evento: si pagaste tu entrada, escribinos por WhatsApp y gestionamos la devolución con él. Si en cambio el evento se reprograma, tu entrada sigue siendo válida para la fecha nueva; si no podés ir, la podés transferir.'
+  },
+  {
+    q: 'Soy organizador, ¿cómo publico un evento?',
+    a: 'Creás tu cuenta en ENTRÁ y nos escribís a organizadores@entratickets.com o por WhatsApp. El panel de productor no se activa solo: lo habilita el equipo a mano, para saber quién vende y qué se vende. Una vez habilitado cargás el evento (fecha, lugar, flyer, tipos de entrada y cupo), lo publicás cuando querés con el botón de venta oficial, y desde el panel seguís las ventas, generás cortesías y códigos de descuento, y controlás la puerta con el escáner de QR.'
   }
 ];
 
@@ -74,18 +82,18 @@ export default function Ayuda() {
           {[
             {
               icon: <ShieldCheck className="w-5 h-5 text-primary" />,
-              title: "Transparencia Total",
-              desc: "Compras 100% encriptadas y directas. Sin intermediarios ni comisiones fantasma."
+              title: "Precio final a la vista",
+              desc: "El cargo por servicio se muestra en el checkout antes de que pagues. Después no se suma nada."
             },
             {
               icon: <Ticket className="w-5 h-5 text-primary" />,
-              title: "QR Auténtico",
-              desc: "Acceso intransferible e incorruptible. Tu pase oficial se convalida al ingreso."
+              title: "QR único por entrada",
+              desc: "En la puerta se escanea una sola vez. Si el mismo código vuelve a pasar, el escáner lo rechaza."
             },
             {
               icon: <Sparkles className="w-5 h-5 text-primary" />,
-              title: "Transferencias",
-              desc: "Pasale la entrada a cualquier mail de forma automática. El sistema invalida el QR viejo."
+              title: "Transferencia oficial",
+              desc: "Se la pasás por mail y solo esa persona la puede reclamar. Al reclamarla, tu QR viejo queda invalidado."
             }
           ].map((item, i) => (
             <Card key={i} className="border border-white/5 bg-white/[0.01] rounded-3xl p-6 space-y-3">
@@ -156,7 +164,12 @@ export default function Ayuda() {
         <div className="max-w-2xl mx-auto text-center mt-20 p-8 border border-white/5 bg-white/[0.01] rounded-[2rem] space-y-4">
           <p className="text-xs font-sans tracking-[0.2em] font-extrabold uppercase text-primary">¿No encontraste lo que buscabas?</p>
           <p className="text-xs text-muted-foreground leading-relaxed font-sans max-w-md mx-auto">
-            Mandanos capturas o el mail con el que compraste, te resolvemos el problema en minutos. Te esperamos adentro.
+            Escribinos con el mail que usaste para comprar, tu DNI y el número de orden: con esos tres datos encontramos tu compra y te decimos cómo seguir. Te esperamos adentro.
+          </p>
+          <p className="text-xs text-muted-foreground/70 leading-relaxed font-sans max-w-md mx-auto">
+            También tenemos guías más largas en{' '}
+            <a href="/blog" className="text-primary hover:underline font-bold">el blog de ENTRÁ</a>: cómo funciona el QR,
+            qué hacer si no te llegó la entrada y qué necesitás en la puerta el día del evento.
           </p>
           <div className="pt-2">
             <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
