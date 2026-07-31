@@ -148,6 +148,7 @@ export default function EventDashboard() {
   const [tickets, setTickets] = useState<any[]>([]);
   const [discountCodes, setDiscountCodes] = useState<any[]>([]);
   const [emailLogs, setEmailLogs] = useState<any[]>([]);
+  const [checkins, setCheckins] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'resumen' | 'tickets' | 'cortesias' | 'ventas' | 'asistentes' | 'descuentos' | 'envios'>('resumen');
   const [isSaving, setIsSaving] = useState(false);
@@ -240,6 +241,59 @@ export default function EventDashboard() {
   const realTicketsSold = paidActiveTickets.length;
   const realTotalRevenue = paidActiveTickets.reduce((s, t) => s + (Number(t.price) || 0), 0);
   const validOrdersCount = new Set(paidActiveTickets.map(t => t.orderId).filter(Boolean)).size;
+
+  // ============ LA MISMA ENTRADA USADA DOS VECES ============
+  // El control de acceso funciona sin internet, y ese es el punto: se puede
+  // operar una puerta en un predio sin señal. El costo es que, con la red
+  // caída, cada teléfono solo conoce lo que él mismo escaneó, así que con dos
+  // puestos trabajando a la vez la misma entrada puede pasar por los dos. Al
+  // reconectar, las dos escrituras se sincronizan y el ticket queda 'usado'
+  // como si nada hubiera pasado: el ticket guarda el ÚLTIMO ingreso, no todos.
+  //
+  // Impedirlo sin red es imposible (los dos teléfonos están incomunicados por
+  // definición). Lo que sí se puede es no perder la evidencia: cada ingreso
+  // queda firmado con el puesto que lo validó, y acá se cruzan los registros
+  // para mostrarle al productor exactamente qué entradas pasaron dos veces.
+  // Sale de checkins y no de tickets porque es el único lugar donde queda
+  // asentado CADA ingreso.
+  const ingresosDuplicados = (() => {
+    const porTicket = new Map<string, any[]>();
+    for (const c of checkins) {
+      if (c.status !== 'success' || !c.ticketId) continue;
+      const lista = porTicket.get(c.ticketId) || [];
+      lista.push(c);
+      porTicket.set(c.ticketId, lista);
+    }
+
+    const casos: Array<{
+      ticketId: string; nombre: string; tipo: string; veces: number; puestos: string[];
+    }> = [];
+
+    for (const [ticketId, lista] of porTicket) {
+      if (lista.length < 2) continue;
+      // Un ticket multi-día ingresa una vez por jornada de forma legítima: dos
+      // ingresos en días distintos NO son un duplicado. Solo cuenta si cayeron
+      // el mismo día.
+      const porDia = new Map<string, any[]>();
+      for (const c of lista) {
+        const d = c.timestamp?.toDate ? c.timestamp.toDate() : new Date(c.timestamp);
+        const clave = isNaN(d?.getTime?.() ?? NaN) ? 'sin-fecha' : d.toISOString().slice(0, 10);
+        porDia.set(clave, [...(porDia.get(clave) || []), c]);
+      }
+      for (const delDia of porDia.values()) {
+        if (delDia.length < 2) continue;
+        const puestos = [...new Set(delDia.map((c) => c.puesto || c.deviceId || 'puesto sin identificar'))];
+        casos.push({
+          ticketId,
+          nombre: delDia[0].attendeeName || 'Sin nombre',
+          tipo: delDia[0].ticketType || '',
+          veces: delDia.length,
+          puestos,
+        });
+      }
+    }
+    return casos;
+  })();
 
   // ============ DE DÓNDE VINIERON LAS VENTAS ============
   // Agrupa las órdenes confirmadas por el origen que se guardó al crearlas.
@@ -368,12 +422,23 @@ export default function EventDashboard() {
       console.error('[EventDashboard] No se pudieron leer email_logs:', err);
     });
 
+    // 6. Check-ins: hacen falta para detectar la misma entrada usada dos veces
+    // (ver ingresosDuplicados). El ticket solo guarda el ÚLTIMO ingreso, así que
+    // sin esta colección el doble escaneo del modo offline es invisible.
+    const qCheckins = query(collection(db, 'checkins'), where('eventId', '==', id));
+    const unsubCheckins = onSnapshot(qCheckins, (snap) => {
+      setCheckins(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, (err) => {
+      console.error('[EventDashboard] No se pudieron leer checkins:', err);
+    });
+
     return () => {
       unsubEvent();
       unsubOrders();
       unsubTickets();
       unsubDiscounts();
       unsubEmailLogs();
+      unsubCheckins();
     };
   }, [id, user]);
 
@@ -1332,6 +1397,39 @@ El equipo de ENTRÁ`;
       {/* ==================== RESUMEN ==================== */}
       {activeTab === 'resumen' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid gap-6 md:grid-cols-2">
+          {/* La misma entrada usada dos veces. Solo aparece si pasó. */}
+          {ingresosDuplicados.length > 0 && (
+            <div className="bg-red-950/30 rounded-3xl border border-red-500/30 p-6 md:col-span-2">
+              <h3 className="font-bold text-red-300 mb-1">
+                {ingresosDuplicados.length === 1
+                  ? 'Una entrada se usó dos veces'
+                  : `${ingresosDuplicados.length} entradas se usaron dos veces`}
+              </h3>
+              <p className="text-xs text-red-200/70 mb-4">
+                Pasa cuando dos puestos escanean sin internet: mientras están sin señal, cada teléfono
+                solo conoce lo que escaneó él. Revisá con el equipo de puerta.
+              </p>
+              <div className="space-y-2">
+                {ingresosDuplicados.slice(0, 20).map((caso) => (
+                  <div key={caso.ticketId} className="flex justify-between items-start gap-3 py-2 border-b border-red-500/10 last:border-0">
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold truncate">{caso.nombre}</p>
+                      <p className="text-xs text-red-200/60 truncate">
+                        {caso.tipo && `${caso.tipo} · `}{caso.puestos.join(' y ')}
+                      </p>
+                    </div>
+                    <span className="text-xs font-bold text-red-300 shrink-0">{caso.veces} ingresos</span>
+                  </div>
+                ))}
+                {ingresosDuplicados.length > 20 && (
+                  <p className="text-[10px] text-red-200/50 pt-1">
+                    y {ingresosDuplicados.length - 20} más
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Ticket breakdown */}
           <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
             <h3 className="font-bold mb-4">Desglose por tipo de ticket</h3>

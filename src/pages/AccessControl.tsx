@@ -14,6 +14,7 @@ import { collection, query, orderBy, limit, onSnapshot, addDoc, Timestamp, doc, 
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { useAuth } from '@/src/context/AuthContext';
 import { cn } from '@/lib/utils';
+import { firmaPuesto, puestoNombre, guardarPuestoNombre } from '@/src/lib/puesto';
 
 interface EventData {
   id: string;
@@ -44,6 +45,9 @@ export default function AccessControl() {
   const [events, setEvents] = useState<EventData[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
   const [eventSearch, setEventSearch] = useState('');
+
+  // Cómo se llama esta puerta. Se guarda en el teléfono y viaja con cada ingreso.
+  const [nombrePuesto, setNombrePuesto] = useState(() => puestoNombre());
 
   // Estado de conexión: para avisarle al operador que está validando offline.
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
@@ -373,6 +377,7 @@ export default function AccessControl() {
           addDoc(collection(db, 'checkins'), {
             ticketId: ticketDoc.id, attendeeName: buyerName, ticketType,
             timestamp: Timestamp.now(), status: 'error', eventId: selectedEvent.id,
+            ...firmaPuesto(),
           }).catch((e) => console.warn('checkin log (denegado multi-día) diferido/falló:', e));
           return;
         }
@@ -387,6 +392,7 @@ export default function AccessControl() {
         addDoc(collection(db, 'checkins'), {
           ticketId: ticketDoc.id, attendeeName: buyerName, ticketType,
           timestamp: Timestamp.now(), status: 'success', eventId: selectedEvent.id,
+          ...firmaPuesto(),
         }).catch((e) => console.warn('checkin log (ingreso multi-día) diferido/falló:', e));
         triggerFeedback('success', '¡Ingreso autorizado!', buyerName, ticketType, `Día ${fmtDayShort(today)}`);
         return;
@@ -411,6 +417,7 @@ export default function AccessControl() {
           timestamp: Timestamp.now(),
           status: 'error',
           eventId: selectedEvent.id,
+          ...firmaPuesto(),
         }).catch((e) => console.warn('checkin log (denegado) diferido/falló:', e));
         return;
       }
@@ -431,7 +438,8 @@ export default function AccessControl() {
         ticketType: ticketType,
         timestamp: Timestamp.now(),
         status: 'success',
-        eventId: selectedEvent.id
+        eventId: selectedEvent.id,
+        ...firmaPuesto(),
       }).catch((e) => console.warn('checkin log (ingreso) diferido/falló:', e));
 
       triggerFeedback('success', '¡Ingreso autorizado!', buyerName, ticketType);
@@ -551,9 +559,37 @@ export default function AccessControl() {
       `}</style>
 
       {!isOnline && (
-        <div className="rounded-xl border border-yellow-500/30 bg-yellow-950/30 px-4 py-3 text-sm text-yellow-300 flex items-center gap-2">
-          <span className="inline-block w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
-          Sin conexión — seguís validando con los datos ya cargados. Los ingresos se sincronizan solos cuando vuelva internet.
+        <div className="rounded-xl border border-yellow-500/30 bg-yellow-950/30 px-4 py-3 text-sm text-yellow-300 space-y-1">
+          <div className="flex items-center gap-2 font-bold">
+            <span className="inline-block w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+            Sin conexión — seguís validando con los datos ya cargados.
+          </div>
+          {/* El límite real, dicho donde el operador lo puede usar: sin red este
+              teléfono solo sabe lo que él mismo escaneó. Esconderlo no lo hace
+              desaparecer, y el que está en la puerta es el único que puede
+              reaccionar a tiempo. */}
+          <p className="text-yellow-200/80 text-xs leading-relaxed">
+            Mientras no haya internet, este teléfono <b>solo conoce los ingresos que escaneó él</b>.
+            Si hay otra puerta trabajando al mismo tiempo, una entrada podría pasar por las dos.
+            Al reconectar, el panel del evento avisa si eso pasó y por qué puestos.
+            {selectedEvent && ` Este puesto es "${nombrePuesto || 'sin nombre'}".`}
+          </p>
+        </div>
+      )}
+
+      {/* Nombre del puesto: aparece con el evento ya elegido, arriba del escáner.
+          Sirve para que el registro de cada ingreso diga por qué puerta entró. */}
+      {selectedEvent && (
+        <div className="flex items-center gap-2 text-xs text-zinc-500">
+          <span className="shrink-0">Puesto:</span>
+          <Input
+            value={nombrePuesto}
+            onChange={(e) => { setNombrePuesto(e.target.value); guardarPuestoNombre(e.target.value); }}
+            placeholder="Puerta 1, VIP, Prensa…"
+            maxLength={40}
+            className="h-8 max-w-[220px] bg-white/5 border-white/10 text-xs"
+          />
+          <span className="hidden sm:inline text-zinc-600">queda registrado en cada ingreso</span>
         </div>
       )}
 
