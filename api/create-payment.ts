@@ -130,6 +130,24 @@ function telefono(bruto: string): { area_code?: string; number: string } | null 
 }
 
 /**
+ * CÓDIGO POSTAL para `payer.address`.
+ *
+ * Es la señal de domicilio que pidió MercadoPago en el ticket WCS-43463 y la
+ * única que se puede pedir sin romper la conversión: una dirección completa son
+ * tres campos más en el checkout, y cada campo cuesta ventas.
+ *
+ * Se manda SOLO el código postal, sin calle ni número inventados. Un domicilio
+ * a medias inventado es peor que ninguno para el motor de riesgo.
+ */
+function codigoPostal(bruto: unknown): { zip_code: string } | null {
+  const z = String(bruto ?? '').trim().toUpperCase().replace(/\s+/g, '');
+  // CPA argentino (C1414ABC) o el viejo de 4 dígitos (1414). Cualquier otra
+  // cosa se descarta en vez de mandar basura.
+  if (!/^[A-Z]?\d{4}[A-Z]{0,3}$/.test(z)) return null;
+  return { zip_code: z };
+}
+
+/**
  * ORIGEN DE LA VENTA (lo manda el navegador, ver src/lib/attribution.ts).
  *
  * Es un dato informativo: no toca precio, ni stock, ni permisos. Aun así se
@@ -273,6 +291,7 @@ export default async function handler(req: any, res: any) {
       buyerName: buyer.name,
       buyerDni: buyer.dni,
       buyerPhone: buyer.phone || '',
+      buyerZip: codigoPostal(buyer.zip)?.zip_code || '',
       eventId,
       eventTitle: event.title,
       items: normalizedItems,
@@ -354,6 +373,7 @@ export default async function handler(req: any, res: any) {
                   buyerName: buyer.name,
                   buyerEmail: buyer.email,
                   buyerPhone: buyer.phone || '',
+      buyerZip: codigoPostal(buyer.zip)?.zip_code || '',
                   buyerDni: buyer.dni,
                   ticketType: it.type,
                   price: 0,
@@ -447,6 +467,7 @@ export default async function handler(req: any, res: any) {
     const nombrePartido = partirNombre(buyer.name);
     const docComprador = identificacion(buyer.dni);
     const telComprador = buyer.phone ? telefono(buyer.phone) : null;
+    const cpComprador = buyer.zip ? codigoPostal(buyer.zip) : null;
 
     const prefBody: any = {
       items: [{
@@ -468,6 +489,7 @@ export default async function handler(req: any, res: any) {
         email: buyer.email,
         ...(docComprador ? { identification: docComprador } : {}),
         ...(telComprador ? { phone: telComprador } : {}),
+        ...(cpComprador ? { address: cpComprador } : {}),
       },
       external_reference: orderRef.id,
       // En marketplace el pago vive en la cuenta del PRODUCTOR, así que pasamos su
@@ -504,7 +526,7 @@ export default async function handler(req: any, res: any) {
       minimo.payer = { name: buyer.name, email: buyer.email };
       preference = await new Preference(mp).create({ body: minimo });
     }
-    console.log(`[create-payment] orden=${orderRef.id} buyer=${buyer.email} split=${isMarketplace} organizer=${organizerId} fee=${feeConIva} (${comisionPct}%) total=${total} pref=${preference.id} notif=${prefBody.notification_url} datosAntifraude=${datosCompletos ? 'completos' : 'MINIMOS(fallback)'} doc=${docComprador ? 'si' : 'no'} tel=${telComprador ? 'si' : 'no'}`);
+    console.log(`[create-payment] orden=${orderRef.id} buyer=${buyer.email} split=${isMarketplace} organizer=${organizerId} fee=${feeConIva} (${comisionPct}%) total=${total} pref=${preference.id} notif=${prefBody.notification_url} datosAntifraude=${datosCompletos ? 'completos' : 'MINIMOS(fallback)'} doc=${docComprador ? 'si' : 'no'} tel=${telComprador ? 'si' : 'no'} cp=${cpComprador ? 'si' : 'no'}`);
 
     // MP_SANDBOX=true → devolvemos el link de PRUEBA (sandbox_init_point) para testear el
     // flujo completo con tarjetas de prueba, sin cobrar de verdad. Sin la flag, link real.
