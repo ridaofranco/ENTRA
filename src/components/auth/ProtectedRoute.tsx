@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/src/context/AuthContext';
 import { Button } from '@/src/components/ui/button';
@@ -10,13 +10,49 @@ interface ProtectedRouteProps {
 }
 
 // Pantalla para compradores que intentan entrar al panel de productor.
-// Antes esto era un rebote mudo al home: la cuenta nacia como "buyer",
-// el panel exigia "organizer" y el usuario terminaba en una pared sin
-// ninguna explicacion. El alta de productor hoy es manual, con el equipo.
+//
+// ANTES: la cuenta nacia como "buyer", el panel exigia "organizer" y el alta se
+// hacia A MANO por WhatsApp. O sea que para empezar a vender entradas habia que
+// esperar a que alguien de ENTRA estuviera del otro lado. Con eso se perdia al
+// que decidia a las once de la noche que queria publicar su evento.
+//
+// AHORA: el alta es de un clic. El freno no esta en la cuenta, esta donde
+// importa de verdad: el evento nace en "pending" (lo obliga la propia regla de
+// Firestore) y no se ve en la cartelera ni se puede comprar hasta que ENTRA lo
+// aprueba. Abrir la puerta no es abrir la mano.
 function ProducerActivationScreen() {
-  const whatsappUrl = `https://wa.me/5491171540675?text=${encodeURIComponent(
-    'Hola, quiero vender entradas con ENTRÁ'
-  )}`;
+  const { profile, user, updateRole, resendVerification } = useAuth();
+  const [activando, setActivando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [verificacionEnviada, setVerificacionEnviada] = useState(false);
+
+  // El mail verificado NO es un capricho: la regla de Firestore que permite
+  // crear eventos exige `isVerified()`. Sin esto, el productor se activaria,
+  // cargaria todo el evento y recien al guardar le explotaria un error de
+  // permisos que no puede entender. Mejor decirselo antes.
+  const mailVerificado = user?.emailVerified === true;
+
+  const activar = async () => {
+    setActivando(true);
+    setError(null);
+    try {
+      await updateRole('organizer');
+      // El perfil se refresca solo por el contexto y la ruta deja de rebotar.
+      // Aviso de bienvenida: si falla, no se toca la activacion, que ya paso.
+      fetch('/api/organizador', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'welcome',
+          email: user?.email || '',
+          nombre: profile?.displayName || user?.displayName || '',
+        }),
+      }).catch(() => {});
+    } catch (e: any) {
+      setError(e?.message || 'No pudimos activar la cuenta. Probá de nuevo.');
+      setActivando(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-6 pt-32 pb-20">
@@ -28,27 +64,60 @@ function ProducerActivationScreen() {
           </span>
 
           <h1 className="text-3xl md:text-4xl font-heading font-black tracking-tighter uppercase text-white leading-none">
-            Tu cuenta de productor{' '}
-            <span className="orange-text-gradient">se activa con el equipo.</span>
+            Empezá a vender{' '}
+            <span className="orange-text-gradient">tus entradas.</span>
           </h1>
 
           <p className="text-sm text-muted-foreground font-sans leading-relaxed">
-            Tu cuenta ya está creada, pero el panel de productor se habilita a mano
-            con el equipo de ENTRÁ. Escribinos por WhatsApp y coordinamos el alta
-            para que puedas vender tus entradas.
+            Activá tu cuenta de productor y cargá tu evento ahora mismo. Cuando lo termines
+            lo revisamos y lo publicamos, normalmente el mismo día. No hace falta que
+            hables con nadie para empezar.
           </p>
 
+          {!mailVerificado && (
+            <div className="rounded-2xl border border-yellow-500/30 bg-yellow-950/30 p-4 text-left space-y-2">
+              <p className="text-xs text-yellow-200 leading-relaxed">
+                Antes de publicar un evento tenés que <b>verificar tu mail</b>. Te mandamos un
+                link cuando te registraste{user?.email ? ` a ${user.email}` : ''}.
+              </p>
+              <button
+                type="button"
+                onClick={async () => { await resendVerification(); setVerificacionEnviada(true); }}
+                className="text-xs font-bold text-yellow-400 underline"
+              >
+                {verificacionEnviada ? 'Te lo reenviamos, revisá el correo' : 'Reenviarme el mail de verificación'}
+              </button>
+            </div>
+          )}
+
+          {error && <p className="text-xs text-red-400">{error}</p>}
+
           <div className="flex flex-col gap-3 pt-2">
-            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full">
-              <Button className="w-full h-14 orange-gradient border-none text-white rounded-xl font-heading font-black uppercase tracking-wide gap-2.5 transition-all hover:brightness-110">
-                <WhatsAppIcon className="w-5 h-5" />
-                Hablar por WhatsApp
+            <Button
+              onClick={activar}
+              disabled={activando}
+              className="w-full h-14 orange-gradient border-none text-white rounded-xl font-heading font-black uppercase tracking-wide transition-all hover:brightness-110"
+            >
+              {activando ? 'Activando…' : 'Activar mi cuenta de productor'}
+            </Button>
+            <a
+              href={`https://wa.me/5491171540675?text=${encodeURIComponent('Hola, tengo una duda para vender entradas con ENTRÁ')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full"
+            >
+              <Button
+                variant="outline"
+                className="w-full h-12 rounded-xl bg-white/[0.03] border border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20 font-bold text-xs uppercase tracking-wider gap-2"
+              >
+                <WhatsAppIcon className="w-4 h-4" />
+                Tengo una duda
               </Button>
             </a>
             <Link to="/" className="w-full">
               <Button
                 variant="outline"
-                className="w-full h-12 rounded-xl bg-white/[0.03] border border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20 font-bold text-xs uppercase tracking-wider"
+                className="w-full h-12 rounded-xl bg-transparent border-0 text-muted-foreground hover:text-white font-bold text-xs uppercase tracking-wider"
               >
                 Volver al inicio
               </Button>
@@ -72,9 +141,21 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     );
   }
 
-  // Not logged in → redirect to login page
+  // Not logged in → redirect to login page.
+  //
+  // El destino va por `?redirect=`, que es lo que Auth.tsx lee de verdad. Antes
+  // se mandaba en `state.from` y NADIE lo leía: el que tocaba "Crear mi evento"
+  // sin sesión se logueaba y aterrizaba en su perfil, justo en el momento de más
+  // intención. Se manda igual el state por si algo más lo usa.
   if (!user) {
-    return <Navigate to="/auth/login" state={{ from: location }} replace />;
+    const destino = `${location.pathname}${location.search}`;
+    return (
+      <Navigate
+        to={`/auth/login?redirect=${encodeURIComponent(destino)}`}
+        state={{ from: location }}
+        replace
+      />
+    );
   }
 
   // Cuenta suspendida por un admin → bloquear el acceso a rutas protegidas.

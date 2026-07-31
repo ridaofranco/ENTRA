@@ -11,13 +11,9 @@ import { seedEventsIfMissing } from '@/src/services/eventService';
 import { useAuth } from '@/src/context/AuthContext';
 import HeroAtmosphere from '@/src/components/HeroAtmosphere';
 import PosterFallback from '@/src/components/PosterFallback';
-import { WhatsAppIcon } from '@/src/components/icons/WhatsAppIcon';
 import { eventPath } from '@/src/lib/slug';
 import { isEventFinished } from '@/src/lib/utils';
 import { useLang, textos, dateLocale } from '@/src/lib/i18n';
-
-// Mismo numero y mismo mensaje que usa la pagina de Productores.
-const whatsappProductores = 'https://wa.me/5491171540675?text=Hola!%20Quiero%20vender%20mis%20eventos%20con%20ENTRÁ';
 
 interface Event {
   id: string;
@@ -122,12 +118,13 @@ export default function Landing() {
                 </div>
 
                 <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 pt-4">
-                  <a href={whatsappProductores} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
-                    <Button className="w-full sm:w-auto h-14 px-6 sm:px-10 orange-gradient border-none text-white text-sm sm:text-base rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide gap-2">
-                      <WhatsAppIcon className="w-5 h-5 shrink-0" />
+                  {/* Al alta directa, no a WhatsApp: crear la cuenta es un clic y el
+                      evento igual pasa por revisión antes de salir a la venta. */}
+                  <Link to="/crear-evento" className="w-full sm:w-auto">
+                    <Button className="w-full sm:w-auto h-14 px-6 sm:px-10 orange-gradient border-none text-white text-sm sm:text-base rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
                       {t.home.prodCta}
                     </Button>
-                  </a>
+                  </Link>
                   <Link to="/eventos" className="w-full sm:w-auto">
                     <Button variant="outline" className="w-full sm:w-auto h-14 px-6 sm:px-10 rounded-xl bg-white/[0.03] border border-white/10 text-white text-sm sm:text-base hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide">
                       {t.home.verCartelera}
@@ -266,12 +263,11 @@ export default function Landing() {
               {t.home.vacioTexto}
             </p>
             <div className="pt-2">
-              <a href={whatsappProductores} target="_blank" rel="noopener noreferrer">
-                <Button className="h-12 px-8 orange-gradient border-none text-white rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase text-xs tracking-wide gap-2">
-                  <WhatsAppIcon className="w-4 h-4" />
+              <Link to="/crear-evento">
+                <Button className="h-12 px-8 orange-gradient border-none text-white rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase text-xs tracking-wide">
                   {t.home.vacioCta}
                 </Button>
-              </a>
+              </Link>
             </div>
           </div>
         )}

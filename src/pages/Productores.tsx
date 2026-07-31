@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -66,15 +67,18 @@ export default function Productores() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 mt-8">
-              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+              {/* El CTA principal ya no manda a WhatsApp: el alta es de un clic y el
+                  evento igual pasa por revisión antes de publicarse. WhatsApp queda
+                  como la salida del que tiene una duda, no como la puerta de entrada. */}
+              <Link to="/crear-evento" className="w-full sm:w-auto">
                 <Button className="w-full sm:w-auto h-14 px-10 orange-gradient border-none text-white text-base rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
-                  Producir con ENTRÁ
+                  Crear mi evento
                 </Button>
-              </a>
+              </Link>
               <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
                 <Button variant="outline" className="w-full sm:w-auto h-14 px-10 rounded-xl bg-white/[0.03] border border-white/10 text-white text-base hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide gap-2.5">
                   <WhatsAppIcon className="w-5 h-5" />
-                  Hablar por WhatsApp
+                  Tengo una duda
                 </Button>
               </a>
             </div>
@@ -309,18 +313,18 @@ export default function Productores() {
             Producí con ENTRÁ.
           </h2>
           <p className="text-muted-foreground font-sans text-sm max-w-md mx-auto leading-relaxed mt-6">
-            Te creamos tu cuenta de organizador sin costo. Cobrás el 100% neto de cada entrada desde el primer día.
+            Creás tu cuenta y cargás tu evento ahora mismo, sin costo. Lo revisamos y lo publicamos, normalmente el mismo día. Cobrás el 100% neto de cada entrada desde el primero.
           </p>
           <div className="flex flex-col sm:flex-row sm:flex-wrap justify-center gap-3 mt-10 max-w-md mx-auto sm:max-w-none">
-            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+            <Link to="/crear-evento" className="w-full sm:w-auto">
               <Button className="w-full sm:w-auto h-16 px-10 orange-gradient border-none text-white text-lg rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
-                Quiero vender entradas
+                Crear mi evento
               </Button>
-            </a>
+            </Link>
             <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
               <Button variant="outline" className="w-full sm:w-auto h-16 px-10 rounded-xl bg-white/[0.03] border border-white/10 text-white text-lg hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide gap-2.5">
                 <WhatsAppIcon className="w-5 h-5" />
-                Hablar por WhatsApp
+                Tengo una duda
               </Button>
             </a>
           </div>

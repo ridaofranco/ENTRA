@@ -381,3 +381,124 @@ export async function sendEventReminderEmail(d: ReminderData): Promise<boolean> 
     return false;
   }
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// 4) BIENVENIDA AL PRODUCTOR (se activó la cuenta)
+// ════════════════════════════════════════════════════════════════════════════
+// Hasta acá el alta de productor se hacía a mano por WhatsApp y no había ningún
+// mail: el que se activaba quedaba solo frente a un panel vacío. Este mail es
+// el que reemplaza esa conversación, así que tiene que decir las tres cosas que
+// se decían ahí: cómo se carga un evento, qué pasa después, y cuánto cobra ENTRÁ.
+
+export interface WelcomeProducerData {
+  email: string;
+  nombre?: string;
+}
+
+export function buildWelcomeProducerHTML(d: WelcomeProducerData): string {
+  const nombre = firstNameOf(d.nombre);
+  const saludo = nombre ? `Hola ${esc(nombre)},` : 'Hola,';
+
+  return (
+    shellOpen('Tu cuenta de productor está activa', 'Ya podés cargar tu primer evento en ENTRÁ.') +
+    hero(
+      { texto: 'Cuenta activa', bg: '#FFF1E7', color: '#EA580C' },
+      'Ya pod&eacute;s cargar tu evento',
+      `${saludo} tu cuenta de productor en ENTR&Aacute; qued&oacute; activa. No hace falta que hables con nadie para empezar.`,
+    ) +
+    seccion('C&Oacute;MO SIGUE', [
+      '<b>1.</b> Entr&aacute; a tu panel y carg&aacute; tu evento: fecha, lugar, tipos de entrada y precios.',
+      '<b>2.</b> Cuando lo termin&aacute;s, lo revisamos. Es rev&iacute;si&oacute;n humana y suele salir el mismo d&iacute;a.',
+      '<b>3.</b> Apenas lo aprobamos te avisamos por mail y tu evento queda a la venta.',
+    ]) +
+    seccion('LO QUE TEN&Eacute;S QUE SABER', [
+      'El comprador paga los cargos, as&iacute; que <b>vos cobr&aacute;s el precio completo</b> de tu entrada.',
+      'En la puerta valid&aacute;s cada QR desde el celular, sin comprar ning&uacute;n lector.',
+      'Si conect&aacute;s tu cuenta de MercadoPago, la plata te entra <b>directo a vos</b>.',
+      'Para publicar necesit&aacute;s tener el mail verificado. Si no lo hiciste, busc&aacute; el mail de verificaci&oacute;n.',
+    ]) +
+    botonPrimario(`${PUBLIC_URL}/crear-evento`, 'Cargar mi evento') +
+    shellClose('Hola, acabo de activar mi cuenta de productor en ENTRÁ y tengo una duda')
+  );
+}
+
+export async function sendWelcomeProducerEmail(d: WelcomeProducerData): Promise<boolean> {
+  try {
+    if (!d.email) return false;
+    const r = await deliver({
+      to: d.email,
+      subject: 'Tu cuenta de productor en ENTRÁ ya está activa',
+      html: buildWelcomeProducerHTML(d),
+      attachments: [],
+    });
+    if (!r.ok) console.error('[event-mails] bienvenida de productor no salió:', r.error);
+    return !!r.ok;
+  } catch (e) {
+    console.error('[event-mails] error mandando bienvenida:', e instanceof Error ? e.message : String(e));
+    return false;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// 5) TU EVENTO FUE APROBADO
+// ════════════════════════════════════════════════════════════════════════════
+// El evento pasaba de 'pending' a 'active' y el productor no se enteraba: tenía
+// que entrar a mirar. Este mail cierra el circuito y, sobre todo, le da el link
+// para compartir, que es lo único que va a querer hacer en ese momento.
+
+export interface EventApprovedData {
+  email: string;
+  nombre?: string;
+  eventTitle: string;
+  eventDate?: string;
+  eventVenue?: string;
+  eventUrl: string;
+}
+
+export function buildEventApprovedHTML(d: EventApprovedData): string {
+  const nombre = firstNameOf(d.nombre);
+  const saludo = nombre ? `Hola ${esc(nombre)},` : 'Hola,';
+
+  return (
+    shellOpen('Tu evento ya está publicado', `${d.eventTitle} está a la venta en ENTRÁ.`) +
+    hero(
+      { texto: 'Publicado', bg: '#DCFCE7', color: '#15803D' },
+      'Tu evento ya est&aacute; a la venta',
+      `${saludo} revisamos tu evento y lo publicamos. Ya se puede comprar.`,
+    ) +
+    eventCard({
+      etiqueta: 'Tu evento',
+      titulo: d.eventTitle,
+      lineas: [
+        d.eventDate ? `&#128197;&nbsp; ${esc(d.eventDate)}` : null,
+        d.eventVenue ? `&#128205;&nbsp; ${esc(d.eventVenue)}` : null,
+      ],
+      bordeColor: '#16A34A',
+      etiquetaColor: '#15803D',
+    }) +
+    seccion('AHORA', [
+      'Compart&iacute; el link de tu evento: es el mismo que van a usar para comprar.',
+      'Si le pon&eacute;s <b>?utm_source=instagram</b> al link que compart&iacute;s en cada red, vas a ver en tu panel de qu&eacute; canal vino cada venta.',
+      'El d&iacute;a del evento, entr&aacute; a Control de acceso desde el celular para validar los QR en la puerta.',
+    ]) +
+    botonPrimario(d.eventUrl, 'Ver mi evento publicado') +
+    shellClose('Hola, mi evento ya está publicado en ENTRÁ y tengo una duda')
+  );
+}
+
+export async function sendEventApprovedEmail(d: EventApprovedData): Promise<boolean> {
+  try {
+    if (!d.email) return false;
+    const r = await deliver({
+      to: d.email,
+      subject: `Tu evento ya está publicado: ${d.eventTitle}`,
+      html: buildEventApprovedHTML(d),
+      attachments: [],
+    });
+    if (!r.ok) console.error('[event-mails] aviso de aprobación no salió:', r.error);
+    return !!r.ok;
+  } catch (e) {
+    console.error('[event-mails] error mandando aviso de aprobación:', e instanceof Error ? e.message : String(e));
+    return false;
+  }
+}

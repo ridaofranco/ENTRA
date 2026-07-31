@@ -319,11 +319,44 @@ export default function CreateEvent() {
       };
       
       await setDoc(eventRef, eventData);
-      
+
       // Log the action
       await logAction('CREATE_EVENT_PENDING', 'events', eventId, { title: eventData.title });
-      
-      alert('Evento enviado a revisión. Un administrador lo revisará pronto.');
+
+      // AVISO A ENTRÁ. Es la pieza que reemplaza al WhatsApp: hasta acá el evento
+      // quedaba en 'pending' y nadie se enteraba, así que dependía de que alguien
+      // se acordara de mirar el panel. Se manda sin await y sin mirar la
+      // respuesta: el evento YA está creado, y un aviso que no sale no puede
+      // hacer que al productor le aparezca un error.
+      fetch('/api/organizador', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'event-submitted',
+          eventId,
+          eventTitle: eventData.title,
+          eventDate: eventData.isDateTBD
+            ? 'A confirmar'
+            : (eventData.date?.toDate?.()?.toLocaleString('es-AR', {
+                dateStyle: 'full', timeStyle: 'short',
+                timeZone: 'America/Argentina/Buenos_Aires',
+              }) || ''),
+          venue: eventData.venue,
+          location: eventData.location,
+          tickets: eventData.tickets,
+          // Cuánto puede llegar a recaudar si vende todo: es el dato que dice si
+          // este evento importa, y no está en ninguna pantalla del panel.
+          potencial: isFreeEvent
+            ? 'evento gratis'
+            : `$${eventData.tickets
+                .reduce((s: number, t: any) => s + (Number(t.price) || 0) * (Number(t.available) || 0), 0)
+                .toLocaleString('es-AR')}`,
+          organizerName: eventData.organizerName,
+          organizerEmail: eventData.organizerEmail,
+        }),
+      }).catch(() => {});
+
+      alert('Evento enviado a revisión. Te avisamos por mail apenas lo publiquemos.');
       navigate('/dashboard');
     } catch (error: any) {
       console.error("Error creating event:", error);

@@ -322,9 +322,35 @@ export default function AdminDashboard() {
   };
 
   const handleEventStatusChange = async (eventId: string, status: 'active' | 'paused') => {
+    // Se guarda el estado ANTERIOR: solo el salto de "pending" a "active" es una
+    // aprobación. Reactivar un evento pausado no lo es, y mandarle "tu evento fue
+    // aprobado" al productor cada vez que se despausa sería mentirle.
+    const anterior = events.find(e => e.id === eventId);
+    const esAprobacion = anterior?.status === 'pending' && status === 'active';
     try {
       await updateDoc(doc(db, 'events', eventId), { status, updatedAt: Timestamp.now() });
       setEvents(prev => prev.map(e => (e.id === eventId ? { ...e, status } : e)));
+
+      if (esAprobacion && anterior) {
+        // Sin await: el evento ya está publicado, que es lo que importa. Si el
+        // mail falla, no puede hacer que la publicación parezca fallida.
+        fetch('/api/organizador', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'event-approved',
+            eventId,
+            eventTitle: anterior.title,
+            eventDate: (anterior as any).date?.toDate?.()?.toLocaleDateString('es-AR', {
+              weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+              timeZone: 'America/Argentina/Buenos_Aires',
+            }) || '',
+            venue: (anterior as any).venue || '',
+            organizerEmail: (anterior as any).organizerEmail || '',
+            organizerName: (anterior as any).organizerName || '',
+          }),
+        }).catch(() => {});
+      }
     } catch (error) {
       console.error('Error updating event status:', error);
       alert('No se pudo cambiar el estado del evento.');

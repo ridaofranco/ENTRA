@@ -266,9 +266,43 @@ export default function Dashboard() {
 
   const hasPendingEvents = isSuperAdmin && events.some(e => e.status === 'pending');
 
+  // Los eventos del PRODUCTOR que están esperando aprobación. Hasta acá su único
+  // indicio era una etiqueta chiquita que decía "Pendiente" al lado del evento,
+  // que no explica nada: ni qué significa, ni cuánto tarda, ni si tiene que
+  // hacer algo. El que carga un evento a la noche y no ve señales asume que algo
+  // salió mal y termina escribiendo por WhatsApp, que es justo lo que queremos
+  // sacar del medio.
+  const misEventosEnRevision = !isSuperAdmin ? events.filter(e => e.status === 'pending') : [];
+
   // ==================== RENDER ====================
   return (
     <div className="pt-32 pb-20 px-6 max-w-6xl mx-auto space-y-6">
+      {/* Al productor: sus eventos en revisión, explicado */}
+      {misEventosEnRevision.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-5 flex items-start gap-4">
+            <div className="w-10 h-10 bg-orange-500/20 text-orange-500 rounded-xl flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-orange-400 font-bold text-sm">
+                {misEventosEnRevision.length === 1
+                  ? 'Tu evento está en revisión'
+                  : `Tenés ${misEventosEnRevision.length} eventos en revisión`}
+              </p>
+              <p className="text-orange-400/70 text-xs leading-relaxed">
+                {misEventosEnRevision.length === 1 ? 'Lo revisamos' : 'Los revisamos'} a mano antes de publicar
+                {misEventosEnRevision.length === 1 ? 'lo' : 'los'}, normalmente el mismo día. Te avisamos por mail
+                apenas {misEventosEnRevision.length === 1 ? 'esté' : 'estén'} a la venta. No tenés que hacer nada más.
+              </p>
+              <p className="text-orange-400/50 text-[11px] pt-1">
+                Mientras tanto podés seguir editándolo: los cambios se revisan junto con el evento.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Admin Pending Alert */}
       {hasPendingEvents && (
         <motion.div 

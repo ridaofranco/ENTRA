@@ -157,7 +157,7 @@ const es = {
     prodTituloD: '.',
     prodBajada:
       'Publicás tu evento y tu público compra sin crearse cuenta. Los cargos los paga el comprador, así vos cobrás el precio completo de tu entrada. En la puerta validás cada QR desde el celular.',
-    prodCta: 'Quiero vender mis entradas',
+    prodCta: 'Crear mi evento',
     verCartelera: 'Ver la cartelera',
     compradorTituloA: 'Acceso a',
     compradorTituloB: 'experiencias',
@@ -470,7 +470,7 @@ const en: typeof es = {
     prodTituloD: ' of it.',
     prodBajada:
       'Publish your event and your audience buys without creating an account. The buyer covers the fees, so you get the full face value of your ticket. At the door you validate every QR code from your phone.',
-    prodCta: 'I want to sell my tickets',
+    prodCta: 'Create my event',
     verCartelera: 'See what’s on',
     compradorTituloA: 'Access to',
     compradorTituloB: 'live',
