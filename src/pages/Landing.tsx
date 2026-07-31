@@ -14,6 +14,7 @@ import PosterFallback from '@/src/components/PosterFallback';
 import { WhatsAppIcon } from '@/src/components/icons/WhatsAppIcon';
 import { eventPath } from '@/src/lib/slug';
 import { isEventFinished } from '@/src/lib/utils';
+import { useLang, textos, dateLocale } from '@/src/lib/i18n';
 
 // Mismo numero y mismo mensaje que usa la pagina de Productores.
 const whatsappProductores = 'https://wa.me/5491171540675?text=Hola!%20Quiero%20vender%20mis%20eventos%20con%20ENTRÁ';
@@ -32,6 +33,9 @@ interface Event {
 
 export default function Landing() {
   const { user } = useAuth();
+  const lang = useLang();
+  const t = textos(lang);
+  const loc = dateLocale(lang);
   const [featuredEvents, setFeaturedEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -74,7 +78,7 @@ export default function Landing() {
 
   const formatDate = (date: any) => {
     if (date?.toDate) {
-      return date.toDate().toLocaleDateString('es-AR', {
+      return date.toDate().toLocaleDateString(loc, {
         weekday: 'short', day: 'numeric', month: 'short'
       });
     }
@@ -108,14 +112,12 @@ export default function Landing() {
               <>
                 <div className="space-y-6">
                   <h1 className="text-[clamp(2rem,10vw,2.75rem)] sm:text-6xl md:text-7xl lg:text-[84px] font-heading font-black tracking-tighter leading-[0.95] sm:leading-[0.88] uppercase select-none break-words">
-                    Tu ticketera.<br />
-                    Vos cobrás<br />
-                    el <span className="orange-text-gradient">100%</span>.
+                    {t.home.prodTituloA}<br />
+                    {t.home.prodTituloB}<br />
+                    {t.home.prodTituloC}<span className="orange-text-gradient">100%</span>{t.home.prodTituloD}
                   </h1>
                   <p className="max-w-2xl text-base sm:text-lg text-muted-foreground leading-relaxed font-sans">
-                    Publicás tu evento y tu público compra sin crearse cuenta. Los cargos los paga
-                    el comprador, así vos cobrás el precio completo de tu entrada. En la puerta
-                    validás cada QR desde el celular.
+                    {t.home.prodBajada}
                   </p>
                 </div>
 
@@ -123,12 +125,12 @@ export default function Landing() {
                   <a href={whatsappProductores} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
                     <Button className="w-full sm:w-auto h-14 px-6 sm:px-10 orange-gradient border-none text-white text-sm sm:text-base rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide gap-2">
                       <WhatsAppIcon className="w-5 h-5 shrink-0" />
-                      Quiero vender mis entradas
+                      {t.home.prodCta}
                     </Button>
                   </a>
                   <Link to="/eventos" className="w-full sm:w-auto">
                     <Button variant="outline" className="w-full sm:w-auto h-14 px-6 sm:px-10 rounded-xl bg-white/[0.03] border border-white/10 text-white text-sm sm:text-base hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide">
-                      Ver la cartelera
+                      {t.home.verCartelera}
                     </Button>
                   </Link>
                 </div>
@@ -137,25 +139,24 @@ export default function Landing() {
               <>
                 <div className="space-y-6">
                   <h1 className="text-[clamp(2rem,11vw,3rem)] sm:text-7xl md:text-8xl lg:text-[100px] font-heading font-black tracking-tighter leading-[0.9] sm:leading-[0.85] uppercase select-none break-words">
-                    Acceso a<br />
-                    <span className="orange-text-gradient">experiencias</span><br />
-                    en vivo.
+                    {t.home.compradorTituloA}<br />
+                    <span className="orange-text-gradient">{t.home.compradorTituloB}</span><br />
+                    {t.home.compradorTituloC}
                   </h1>
                   <p className="max-w-xl text-base sm:text-lg text-muted-foreground leading-relaxed font-sans">
-                    Comprá sin crearte cuenta. Te mandamos el QR al mail y con ese mismo mail
-                    después ves tus entradas en Mis Tickets.
+                    {t.home.compradorBajada}
                   </p>
                 </div>
 
                 <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 pt-4">
                   <Link to="/eventos" className="w-full sm:w-auto">
                     <Button className="w-full sm:w-auto h-14 px-6 sm:px-10 orange-gradient border-none text-white text-sm sm:text-base rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
-                      Ver la cartelera
+                      {t.home.verCartelera}
                     </Button>
                   </Link>
                   <Link to={user ? "/perfil" : "/auth/login"} className="w-full sm:w-auto">
                     <Button variant="outline" className="w-full sm:w-auto h-14 px-6 sm:px-10 rounded-xl bg-white/[0.03] border border-white/10 text-white text-sm sm:text-base hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide">
-                      Mis tickets
+                      {t.home.misTickets}
                     </Button>
                   </Link>
                 </div>
@@ -168,9 +169,9 @@ export default function Landing() {
       {/* 3. EVENTOS EN VIVO (Posters editoriales, sin cajas de e-commerce, limpio, aire) */}
       <section className="max-w-7xl mx-auto px-6 py-24 space-y-16">
         <div>
-          <span className="block text-[10px] font-bold text-primary uppercase tracking-[0.2em] font-sans">En Cartelera</span>
+          <span className="block text-[10px] font-bold text-primary uppercase tracking-[0.2em] font-sans">{t.home.enCartelera}</span>
           <h2 className="text-4xl md:text-5xl font-heading font-black tracking-tighter uppercase mt-5" style={{ lineHeight: '1.15' }}>
-            Lo que viene.
+            {t.home.loQueViene}
           </h2>
         </div>
 
@@ -187,13 +188,13 @@ export default function Landing() {
               const tks: any[] = (event as any).tickets || [];
               const totalAvail = tks.reduce((s, t) => s + (Number(t.available) || 0), 0);
               const soldOut = tks.length > 0 && tks.every(t => (Number(t.available) || 0) <= 0);
-              let statusText = "ABIERTO";
+              let statusText = t.home.abierto;
               let statusClasses = "border-primary/20 text-primary";
               if (soldOut) {
-                statusText = "AGOTADO";
+                statusText = t.home.agotado;
                 statusClasses = "border-white/10 text-muted-foreground";
               } else if (totalAvail > 0 && totalAvail < 10) {
-                statusText = "ÚLTIMOS ACCESOS";
+                statusText = t.home.ultimos;
                 statusClasses = "border-orange-500/30 text-orange-400 bg-orange-950/20";
               }
 
@@ -232,7 +233,7 @@ export default function Landing() {
                         {/* Location Details inside visual */}
                         <div className="absolute bottom-6 left-6 right-6 space-y-1 text-white">
                           <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] font-sans">
-                            {event.isDateTBD ? "PROXIMAMENTE" : formatDate(event.date)}
+                            {event.isDateTBD ? t.comun.proximamente : formatDate(event.date)}
                           </p>
                           <h3 className="text-xl md:text-2xl font-heading font-black tracking-tight uppercase leading-none">
                             {event.title}
@@ -243,7 +244,7 @@ export default function Landing() {
                       {/* Poster Details label details below */}
                       <div className="px-2 flex justify-between items-center text-sm">
                         <span className="text-muted-foreground font-sans tracking-wide">
-                          {event.isVenueTBD ? "LUGAR POR CONFIRMAR" : event.venue}
+                          {event.isVenueTBD ? t.comun.lugarPorConfirmar : event.venue}
                         </span>
                         <span className="font-heading font-black text-primary text-base">
                           ${(event.price || 0).toLocaleString('es-AR')}
@@ -260,15 +261,15 @@ export default function Landing() {
              El unico que puede convertir con la cartelera vacia es un productor. */
           <div className="glass rounded-[2rem] border-white/5 p-16 text-center max-w-xl mx-auto space-y-4">
             <Music className="w-10 h-10 text-primary mx-auto opacity-40" />
-            <h3 className="font-heading font-black text-xl uppercase">¿Tu evento acá?</h3>
+            <h3 className="font-heading font-black text-xl uppercase">{t.home.vacioTitulo}</h3>
             <p className="text-sm text-muted-foreground leading-relaxed font-sans">
-              Estamos abriendo la cartelera. Si producís, publicá el tuyo y sos de los primeros.
+              {t.home.vacioTexto}
             </p>
             <div className="pt-2">
               <a href={whatsappProductores} target="_blank" rel="noopener noreferrer">
                 <Button className="h-12 px-8 orange-gradient border-none text-white rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase text-xs tracking-wide gap-2">
                   <WhatsAppIcon className="w-4 h-4" />
-                  Publicar mi evento
+                  {t.home.vacioCta}
                 </Button>
               </a>
             </div>
@@ -286,14 +287,14 @@ export default function Landing() {
             className=""
           >
             <span className="block text-[10px] font-bold text-primary uppercase tracking-[0.3em] font-sans">
-              Seguridad Absoluta
+              {t.home.seguridadKicker}
             </span>
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-heading font-black tracking-tighter uppercase max-w-[673px] mt-5" style={{ lineHeight: '1.15' }}>
-              Tu entrada es tuya.<br />
-              Y de nadie más.
+              {t.home.seguridadTituloA}<br />
+              {t.home.seguridadTituloB}
             </h2>
             <p className="text-lg text-muted-foreground font-sans leading-relaxed mt-6">
-              Un QR único que no se clona. Si no podés ir, se la pasás a un amigo de forma oficial desde la plataforma, el tuyo anterior deja de existir instantáneamente y se genera un QR nuevo para quien la recibe. En la puerta, entrás vos.
+              {t.home.seguridadTexto}
             </p>
           </motion.div>
 
@@ -313,7 +314,7 @@ export default function Landing() {
               <div className="text-center mt-6">
                 <span className="inline-flex items-center gap-2 text-[10px] font-sans font-bold uppercase tracking-[0.25em] text-primary bg-primary/5 px-4 py-1.5 rounded-full border border-primary/20">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                  QR ÚNICO
+                  {t.home.qrUnico}
                 </span>
               </div>
             </div>
@@ -324,9 +325,9 @@ export default function Landing() {
       {/* 5. CULTURA — photographic, raw, real, argentinian, nightlife */}
       <section className="max-w-7xl mx-auto px-6 py-28 space-y-16">
         <div>
-          <span className="block text-[10px] font-bold text-primary uppercase tracking-[0.2em] font-sans">Nuestra Escena</span>
+          <span className="block text-[10px] font-bold text-primary uppercase tracking-[0.2em] font-sans">{t.home.escenaKicker}</span>
           <h2 className="text-4xl md:text-5xl font-heading font-black tracking-tighter uppercase mt-5" style={{ lineHeight: '1.15' }}>
-            Donde querés estar.
+            {t.home.escenaTitulo}
           </h2>
         </div>
 
@@ -361,15 +362,15 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
           <div>
             <span className="block text-[10px] font-sans font-bold tracking-widest text-primary uppercase">
-              ¿Organizás eventos?
+              {t.home.organizasKicker}
             </span>
             <p className="text-xl md:text-2xl font-heading font-black text-white uppercase tracking-tight mt-4">
-              Control total del acceso, cobros claros y tu data, en un solo lugar.
+              {t.home.organizasTexto}
             </p>
           </div>
           <Link to="/productores">
             <Button className="h-12 px-6 rounded-xl bg-white/[0.03] border border-white/10 hover:border-white/20 text-white hover:bg-white/[0.06] transition-all font-heading font-black uppercase text-xs tracking-wide">
-              Para productores &rarr;
+              {t.home.organizasCta} &rarr;
             </Button>
           </Link>
         </div>
@@ -384,7 +385,7 @@ export default function Landing() {
           <div>
             <Link to="/eventos">
               <Button className="h-16 px-12 orange-gradient border-none text-white text-lg rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
-                Ver eventos
+                {t.home.verEventos}
               </Button>
             </Link>
           </div>
