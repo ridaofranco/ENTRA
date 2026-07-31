@@ -24,10 +24,51 @@
 // aprobación: quien lo llama lo hace sin await y sin mirar la respuesta.
 
 import { alerta } from './_alerta.js';
+import { deliver } from './_mailer.js';
 import { sendWelcomeProducerEmail, sendEventApprovedEmail } from './_event-mails.js';
 import { frenado } from './_rate-limit.js';
 
 const PUBLIC_URL = process.env.PUBLIC_BASE_URL || 'https://www.entratickets.com';
+
+// Casilla de respaldo: la que ya está publicada en el pie de todos los mails de
+// ENTRÁ, así que existe y alguien la lee.
+const CASILLA_RESPALDO = process.env.ADMIN_FALLBACK_EMAIL || 'tuticket@entratickets.com';
+
+/**
+ * Aviso de evento nuevo, con red.
+ *
+ * `alerta()` manda por Telegram y por mail, pero devuelve false sin hacer nada
+ * si NINGUNO de los dos está configurado (hoy Telegram está mudo en los cuatro
+ * productos, y `MAIL_ADMIN_TO` puede no estar cargada en este proyecto). Ese
+ * silencio es inaceptable acá: todo el circuito nuevo depende de que este aviso
+ * llegue. Si el productor carga su evento y nadie se entera, se queda esperando
+ * para siempre una aprobación que nadie sabe que tiene que dar, y termina
+ * escribiendo por WhatsApp, que es justo lo que se quiso sacar del medio.
+ *
+ * Entonces: si el canal de alertas no salió, se manda un mail común a la casilla
+ * publicada. Feo, pero llega.
+ */
+async function avisarConRed(opts: {
+  titulo: string; detalle: string; datos: Record<string, string>; clave: string;
+}): Promise<void> {
+  const salio = await alerta(opts);
+  if (salio) return;
+
+  const filas = Object.entries(opts.datos)
+    .map(([k, v]) => `<tr><td style="padding:4px 10px 4px 0;color:#71717A;font-size:13px;">${k.replace(/_/g, ' ')}</td><td style="padding:4px 0;font-size:13px;color:#18181B;"><b>${v}</b></td></tr>`)
+    .join('');
+
+  await deliver({
+    to: CASILLA_RESPALDO,
+    subject: opts.titulo,
+    html: `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#18181B;">
+      <p style="font-size:15px;">${opts.detalle}</p>
+      <table cellpadding="0" cellspacing="0">${filas}</table>
+      <p style="font-size:12px;color:#A1A1AA;margin-top:18px;">Este aviso salió por la vía de respaldo porque no hay canal de alertas configurado (falta MAIL_ADMIN_TO, o el bot de Telegram).</p>
+    </div>`,
+    attachments: [],
+  }).catch(() => {});
+}
 
 /** Recorta y limpia texto que viene del navegador antes de ponerlo en un mail. */
 function limpio(v: unknown, max = 200): string {
@@ -79,7 +120,7 @@ export default async function handler(req: any, res: any) {
             .join(' | ')
         : '';
 
-      await alerta({
+      await avisarConRed({
         titulo: `Evento nuevo para aprobar: ${titulo}`,
         detalle:
           'Un productor cargó un evento y está esperando aprobación. NO se ve en la cartelera ni se puede comprar hasta que lo publiques.',
