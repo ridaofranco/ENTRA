@@ -12,6 +12,7 @@ import { useAuth } from '@/src/context/AuthContext';
 import { TransferTicketModal } from '@/src/components/TransferTicketModal';
 import { formatCurrency } from '@/src/lib/utils';
 import { estadoOrden } from '@/src/lib/estados';
+import { useLang, textos, dateLocale } from '@/src/lib/i18n';
 
 // ============================================================
 // QR CODE GENERATOR (same as Checkout)
@@ -67,6 +68,9 @@ interface EventCache {
 export default function Profile() {
   const navigate = useNavigate();
   const { user, profile, loading: authLoading, logout, updateUserProfile, changeEmail, changePassword } = useAuth();
+  const lang = useLang();
+  const t = textos(lang);
+  const loc = dateLocale(lang);
 
   const [activeTab, setActiveTab] = useState<'tickets' | 'orders' | 'account'>('tickets');
   const [tickets, setTickets] = useState<TicketData[]>([]);
@@ -209,16 +213,16 @@ export default function Profile() {
 
   const formatDate = (date: any) => {
     try {
-      if (date?.toDate) return date.toDate().toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-      if (date?.seconds) return new Date(date.seconds * 1000).toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+      if (date?.toDate) return date.toDate().toLocaleDateString(loc, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+      if (date?.seconds) return new Date(date.seconds * 1000).toLocaleDateString(loc, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
     } catch { }
     return '';
   };
 
   const formatShortDate = (date: any) => {
     try {
-      if (date?.toDate) return date.toDate().toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
-      if (date?.seconds) return new Date(date.seconds * 1000).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+      if (date?.toDate) return date.toDate().toLocaleDateString(loc, { day: 'numeric', month: 'short' });
+      if (date?.seconds) return new Date(date.seconds * 1000).toLocaleDateString(loc, { day: 'numeric', month: 'short' });
     } catch { }
     return '';
   };
@@ -597,10 +601,10 @@ export default function Profile() {
             <p className="text-zinc-400 mt-1">{user.email}</p>
             <div className="flex items-center gap-3 mt-3 flex-wrap">
               <span className="text-xs font-bold uppercase tracking-widest text-zinc-500 bg-white/5 px-3 py-1 rounded-full border border-white/10">
-                {tickets.length} {tickets.length === 1 ? 'ticket' : 'tickets'}
+                {tickets.length} {t.perfil.ticketsCuenta(tickets.length)}
               </span>
               <span className="text-xs font-bold uppercase tracking-widest text-zinc-500 bg-white/5 px-3 py-1 rounded-full border border-white/10">
-                {orders.length} {orders.length === 1 ? 'compra' : 'compras'}
+                {orders.length} {t.perfil.comprasCuenta(orders.length)}
               </span>
               {isGoogleUser && (
                 <span className="text-xs font-bold uppercase tracking-widest text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
@@ -619,7 +623,7 @@ export default function Profile() {
             className="flex items-center gap-2 text-sm text-zinc-400 hover:text-red-400 px-4 py-2 rounded-xl hover:bg-red-500/10 transition-all"
           >
             <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Cerrar sesión</span>
+            <span className="hidden sm:inline">{t.perfil.cerrarSesion}</span>
           </button>
         </div>
       </motion.div>
@@ -635,7 +639,7 @@ export default function Profile() {
           }`}
         >
           <QrCode className="w-4 h-4" />
-          Mis Tickets
+          {t.perfil.tabTickets}
         </button>
         <button
           onClick={() => setActiveTab('orders')}
@@ -646,7 +650,7 @@ export default function Profile() {
           }`}
         >
           <Ticket className="w-4 h-4" />
-          Mis Compras
+          {t.perfil.tabCompras}
         </button>
         <button
           onClick={() => setActiveTab('account')}
@@ -657,7 +661,7 @@ export default function Profile() {
           }`}
         >
           <Settings className="w-4 h-4" />
-          Mi Cuenta
+          {t.perfil.tabCuenta}
         </button>
       </div>
 
@@ -669,11 +673,11 @@ export default function Profile() {
               <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto">
                 <Ticket className="w-10 h-10 text-zinc-600" />
               </div>
-              <h3 className="text-xl font-bold text-zinc-400">No tenés tickets todavía</h3>
-              <p className="text-zinc-500 text-sm">Cuando compres entradas, van a aparecer acá con su código QR.</p>
+              <h3 className="text-xl font-bold text-zinc-400">{t.perfil.sinTickets}</h3>
+              <p className="text-zinc-500 text-sm">{t.perfil.sinTicketsTexto}</p>
               <Link to="/eventos">
                 <button className="mt-4 orange-gradient text-white font-heading font-black px-6 py-3 rounded-xl hover:brightness-110 transition-all">
-                  Explorar Eventos
+                  {t.perfil.explorarEventos}
                 </button>
               </Link>
             </div>
@@ -718,7 +722,7 @@ export default function Profile() {
                             ? 'bg-zinc-500/10 text-zinc-500'
                             : 'bg-red-500/10 text-red-500'
                         }`}>
-                          {ticket.status === 'valid' ? 'Válido' : ticket.status === 'used' ? 'Usado' : 'Cancelado'}
+                          {ticket.status === 'valid' ? t.perfil.valido : ticket.status === 'used' ? t.perfil.usado : t.perfil.cancelado}
                         </span>
                         <ChevronRight className={`w-4 h-4 text-zinc-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                       </div>
@@ -736,20 +740,20 @@ export default function Profile() {
                           </div>
                           <div className="flex-grow text-center sm:text-left space-y-3">
                             <div>
-                              <p className="text-xs uppercase tracking-widest text-zinc-400 font-bold">Código</p>
+                              <p className="text-xs uppercase tracking-widest text-zinc-400 font-bold">{t.perfil.codigo}</p>
                               <div className="flex items-center gap-2 justify-center sm:justify-start mt-1">
                                 <code className="text-sm font-mono bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">{ticket.qrCode}</code>
                                 <button onClick={() => handleCopy(ticket.qrCode)} className="hover:bg-white/10 p-2 rounded-lg transition-colors">
                                   {copied === ticket.qrCode ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-zinc-400" />}
                                 </button>
-                                <button onClick={() => handleDownloadQR(ticket, ev)} className="hover:bg-white/10 p-2 rounded-lg transition-colors" title="Descargar Entrada (PDF)">
+                                <button onClick={() => handleDownloadQR(ticket, ev)} className="hover:bg-white/10 p-2 rounded-lg transition-colors" title={t.perfil.descargarEntrada}>
                                   <Download className="w-4 h-4 text-zinc-400" />
                                 </button>
                                 {ticket.status === 'valid' && upcoming && ev?.allowTransfer !== false && (ticket as any).transferStatus !== 'pending' && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setTransferringTicket({ ...ticket, eventData: ev }); }}
                                     className="hover:bg-orange-500/10 p-2 rounded-lg transition-colors"
-                                    title="Transferir ticket"
+                                    title={t.perfil.transferirTicket}
                                   >
                                     <Send className="w-4 h-4 text-orange-500" />
                                   </button>
@@ -757,14 +761,14 @@ export default function Profile() {
                                 {(ticket as any).transferStatus === 'pending' && (
                                   <>
                                     <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full bg-yellow-500/10 text-yellow-500 border border-yellow-500/30">
-                                      Transferencia pendiente
+                                      {t.perfil.transferPendiente}
                                     </span>
                                     <button
                                       onClick={(e) => { e.stopPropagation(); handleCancelTransfer(ticket); }}
                                       className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 transition-colors"
-                                      title="Cancelar transferencia"
+                                      title={t.perfil.cancelarTransferencia}
                                     >
-                                      Cancelar
+                                      {t.perfil.cancelar}
                                     </button>
                                   </>
                                 )}
@@ -772,26 +776,26 @@ export default function Profile() {
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                               <div>
-                                <p className="text-xs uppercase tracking-widest text-zinc-500 font-bold">Tipo</p>
+                                <p className="text-xs uppercase tracking-widest text-zinc-500 font-bold">{t.perfil.tipo}</p>
                                 <p className="font-bold text-orange-500">{ticket.ticketType}</p>
                               </div>
                               <div>
-                                <p className="text-xs uppercase tracking-widest text-zinc-500 font-bold">Precio pagado</p>
+                                <p className="text-xs uppercase tracking-widest text-zinc-500 font-bold">{t.perfil.precioPagado}</p>
                                 <p className="font-bold text-white">
                                   {formatCurrency(ticket.finalPricePaid || getFinalPriceForTicket(ticket.price || 0))}
                                 </p>
-                                <p className="text-[10px] text-zinc-500 mt-0.5">Base: {formatCurrency(ticket.price || 0)}</p>
+                                <p className="text-[10px] text-zinc-500 mt-0.5">{t.perfil.base}: {formatCurrency(ticket.price || 0)}</p>
                               </div>
                             </div>
                             {ev?.date && (
                               <div>
-                                <p className="text-xs uppercase tracking-widest text-zinc-500 font-bold">Fecha</p>
+                                <p className="text-xs uppercase tracking-widest text-zinc-500 font-bold">{t.perfil.fecha}</p>
                                 <p className="text-sm">{formatDate(ev.date)}</p>
                               </div>
                             )}
                             {ev?.venue && (
                               <div>
-                                <p className="text-xs uppercase tracking-widest text-zinc-500 font-bold">Lugar</p>
+                                <p className="text-xs uppercase tracking-widest text-zinc-500 font-bold">{t.perfil.lugar}</p>
                                 <p className="text-sm">{ev.venue}{ev.location ? `, ${ev.location}` : ''}</p>
                               </div>
                             )}
@@ -800,11 +804,11 @@ export default function Profile() {
                         <div className="border-t border-dashed border-white/10 px-6 py-3 flex justify-between items-center text-xs">
                           <span className="text-zinc-500 flex items-center gap-1.5">
                             <Clock className="w-3.5 h-3.5" />
-                            Comprado {formatDate(ticket.createdAt)}
+                            {t.perfil.compradoEl} {formatDate(ticket.createdAt)}
                           </span>
                           <span className={`flex items-center gap-1.5 font-bold ${ticket.status === 'valid' ? 'text-green-500' : 'text-zinc-500'}`}>
                             <ShieldCheck className="w-3.5 h-3.5" />
-                            {ticket.status === 'valid' ? 'VÁLIDO' : ticket.status === 'used' ? 'USADO' : 'CANCELADO'}
+                            {(ticket.status === 'valid' ? t.perfil.valido : ticket.status === 'used' ? t.perfil.usado : t.perfil.cancelado).toUpperCase()}
                           </span>
                         </div>
                       </motion.div>
@@ -825,11 +829,11 @@ export default function Profile() {
               <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto">
                 <Ticket className="w-10 h-10 text-zinc-600" />
               </div>
-              <h3 className="text-xl font-bold text-zinc-400">No tenés compras todavía</h3>
-              <p className="text-zinc-500 text-sm">Tu historial de compras va a aparecer acá.</p>
+              <h3 className="text-xl font-bold text-zinc-400">{t.perfil.sinCompras}</h3>
+              <p className="text-zinc-500 text-sm">{t.perfil.sinComprasTexto}</p>
               <Link to="/eventos">
                 <button className="mt-4 orange-gradient text-white font-heading font-black px-6 py-3 rounded-xl hover:brightness-110 transition-all">
-                  Explorar Eventos
+                  {t.perfil.explorarEventos}
                 </button>
               </Link>
             </div>
@@ -857,7 +861,7 @@ export default function Profile() {
                       <div className="flex-grow min-w-0">
                         <h3 className="font-bold text-sm truncate">{order.eventTitle}</h3>
                         <div className="flex items-center gap-3 mt-1 text-xs text-zinc-400">
-                          <span>{totalItems} {totalItems === 1 ? 'entrada' : 'entradas'}</span>
+                          <span>{totalItems} {t.perfil.entradasCuenta(totalItems)}</span>
                           <span className="text-zinc-600">•</span>
                           <span>{formatShortDate(order.createdAt)}</span>
                         </div>
@@ -869,7 +873,7 @@ export default function Profile() {
                         <span className={`text-[10px] font-bold uppercase tracking-widest ${
                           order.status === 'confirmed' ? 'text-green-500' : 'text-zinc-500'
                         }`}>
-                          {estadoOrden(order.status)}
+                          {estadoOrden(order.status, lang)}
                         </span>
                       </div>
                     </div>
@@ -878,18 +882,18 @@ export default function Profile() {
                       <div className="mt-4 pt-4 border-t border-white/5 space-y-1.5">
                         {order.items.map((item: any, i: number) => (
                           <div key={i} className="flex justify-between text-xs text-zinc-400">
-                            <span>{item.quantity}x {item.type} (Costo base c/u: {formatCurrency(item.price || 0)})</span>
+                            <span>{item.quantity}x {item.type} ({t.perfil.costoBase}: {formatCurrency(item.price || 0)})</span>
                             <span>{formatCurrency((item.quantity || 0) * (item.price || 0))}</span>
                           </div>
                         ))}
                         {(order as any).fee > 0 && (
                           <>
                             <div className="flex justify-between text-[11px] text-zinc-500 pt-1.5 border-t border-white/5">
-                              <span>Subtotal entradas</span>
+                              <span>{t.perfil.subtotalEntradas}</span>
                               <span>{formatCurrency((order as any).subtotal || 0)}</span>
                             </div>
                             <div className="flex justify-between text-[11px] text-zinc-500 font-medium">
-                              <span>Cargos de servicio y procesamiento</span>
+                              <span>{t.perfil.cargosServicio}</span>
                               <span>{formatCurrency((order as any).fee || 0)}</span>
                             </div>
                           </>
@@ -900,7 +904,7 @@ export default function Profile() {
                     <div className="mt-4 pt-3 border-t border-white/5 flex justify-between items-center">
                       <span className="text-xs text-zinc-600 font-mono">#{order.id.substring(0, 8).toUpperCase()}</span>
                       <Link to={`/evento/${(order as any).eventId}`}>
-                        <button className="text-xs text-orange-500 font-bold hover:underline">Ver evento</button>
+                        <button className="text-xs text-orange-500 font-bold hover:underline">{t.perfil.verEvento}</button>
                       </Link>
                     </div>
                   </div>
