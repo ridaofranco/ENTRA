@@ -20,14 +20,26 @@ import { sendEventReminderEmail } from '../_event-mails.js';
 const ART_OFFSET_MS = 3 * 60 * 60 * 1000;
 
 export default async function handler(req: any, res: any) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    if (req.headers?.authorization !== `Bearer ${cronSecret}`) {
-      console.error('[recordatorio-evento] rechazado: Authorization inválido');
-      return res.status(401).json({ ok: false, error: 'No autorizado' });
-    }
-  } else {
-    console.warn('[recordatorio-evento] ⚠️ CRON_SECRET no está configurado: el endpoint acepta cualquier request. Cargala en Vercel.');
+  // Acepta CRON_SECRET (el que inyecta Vercel en su propio cron) o
+  // CF_CRON_SECRET (el del despachador de Cloudflare, que pasó a ser el
+  // disparador real el 31/7/2026, porque el plan Hobby de Vercel solo permite
+  // UNA corrida por día). Se SUMA una clave, no se reemplaza ninguna.
+  //
+  // ⚠️ ADEMÁS ESTO CIERRA UN ENDPOINT QUE ESTABA ABIERTO. Antes, si no había
+  // CRON_SECRET cargada, el código dejaba pasar CUALQUIER request y solo
+  // escribía un warning. Verificado el 31/7/2026 contra la API de Vercel: el
+  // proyecto entra-by-der NO tenía CRON_SECRET, así que este endpoint venía
+  // aceptando llamadas de cualquiera y mandando recordatorios a los asistentes.
+  // Ahora es fail-closed como los demás: sin ninguna clave cargada, 401.
+  const aceptados = [process.env.CRON_SECRET, process.env.CF_CRON_SECRET].filter(Boolean);
+  const auth = req.headers?.authorization;
+  if (!aceptados.length) {
+    console.error('[recordatorio-evento] sin CRON_SECRET ni CF_CRON_SECRET: no se atiende');
+    return res.status(401).json({ ok: false, error: 'No autorizado' });
+  }
+  if (!aceptados.some((s) => auth === `Bearer ${s}`)) {
+    console.error('[recordatorio-evento] rechazado: Authorization inválido');
+    return res.status(401).json({ ok: false, error: 'No autorizado' });
   }
 
   try {
