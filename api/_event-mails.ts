@@ -48,13 +48,16 @@ function shellOpen(titulo: string, preheader: string): string {
     </td></tr>`;
 }
 
-function shellClose(whatsappMensaje: string): string {
+// `casilla` existe porque el que compra y el que vende no escriben al mismo
+// lado: el comprador va a tuticket@ (su entrada), y el productor a soporte@,
+// que es la casilla que atiende a los que venden con ENTRÁ.
+function shellClose(whatsappMensaje: string, casilla = 'tuticket@entratickets.com'): string {
   return `
     <tr><td style="padding:16px 32px 30px 32px;text-align:center;">
       <p style="margin:0 0 16px 0;font-size:12px;color:#71717A;">&iquest;Alguna duda? Escribinos y lo resolvemos con vos:</p>
       ${botonWhatsApp(whatsappMensaje, 'Escribinos por WhatsApp')}
       <p style="margin:16px 0 0 0;font-size:12px;color:#71717A;">O respond&eacute; este mail:</p>
-      <p style="margin:6px 0 0 0;"><a href="mailto:tuticket@entratickets.com" style="color:#EA580C;font-size:13px;font-weight:700;text-decoration:none;">tuticket@entratickets.com</a></p>
+      <p style="margin:6px 0 0 0;"><a href="mailto:${casilla}" style="color:#EA580C;font-size:13px;font-weight:700;text-decoration:none;">${casilla}</a></p>
       <p style="margin:14px 0 0 0;font-size:10px;color:#A1A1AA;letter-spacing:0.5px;">entratickets.com &#183; Plataforma de ticketing digital</p>
     </td></tr>
 
@@ -404,7 +407,7 @@ export function buildWelcomeProducerHTML(d: WelcomeProducerData): string {
     hero(
       { texto: 'Cuenta activa', bg: '#FFF1E7', color: '#EA580C' },
       'Ya pod&eacute;s cargar tu evento',
-      `${saludo} tu cuenta de productor en ENTR&Aacute; qued&oacute; activa. No hace falta que hables con nadie para empezar.`,
+      `${saludo} tu cuenta de productor en ENTR&Aacute; qued&oacute; activa. Cualquier cosa que necesites, escribinos a soporte@entratickets.com y lo vemos juntos.`,
     ) +
     seccion('C&Oacute;MO SIGUE', [
       '<b>1.</b> Entr&aacute; a tu panel y carg&aacute; tu evento: fecha, lugar, tipos de entrada y precios.',
@@ -418,7 +421,7 @@ export function buildWelcomeProducerHTML(d: WelcomeProducerData): string {
       'Para publicar necesit&aacute;s tener el mail verificado. Si no lo hiciste, busc&aacute; el mail de verificaci&oacute;n.',
     ]) +
     botonPrimario(`${PUBLIC_URL}/crear-evento`, 'Cargar mi evento') +
-    shellClose('Hola, acabo de activar mi cuenta de productor en ENTRÁ y tengo una duda')
+    shellClose('Hola, acabo de activar mi cuenta de productor en ENTRÁ y tengo una duda', 'soporte@entratickets.com')
   );
 }
 
@@ -482,7 +485,7 @@ export function buildEventApprovedHTML(d: EventApprovedData): string {
       'El d&iacute;a del evento, entr&aacute; a Control de acceso desde el celular para validar los QR en la puerta.',
     ]) +
     botonPrimario(d.eventUrl, 'Ver mi evento publicado') +
-    shellClose('Hola, mi evento ya está publicado en ENTRÁ y tengo una duda')
+    shellClose('Hola, mi evento ya está publicado en ENTRÁ y tengo una duda', 'soporte@entratickets.com')
   );
 }
 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/src/context/AuthContext';
 import { Button } from '@/src/components/ui/button';
-import { WhatsAppIcon } from '@/src/components/icons/WhatsAppIcon';
+import { Mail } from 'lucide-react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -69,9 +69,9 @@ function ProducerActivationScreen() {
           </h1>
 
           <p className="text-sm text-muted-foreground font-sans leading-relaxed">
-            Activá tu cuenta de productor y cargá tu evento ahora mismo. Cuando lo termines
-            lo revisamos y lo publicamos, normalmente el mismo día. No hace falta que
-            hables con nadie para empezar.
+            Activá tu cuenta de productor y cargá tu evento cuando quieras. Al terminar
+            lo revisamos y lo publicamos, normalmente el mismo día. Si necesitás una mano,
+            escribinos a soporte@entratickets.com y lo vemos juntos.
           </p>
 
           {!mailVerificado && (
@@ -100,18 +100,13 @@ function ProducerActivationScreen() {
             >
               {activando ? 'Activando…' : 'Activar mi cuenta de productor'}
             </Button>
-            <a
-              href={`https://wa.me/5491171540675?text=${encodeURIComponent('Hola, tengo una duda para vender entradas con ENTRÁ')}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full"
-            >
+            <a href="mailto:soporte@entratickets.com?subject=Consulta%20para%20vender%20entradas%20con%20ENTR%C3%81" className="w-full">
               <Button
                 variant="outline"
                 className="w-full h-12 rounded-xl bg-white/[0.03] border border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20 font-bold text-xs uppercase tracking-wider gap-2"
               >
-                <WhatsAppIcon className="w-4 h-4" />
-                Tengo una duda
+                <Mail className="w-4 h-4" />
+                Escribir a soporte
               </Button>
             </a>
             <Link to="/" className="w-full">

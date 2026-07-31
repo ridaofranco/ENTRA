@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     q: 'Soy organizador, ¿cómo publico un evento?',
-    a: 'Creás tu cuenta en ENTRÁ y nos escribís a organizadores@entratickets.com o por WhatsApp. El panel de productor no se activa solo: lo habilita el equipo a mano, para saber quién vende y qué se vende. Una vez habilitado cargás el evento (fecha, lugar, flyer, tipos de entrada y cupo), lo publicás cuando querés con el botón de venta oficial, y desde el panel seguís las ventas, generás cortesías y códigos de descuento, y controlás la puerta con el escáner de QR.'
+    a: 'Creás tu cuenta, activás el panel de productor desde ahí mismo y cargás tu evento: fecha, lugar, flyer, tipos de entrada y cupo. Antes de publicarlo lo revisamos, normalmente el mismo día, y te avisamos por mail apenas queda a la venta. Después, desde el panel seguís las ventas, generás cortesías y códigos de descuento, y controlás la puerta con el escáner de QR. Si necesitás una mano en cualquier momento, escribinos a soporte@entratickets.com.'
   }
 ];
 
