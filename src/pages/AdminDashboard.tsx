@@ -74,6 +74,16 @@ export default function AdminDashboard() {
   const [editingEvent, setEditingEvent] = useState<EventData | null>(null);
   const [savingEvent, setSavingEvent] = useState(false);
   const [eventSearch, setEventSearch] = useState('');
+
+  // ── La comisión de ENTRÁ ────────────────────────────────────────────────────
+  // Vive en platform_config/settings.commissionPercent, y es LA MISMA que lee el
+  // servidor al crear cada pago. No hay dos números: lo que se ve acá es lo que
+  // se cobra. Antes el panel mostraba tarifas por plan que el cobro ignoraba.
+  const [comisionActual, setComisionActual] = useState<number>(8);
+  const [comisionInput, setComisionInput] = useState<string>('8');
+  const [comisionGuardando, setComisionGuardando] = useState(false);
+  const [comisionGuardada, setComisionGuardada] = useState(false);
+  const [comisionError, setComisionError] = useState<string | null>(null);
   // Qué secciones de eventos están abiertas. Se recuerda entre visitas: si
   // cerraste "Ya pasaron", no tenés que volver a cerrarlo cada vez que entrás.
   const [seccionesAbiertas, setSeccionesAbiertas] = useState<Record<string, boolean>>(() => {
@@ -144,6 +154,51 @@ export default function AdminDashboard() {
       };
     }
   }, [authLoading, isAuthorized]);
+
+  // Se lee una vez al abrir el panel. Si nunca se configuró, queda el 8% que usa
+  // el servidor como respaldo, así lo que se muestra siempre es lo que se cobra.
+  useEffect(() => {
+    (async () => {
+      try {
+        const snap = await getDoc(doc(db, 'platform_config', 'settings'));
+        const guardada = Number(snap.exists() ? snap.data()?.commissionPercent : NaN);
+        if (Number.isFinite(guardada)) {
+          setComisionActual(guardada);
+          setComisionInput(String(guardada));
+        }
+      } catch (err) {
+        console.warn('[AdminDashboard] no se pudo leer la comisión:', err);
+      }
+    })();
+  }, []);
+
+  const guardarComision = async () => {
+    // Se acepta coma o punto: nadie tiene por qué acordarse de cuál espera el input.
+    const valor = Number(comisionInput.replace(',', '.').trim());
+    if (!Number.isFinite(valor) || valor < 0 || valor > 50) {
+      setComisionError('Poné un número entre 0 y 50. Es un porcentaje, no un monto.');
+      return;
+    }
+    setComisionGuardando(true);
+    setComisionError(null);
+    try {
+      await setDoc(
+        doc(db, 'platform_config', 'settings'),
+        { commissionPercent: valor, updatedAt: Timestamp.now(), updatedBy: user?.email || '' },
+        { merge: true },
+      );
+      setComisionActual(valor);
+      setComisionInput(String(valor));
+      setComisionGuardada(true);
+      // El servidor cachea la comisión 60 segundos, así que un cambio puede
+      // tardar hasta un minuto en verse en una compra. Vale decirlo.
+      setTimeout(() => setComisionGuardada(false), 4000);
+    } catch (err: any) {
+      setComisionError('No se pudo guardar: ' + (err?.message || 'error'));
+    } finally {
+      setComisionGuardando(false);
+    }
+  };
 
   // El 31/7 se sacó todo el sistema de PLANES (starter/pro/enterprise) del panel:
   // la carga de tiers, el guardado de comisiones, el cambio de plan por usuario,
@@ -586,10 +641,64 @@ export default function AdminDashboard() {
         })}
       </div>
 
-      {/* El bloque "Comisiones por tier" se sacó el 31/7. La comisión de ENTRÁ es
-          ÚNICA del 8% (está fija en CreateEvent), así que ese panel configuraba
-          tarifas por plan que ya nadie aplica: mostraba números que no eran los
-          que se cobraban. */}
+      {/* ==================== COMISIÓN DE ENTRÁ ====================
+          Un solo número, el que se cobra de verdad. Reemplaza al bloque de
+          "Comisiones por tier", que configuraba tarifas por plan de suscripción
+          que nadie aplicaba: el servidor cobraba 8% fijo pase lo que pase. */}
+      {isSuperAdmin && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="mb-8">
+          <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
+            <div className="flex flex-wrap items-start justify-between gap-6">
+              <div className="max-w-md">
+                <h2 className="text-xl font-heading font-black">
+                  <span className="text-orange-500">Comisión</span> de ENTRÁ
+                </h2>
+                <p className="text-sm text-zinc-400 mt-2 leading-relaxed">
+                  Es el porcentaje que cobra ENTRÁ sobre cada entrada vendida.
+                  Rige para <b className="text-zinc-200">todos los eventos</b>, los que ya están publicados
+                  y los que se creen después.
+                </p>
+                <p className="text-xs text-zinc-500 mt-3 leading-relaxed">
+                  El cargo lo paga el comprador, así que el productor cobra siempre el precio
+                  que puso. Si subís la comisión, sube el precio final de la entrada; si la bajás,
+                  baja. Las ventas ya hechas no se tocan.
+                </p>
+              </div>
+
+              <div className="flex items-end gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                    Comisión actual
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={comisionInput}
+                      onChange={(e) => setComisionInput(e.target.value)}
+                      className="w-28 bg-white/5 border-white/10 rounded-xl pl-4 pr-9 h-12 font-black text-lg"
+                    />
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 font-bold">%</span>
+                  </div>
+                </div>
+                <Button
+                  onClick={guardarComision}
+                  disabled={comisionGuardando || comisionInput.trim() === String(comisionActual)}
+                  className="h-12 px-6 orange-gradient border-none text-white rounded-xl font-heading font-black uppercase text-xs tracking-wide gap-2"
+                >
+                  {comisionGuardando ? <Loader className="w-4 h-4 animate-spin" /> : comisionGuardada ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                  {comisionGuardada ? 'Guardada' : 'Guardar'}
+                </Button>
+              </div>
+            </div>
+
+            {comisionError && (
+              <p className="text-xs text-red-400 mt-4">{comisionError}</p>
+            )}
+          </div>
+        </motion.div>
+      )}
+
 
       {/* Users Table */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mb-8">
@@ -782,8 +891,15 @@ export default function AdminDashboard() {
                           </span>
                         </td>
                         <td className="py-3 px-4">
+                          {/* Se muestra la comisión VIGENTE, que es la que se le va a
+                              cobrar a la próxima venta de este evento. Si el evento
+                              nació con otra, se aclara abajo como dato histórico: el
+                              número grande nunca puede ser uno que no se cobra. */}
                           <div className="flex flex-col">
-                            <span className="text-zinc-200 font-bold text-xs">{e.commissionRate || '8'}%</span>
+                            <span className="text-zinc-200 font-bold text-xs">{comisionActual}%</span>
+                            {e.commissionRate != null && e.commissionRate !== comisionActual && (
+                              <span className="text-[10px] text-zinc-600">se creó con {e.commissionRate}%</span>
+                            )}
                           </div>
                         </td>
                         <td className="py-3 px-4">

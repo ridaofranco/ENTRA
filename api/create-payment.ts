@@ -20,12 +20,58 @@ import { randomUUID } from 'crypto';
 import { getAdminDb } from './_lib/firebaseAdmin.js';
 import { frenado } from './_rate-limit.js';
 
-const PLATFORM_FEE_RATE = 0.08;   // comisión ENTRÁ sobre el ticket
+// Comisión de ENTRÁ, de respaldo. El valor REAL lo pone Franco desde el panel y
+// vive en Firestore (`platform_config/settings.commissionPercent`). Este número
+// solo se usa si esa lectura falla o si nunca se configuró: la venta nunca se
+// cae por no poder leer una config.
+const COMISION_POR_DEFECTO = 8;
 const IVA = 1.21;                 // 21%
 const PROCESSOR_GROSSUP = 0.0499; // costo de procesador que absorbe el comprador (revisar con la tasa preferencial de MP)
 const BASE_URL = process.env.PUBLIC_BASE_URL || 'https://www.entratickets.com';
 
 type IncomingItem = { type: string; quantity: number; days?: number };
+
+/**
+ * LA COMISIÓN DE ENTRÁ, EDITABLE DESDE EL PANEL.
+ *
+ * Antes era una constante en este archivo, y el `commissionRate` que se guardaba
+ * en cada evento era decorativo: lo mostraba el panel pero NO era lo que se
+ * cobraba. Peor, había un botón que lo "recalculaba" a 3,5% mientras el sistema
+ * seguía cobrando 8%. Un número visible que miente es peor que ninguno.
+ *
+ * Ahora hay UNA sola fuente: `platform_config/settings.commissionPercent`.
+ * Se sube o se baja desde el panel y rige para todos los eventos, los viejos y
+ * los nuevos, porque se lee acá, al momento de crear el pago.
+ *
+ * Se cachea 60 segundos en el contenedor: Vercel reusa la instancia entre
+ * invocaciones, así que sin caché una ráfaga de compras haría una lectura por
+ * cada una para traer siempre el mismo número.
+ *
+ * Si la lectura falla, o el valor guardado es basura, se usa el de respaldo: la
+ * venta NUNCA se cae por no poder leer una configuración.
+ */
+let comisionCache: { valor: number; hasta: number } | null = null;
+
+async function comisionVigente(db: any): Promise<number> {
+  const ahora = Date.now();
+  if (comisionCache && comisionCache.hasta > ahora) return comisionCache.valor;
+
+  let valor = COMISION_POR_DEFECTO;
+  try {
+    const snap = await db.collection('platform_config').doc('settings').get();
+    const crudo = snap.exists ? (snap.data() as any)?.commissionPercent : undefined;
+    const num = Number(crudo);
+    // Rango sano: de 0 (gratis para el productor) a 50. Un valor fuera de ahí es
+    // un error de carga, y aplicarlo saldría caro en cualquiera de las dos
+    // direcciones.
+    if (Number.isFinite(num) && num >= 0 && num <= 50) valor = num;
+  } catch (e) {
+    console.error('[create-payment] no se pudo leer la comisión, uso la de respaldo:', e);
+  }
+
+  comisionCache = { valor, hasta: ahora + 60_000 };
+  return valor;
+}
 
 function fmtDayKey(dk: string): string {
   try {
@@ -196,7 +242,12 @@ export default async function handler(req: any, res: any) {
 
     // --- 4) fee y total (comprador absorbe comisión + procesador) ---
     const subAfterDiscount = Math.max(0, subtotal - discountAmount);
-    const feeConIva = isFree ? 0 : Math.round(subAfterDiscount * PLATFORM_FEE_RATE * IVA);
+    // La comisión que rige AHORA, no la que estaba cuando se creó el evento.
+    // Es lo que se pidió: si se baja, baja para todos los eventos; si se sube,
+    // sube para todos. El `commissionRate` guardado en el evento queda como
+    // registro histórico de con cuánto se creó, no como lo que se cobra.
+    const comisionPct = await comisionVigente(db);
+    const feeConIva = isFree ? 0 : Math.round(subAfterDiscount * (comisionPct / 100) * IVA);
     const total = isFree ? 0 : Math.round((subAfterDiscount + feeConIva) / (1 - PROCESSOR_GROSSUP));
 
     // --- Marketplace / split: ¿el organizador conectó su MercadoPago? ---
@@ -230,6 +281,10 @@ export default async function handler(req: any, res: any) {
       discountAmount,
       subtotal,
       fee: feeConIva,
+      // Con qué porcentaje se cobró ESTA orden. Sin esto, si mañana se cambia la
+      // comisión, no habría forma de reconstruir por qué una venta vieja tiene
+      // el fee que tiene.
+      feePercent: comisionPct,
       total,
       status: 'pending',
       paymentMethod: 'mercadopago',
@@ -449,7 +504,7 @@ export default async function handler(req: any, res: any) {
       minimo.payer = { name: buyer.name, email: buyer.email };
       preference = await new Preference(mp).create({ body: minimo });
     }
-    console.log(`[create-payment] orden=${orderRef.id} buyer=${buyer.email} split=${isMarketplace} organizer=${organizerId} fee=${feeConIva} total=${total} pref=${preference.id} notif=${prefBody.notification_url} datosAntifraude=${datosCompletos ? 'completos' : 'MINIMOS(fallback)'} doc=${docComprador ? 'si' : 'no'} tel=${telComprador ? 'si' : 'no'}`);
+    console.log(`[create-payment] orden=${orderRef.id} buyer=${buyer.email} split=${isMarketplace} organizer=${organizerId} fee=${feeConIva} (${comisionPct}%) total=${total} pref=${preference.id} notif=${prefBody.notification_url} datosAntifraude=${datosCompletos ? 'completos' : 'MINIMOS(fallback)'} doc=${docComprador ? 'si' : 'no'} tel=${telComprador ? 'si' : 'no'}`);
 
     // MP_SANDBOX=true → devolvemos el link de PRUEBA (sandbox_init_point) para testear el
     // flujo completo con tarjetas de prueba, sin cobrar de verdad. Sin la flag, link real.

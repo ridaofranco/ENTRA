@@ -227,13 +227,15 @@ export default function CreateEvent() {
 
     setLoading(true);
     try {
-      // 1. Obtener plan del usuario y tiers globales para snapshot
-      const userSnap = await getDoc(doc(db, 'users', user.uid));
-      const userPlan = userSnap.exists() ? (userSnap.data().plan || 'starter') : 'starter';
-      
+      // Comisión con la que nace el evento. Es un REGISTRO de con cuánto se creó,
+      // no lo que se va a cobrar: lo que se cobra lo decide el servidor al crear
+      // cada pago, leyendo la comisión vigente en ese momento. Si mañana se
+      // cambia, cambia para todos los eventos, y este número queda como historia.
       const configSnap = await getDoc(doc(db, 'platform_config', 'settings'));
-      const tiers = configSnap.exists() ? configSnap.data().commissionTiers : null;
-      const commissionRate = 8; // Comisión única del 8% para el nuevo modelo ENTRÁ
+      const comisionConfig = Number(configSnap.exists() ? configSnap.data()?.commissionPercent : NaN);
+      const commissionRate = Number.isFinite(comisionConfig) && comisionConfig >= 0 && comisionConfig <= 50
+        ? comisionConfig
+        : 8;
 
       let eventDate: Date;
       let multiDayExtra: any = { isMultiDay: false };
@@ -308,7 +310,6 @@ export default function CreateEvent() {
         organizerId: user.uid,
         organizerEmail: user.email || '',
         organizerName: profile?.displayName || user.displayName || 'Organizador',
-        organizerPlan: userPlan, // Snapshot del plan al crear
         commissionRate: commissionRate, // Snapshot de la tasa al crear
         ticketsSold: 0,
         totalRevenue: 0,
