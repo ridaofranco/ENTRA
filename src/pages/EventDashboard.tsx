@@ -71,6 +71,9 @@ interface OrderData {
   total: number;
   status: string;
   createdAt: any;
+  // De qué link vino el comprador. Lo escribe /api/create-payment al crear la
+  // orden. Es opcional: las órdenes anteriores a esto no lo tienen.
+  origen?: { source?: string; medium?: string; campaign?: string; referrer?: string };
 }
 
 interface CourtesyData {
@@ -237,6 +240,36 @@ export default function EventDashboard() {
   const realTicketsSold = paidActiveTickets.length;
   const realTotalRevenue = paidActiveTickets.reduce((s, t) => s + (Number(t.price) || 0), 0);
   const validOrdersCount = new Set(paidActiveTickets.map(t => t.orderId).filter(Boolean)).size;
+
+  // ============ DE DÓNDE VINIERON LAS VENTAS ============
+  // Agrupa las órdenes confirmadas por el origen que se guardó al crearlas.
+  // Se cuenta sobre ORDERS y no sobre tickets porque el origen es del comprador,
+  // no de la entrada: una sola persona que vino de Instagram y compró cuatro
+  // entradas es UN clic de Instagram, no cuatro.
+  const ventasPorOrigen = (() => {
+    const acumulado = new Map<string, { etiqueta: string; ordenes: number; monto: number }>();
+    let sinDato = 0;
+    let totalMonto = 0;
+
+    for (const o of orders) {
+      // Solo ventas de verdad: una orden pending es alguien que abrió el pago y
+      // nunca lo terminó, y contarla inflaría el canal con gente que no compró.
+      if (o.status !== 'confirmed' && o.status !== 'paid') continue;
+      const monto = Number(o.total) || 0;
+      totalMonto += monto;
+
+      const src = o.origen?.source?.trim();
+      if (!src) { sinDato++; continue; }
+      const etiqueta = o.origen?.campaign ? `${src} · ${o.origen.campaign}` : src;
+      const previo = acumulado.get(etiqueta) || { etiqueta, ordenes: 0, monto: 0 };
+      previo.ordenes += 1;
+      previo.monto += monto;
+      acumulado.set(etiqueta, previo);
+    }
+
+    const filas = [...acumulado.values()].sort((a, b) => b.monto - a.monto || b.ordenes - a.ordenes);
+    return { filas, sinDato, totalMonto };
+  })();
 
   // Filtered attendees
   const filteredAttendees = activeTickets.filter(t => {
@@ -831,6 +864,8 @@ export default function EventDashboard() {
       fecha: formatCsvDate(o.createdAt),
       estado: o.status === 'confirmed' ? 'Completado' : (o.status || ''),
       metodoPago: o.paymentMethod || '',
+      origen: o.origen?.source || '',
+      campana: o.origen?.campaign || '',
     }));
 
     const headers = [
@@ -845,6 +880,8 @@ export default function EventDashboard() {
       { key: 'fecha', label: 'Fecha' },
       { key: 'estado', label: 'Estado' },
       { key: 'metodoPago', label: 'Método de pago' },
+      { key: 'origen', label: 'Origen' },
+      { key: 'campana', label: 'Campaña' },
     ];
 
     const csv = toCsv(rows, headers);
@@ -1343,6 +1380,48 @@ El equipo de ENTRÁ`;
               ))}
               {orders.length === 0 && <p className="text-sm text-zinc-500 text-center py-4">Sin actividad todavía</p>}
             </div>
+          </div>
+
+          {/* De dónde vinieron las ventas */}
+          <div className="bg-white/5 rounded-3xl border border-white/10 p-6 md:col-span-2">
+            <div className="flex justify-between items-baseline mb-1">
+              <h3 className="font-bold">De dónde vinieron las ventas</h3>
+              {ventasPorOrigen.sinDato > 0 && (
+                <span className="text-[10px] text-zinc-500">
+                  {ventasPorOrigen.sinDato} {ventasPorOrigen.sinDato === 1 ? 'venta sin dato' : 'ventas sin dato'}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-zinc-500 mb-4">
+              Se mide desde el link con el que entró cada comprador. Para separar dos publicaciones
+              del mismo canal, agregale <code className="text-zinc-400">?utm_source=instagram&amp;utm_campaign=story-viernes</code> al link que compartís.
+            </p>
+            {ventasPorOrigen.filas.length === 0 ? (
+              <p className="text-sm text-zinc-500 text-center py-4">
+                Todavía no hay ventas con origen registrado.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {ventasPorOrigen.filas.map((fila) => {
+                  const pct = ventasPorOrigen.totalMonto > 0
+                    ? Math.round((fila.monto / ventasPorOrigen.totalMonto) * 100)
+                    : 0;
+                  return (
+                    <div key={fila.etiqueta} className="space-y-1.5">
+                      <div className="flex justify-between items-center gap-3">
+                        <span className="text-sm font-bold capitalize truncate">{fila.etiqueta}</span>
+                        <span className="text-xs text-zinc-400 shrink-0">
+                          {fila.ordenes} {fila.ordenes === 1 ? 'venta' : 'ventas'} · {formatCurrency(fila.monto)}
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full orange-gradient rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </motion.div>
       )}

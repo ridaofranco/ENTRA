@@ -83,6 +83,28 @@ function telefono(bruto: string): { area_code?: string; number: string } | null 
   return { number: d };
 }
 
+/**
+ * ORIGEN DE LA VENTA (lo manda el navegador, ver src/lib/attribution.ts).
+ *
+ * Es un dato informativo: no toca precio, ni stock, ni permisos. Aun así se
+ * sanea acá, porque cualquiera puede postear a este endpoint: se aceptan solo
+ * seis campos conocidos, cada uno recortado, y se descarta todo lo demás. Sin
+ * este filtro, un tercero podría escribirle basura (o HTML) al panel del
+ * productor a través de una compra.
+ */
+function saneaOrigen(bruto: any): Record<string, string> | null {
+  if (!bruto || typeof bruto !== 'object') return null;
+  const campos = ['source', 'medium', 'campaign', 'content', 'term', 'referrer', 'landing'];
+  const limpio: Record<string, string> = {};
+  for (const c of campos) {
+    const v = bruto[c];
+    if (typeof v !== 'string') continue;
+    const s = v.trim().replace(/[<>]/g, '').slice(0, 120);
+    if (s) limpio[c] = s;
+  }
+  return limpio.source ? limpio : null;
+}
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido' });
@@ -95,7 +117,7 @@ export default async function handler(req: any, res: any) {
   if (frenado(req, res, 'create-payment', 8)) return;
 
   try {
-    const { eventId, items, buyer, buyerId, discountCode } = req.body || {};
+    const { eventId, items, buyer, buyerId, discountCode, origen } = req.body || {};
 
     if (!eventId || !Array.isArray(items) || items.length === 0 || !buyer?.email || !buyer?.name || !buyer?.dni) {
       return res.status(400).json({ error: 'Faltan datos de la compra (evento, entradas o comprador).' });
@@ -213,6 +235,10 @@ export default async function handler(req: any, res: any) {
       paymentMethod: 'mercadopago',
       collectorId: isMarketplace ? organizerId : null,
       marketplace: isMarketplace,
+      // De dónde vino el comprador. Se guarda en la orden pending, o sea ANTES
+      // de que el pago se confirme: si esperáramos al webhook, MercadoPago sería
+      // el último referrer y perderíamos justo lo que queremos medir.
+      origen: saneaOrigen(origen),
       createdAt: Timestamp.now(),
     });
 

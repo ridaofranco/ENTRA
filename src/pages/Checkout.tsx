@@ -11,6 +11,7 @@ import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { cn, formatCurrency } from '@/src/lib/utils';
 import { useAuth } from '@/src/context/AuthContext';
 import { useLang, textos, dateLocale } from '@/src/lib/i18n';
+import { leerOrigen } from '@/src/lib/attribution';
 
 interface SelectedTicket {
   type: string;
@@ -315,6 +316,11 @@ export default function Checkout() {
           },
           buyerId,
           discountCode: appliedDiscount?.code || null,
+          // De qué link vino esta persona (ver src/lib/attribution.ts). Va acá y
+          // no en un servicio aparte a propósito: la atribución tiene que quedar
+          // pegada a la orden, en la misma escritura, o se pierde justo en las
+          // compras que importan.
+          origen: leerOrigen(),
         }),
       });
       const payData = await payResp.json().catch(() => null);
