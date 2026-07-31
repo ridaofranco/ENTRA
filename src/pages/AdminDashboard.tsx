@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Users, Calendar, Ticket, TrendingUp, Loader, ChevronDown, Clock,
-  Edit3, Trash2, RotateCcw, Eye, X, Plus, AlertTriangle, BarChart3, Search, Percent, Save, RefreshCw, Check
+  Edit3, Trash2, RotateCcw, Eye, X, Plus, AlertTriangle, BarChart3, Search, Check, Save
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/src/context/AuthContext';
@@ -19,7 +19,6 @@ interface UserData {
   email: string;
   displayName: string;
   role: 'buyer' | 'organizer' | 'admin' | 'superadmin';
-  plan?: 'starter' | 'pro' | 'enterprise';
   createdAt: any;
   suspended?: boolean;
 }
@@ -36,13 +35,17 @@ interface EventData {
   description?: string;
   organizerId?: string;
   organizerEmail?: string;
-  organizerPlan?: string;
   commissionRate?: number;
   date: any;
   // Fin del evento (opcional): si existe, la venta termina exactamente ahi.
   // Sin endDate, el evento se da por finalizado 3hs despues del inicio.
   endDate?: any;
   isMultiDay?: boolean;
+  // Los dos "a confirmar" que el productor puede dejar abiertos al crear el
+  // evento. Se usaban en la tabla sin estar declarados acá.
+  isDateTBD?: boolean;
+  isVenueTBD?: boolean;
+  hidden?: boolean;
   venue?: string;
   location?: string;
   image?: string;
@@ -64,23 +67,31 @@ export default function AdminDashboard() {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [roleDropdown, setRoleDropdown] = useState<string | null>(null);
-  const [planDropdown, setPlanDropdown] = useState<string | null>(null);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
-  const [updatingPlanId, setUpdatingPlanId] = useState<string | null>(null);
-  const [resnapshotId, setResnapshotId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ type: 'user' | 'event'; id: string; title?: string } | null>(null);
   const [confirmCancel, setConfirmCancel] = useState<{ id: string; title?: string } | null>(null);
   const [cancellingEvent, setCancellingEvent] = useState(false);
   const [editingEvent, setEditingEvent] = useState<EventData | null>(null);
   const [savingEvent, setSavingEvent] = useState(false);
-  const [eventFilter, setEventFilter] = useState<'all' | 'pending' | 'active' | 'paused' | 'scheduled' | 'deleted'>('all');
-  // Commission tiers (migrated from PlatformConfig.tsx)
-  const [commissions, setCommissions] = useState({ starter: 3.5, pro: 2.5, enterprise: 1.9 });
-  const [commissionsInput, setCommissionsInput] = useState({ starter: '3.5', pro: '2.5', enterprise: '1.9' });
-  const [commissionLoading, setCommissionLoading] = useState<boolean>(false);
-  const [commissionSaved, setCommissionSaved] = useState<boolean>(false);
-  const [eventTimeFilter, setEventTimeFilter] = useState<'all' | 'upcoming' | 'past'>('all');
   const [eventSearch, setEventSearch] = useState('');
+  // Qué secciones de eventos están abiertas. Se recuerda entre visitas: si
+  // cerraste "Ya pasaron", no tenés que volver a cerrarlo cada vez que entrás.
+  const [seccionesAbiertas, setSeccionesAbiertas] = useState<Record<string, boolean>>(() => {
+    try {
+      const guardado = localStorage.getItem('entra_admin_secciones');
+      return guardado ? JSON.parse(guardado) : {};
+    } catch {
+      return {};
+    }
+  });
+  const alternarSeccion = (key: string, defecto: boolean) => {
+    setSeccionesAbiertas(prev => {
+      const abierta = prev[key] ?? defecto;
+      const siguiente = { ...prev, [key]: !abierta };
+      try { localStorage.setItem('entra_admin_secciones', JSON.stringify(siguiente)); } catch { /* modo privado */ }
+      return siguiente;
+    });
+  };
 
   // Authorization: admin + superadmin can enter the panel
   const isAuthorized =
@@ -134,99 +145,16 @@ export default function AdminDashboard() {
     }
   }, [authLoading, isAuthorized]);
 
-  // ===== COMMISSION CONFIG (3 TIERS) =====
-  useEffect(() => {
-    (async () => {
-      try {
-        const snap = await getDoc(doc(db, 'platform_config', 'settings'));
-        if (snap.exists()) {
-          const data = snap.data();
-          if (data?.commissionTiers) {
-            setCommissions(data.commissionTiers);
-            setCommissionsInput({
-              starter: String(data.commissionTiers.starter || '3.5'),
-              pro: String(data.commissionTiers.pro || '2.5'),
-              enterprise: String(data.commissionTiers.enterprise || '1.9'),
-            });
-          }
-        }
-      } catch (err) {
-        console.warn('[AdminDashboard] Could not load commission tiers', err);
-      }
-    })();
-  }, []);
-
-  const handleSaveCommissions = async () => {
-    const s = Number(commissionsInput.starter);
-    const p = Number(commissionsInput.pro);
-    const e = Number(commissionsInput.enterprise);
-
-    if ([s, p, e].some(v => isNaN(v) || v < 0 || v > 100)) {
-      alert('Todos los valores deben ser números entre 0 y 100');
-      return;
-    }
-
-    setCommissionLoading(true);
-    setCommissionSaved(false);
-    try {
-      const newTiers = { starter: s, pro: p, enterprise: e };
-      await setDoc(
-        doc(db, 'platform_config', 'settings'),
-        { commissionTiers: newTiers, updatedAt: Timestamp.now(), updatedBy: user?.email || '' },
-        { merge: true }
-      );
-      setCommissions(newTiers);
-      setCommissionSaved(true);
-      setTimeout(() => setCommissionSaved(false), 3000);
-    } catch (err: any) {
-      console.error('Error saving commissions:', err);
-      alert('No se pudo guardar: ' + (err?.message || 'error'));
-    } finally {
-      setCommissionLoading(false);
-    }
-  };
-
-  const handlePlanChange = async (userId: string, newPlan: any) => {
-    setUpdatingPlanId(userId);
-    try {
-      await updateDoc(doc(db, 'users', userId), { plan: newPlan });
-      setPlanDropdown(null);
-    } catch (err: any) {
-      alert('Error al cambiar plan: ' + err.message);
-    } finally {
-      setUpdatingPlanId(null);
-    }
-  };
-
-  const planColor = (plan: string) => {
-    switch (plan) {
-      case 'enterprise': return 'text-purple-400 bg-purple-500/10 border-purple-500/20';
-      case 'pro': return 'text-blue-400 bg-blue-500/10 border-blue-500/20';
-      default: return 'text-zinc-400 bg-zinc-500/10 border-zinc-500/20';
-    }
-  };
-
-  const handleResnapshotCommission = async (event: EventData) => {
-    if (!event.organizerId) return;
-    setResnapshotId(event.id);
-    try {
-      const uSnap = await getDoc(doc(db, 'users', event.organizerId));
-      const userPlan = uSnap.exists() ? (uSnap.data().plan || 'starter') : 'starter';
-      const cSnap = await getDoc(doc(db, 'platform_config', 'settings'));
-      const tiers = cSnap.exists() ? (cSnap.data().commissionTiers || commissions) : commissions;
-      const newRate = tiers[userPlan] || 3.5;
-
-      await updateDoc(doc(db, 'events', event.id), {
-        commissionRate: newRate,
-        organizerPlan: userPlan
-      });
-      alert(`Comisión actualizada a ${newRate}% (Plan: ${userPlan})`);
-    } catch (err: any) {
-      alert('Error al recalcular: ' + err.message);
-    } finally {
-      setResnapshotId(null);
-    }
-  };
+  // El 31/7 se sacó todo el sistema de PLANES (starter/pro/enterprise) del panel:
+  // la carga de tiers, el guardado de comisiones, el cambio de plan por usuario,
+  // y el "Recalcular comisión según plan".
+  //
+  // La comisión de ENTRÁ es ÚNICA del 8% y está fija en CreateEvent desde el
+  // modelo nuevo. Los planes eran un vestigio, y no eran solo ruido visual: el
+  // botón de recalcular leía las tarifas por tier (3.5 / 2.5 / 1.9) y las
+  // escribía sobre el evento, o sea que UN CLIC AHÍ PISABA el 8% real con un
+  // número que nadie cobra. El campo `commissionRate` del evento se sigue
+  // guardando, pero solo lo escribe CreateEvent.
 
   const fetchData = async () => {
     // Keep this for manual refresh if needed, but onSnapshot handles it now
@@ -518,22 +446,64 @@ export default function AdminDashboard() {
   };
 
   // Apply event filter
-  const filteredEvents = events.filter(e => {
-    const s = e.status || 'active';
-    const matchesStatus = eventFilter === 'all' || s === eventFilter;
-    
-    const eventDate = e.date?.toDate ? e.date.toDate() : e.date?.seconds ? new Date(e.date.seconds * 1000) : null;
-    const now = new Date();
-    const matchesTime = eventTimeFilter === 'all' || 
-                       (eventTimeFilter === 'upcoming' && eventDate && eventDate >= now) ||
-                       (eventTimeFilter === 'past' && eventDate && eventDate < now);
-                       
-    const matchesSearch = e.title.toLowerCase().includes(eventSearch.toLowerCase()) ||
-                         e.organizerEmail?.toLowerCase().includes(eventSearch.toLowerCase()) ||
-                         e.venue?.toLowerCase().includes(eventSearch.toLowerCase());
-                         
-    return matchesStatus && matchesTime && matchesSearch;
+  // ══════════════════════════════════════════════════════════════════════════
+  // LOS EVENTOS, AGRUPADOS POR LO QUE HAY QUE HACER CON ELLOS
+  // ══════════════════════════════════════════════════════════════════════════
+  // Antes esto era una lista sola con chips de filtro. El problema no era el
+  // filtro: era que por defecto se veía TODO junto, así que los eliminados y
+  // los que ya pasaron tapaban a los que importan. Y para no verlos había que
+  // acordarse de tocar un chip cada vez que se entraba.
+  //
+  // Ahora se agrupa por estado. Lo que pide acción arriba y abierto; el archivo
+  // abajo y cerrado, pero a un clic. La preferencia de qué está abierto se
+  // guarda en el navegador, así el panel se abre como lo dejaste.
+  const eventosFiltrados = events.filter(e => {
+    if (!eventSearch.trim()) return true;
+    const q = eventSearch.toLowerCase();
+    return e.title.toLowerCase().includes(q) ||
+           e.organizerEmail?.toLowerCase().includes(q) ||
+           e.venue?.toLowerCase().includes(q);
   });
+
+  const ahora = new Date();
+  const fechaDe = (e: EventData): Date | null =>
+    e.date?.toDate ? e.date.toDate() : e.date?.seconds ? new Date(e.date.seconds * 1000) : null;
+  const yaPaso = (e: EventData): boolean => {
+    const d = fechaDe(e);
+    if (!d) return false;
+    // Mismo criterio que la cartelera: sin hora de fin, un evento se da por
+    // terminado 3 horas después de empezar.
+    const fin = (e as any).endDate?.toDate ? (e as any).endDate.toDate() : new Date(d.getTime() + 3 * 60 * 60 * 1000);
+    return fin < ahora;
+  };
+
+  const gruposEventos = (() => {
+    const paraAprobar: EventData[] = [];
+    const activos: EventData[] = [];
+    const pausados: EventData[] = [];
+    const pasados: EventData[] = [];
+    const ocultos: EventData[] = [];
+    const eliminados: EventData[] = [];
+
+    for (const e of eventosFiltrados) {
+      const st = e.status || 'active';
+      if (st === 'deleted' || st === 'cancelled') { eliminados.push(e); continue; }
+      if (st === 'pending') { paraAprobar.push(e); continue; }
+      if ((e as any).hidden) { ocultos.push(e); continue; }
+      if (yaPaso(e)) { pasados.push(e); continue; }
+      if (st === 'paused') { pausados.push(e); continue; }
+      activos.push(e);
+    }
+
+    return [
+      { key: 'para-aprobar', titulo: 'Para aprobar', ayuda: 'Cargados por un productor. No se ven ni se venden hasta que los publiques.', eventos: paraAprobar, defecto: true, acento: true },
+      { key: 'activos', titulo: 'A la venta', ayuda: 'Publicados y con fecha por delante.', eventos: activos, defecto: true, acento: false },
+      { key: 'pausados', titulo: 'Pausados', ayuda: 'Publicados pero con la venta frenada.', eventos: pausados, defecto: true, acento: false },
+      { key: 'pasados', titulo: 'Ya pasaron', ayuda: 'Terminados. Quedan para consultar las ventas.', eventos: pasados, defecto: false, acento: false },
+      { key: 'ocultos', titulo: 'Ocultos', ayuda: 'No aparecen en la cartelera, pero el link directo funciona.', eventos: ocultos, defecto: false, acento: false },
+      { key: 'eliminados', titulo: 'Eliminados', ayuda: 'Dados de baja. Se pueden restaurar.', eventos: eliminados, defecto: false, acento: false },
+    ].filter(g => g.eventos.length > 0);
+  })();
 
   // ==================== LOADING SCREEN ====================
   if (loading) {
@@ -616,85 +586,10 @@ export default function AdminDashboard() {
         })}
       </div>
 
-      {/* Commission Settings Card (SUPERADMIN ONLY) */}
-      {isSuperAdmin && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="mb-8"
-        >
-          <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/5 rounded-3xl border border-orange-500/20 p-6">
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div className="flex items-start gap-3">
-                <div className="bg-orange-500/20 p-3 rounded-2xl">
-                  <Percent className="w-5 h-5 text-orange-500" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-heading font-black">Comisiones por tier</h2>
-                  <p className="text-sm text-zinc-400 mt-1 max-w-md">
-                    Configurá el % que cobra ENTRÁ según el plan del organizador.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 bg-black/20 p-4 rounded-2xl border border-white/5 flex-wrap">
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Starter</label>
-                  <div className="relative">
-                    <Input
-                      type="text"
-                      value={commissionsInput.starter}
-                      onChange={(e) => setCommissionsInput({ ...commissionsInput, starter: e.target.value })}
-                      className="w-24 bg-white/5 border-white/10 rounded-xl pl-3 pr-8 h-10 font-bold"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">%</span>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Pro</label>
-                  <div className="relative">
-                    <Input
-                      type="text"
-                      value={commissionsInput.pro}
-                      onChange={(e) => setCommissionsInput({ ...commissionsInput, pro: e.target.value })}
-                      className="w-24 bg-white/5 border-white/10 rounded-xl pl-3 pr-8 h-10 font-bold"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">%</span>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Enterprise</label>
-                  <div className="relative">
-                    <Input
-                      type="text"
-                      value={commissionsInput.enterprise}
-                      onChange={(e) => setCommissionsInput({ ...commissionsInput, enterprise: e.target.value })}
-                      className="w-24 bg-white/5 border-white/10 rounded-xl pl-3 pr-8 h-10 font-bold"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">%</span>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={handleSaveCommissions}
-                  disabled={commissionLoading}
-                  className="orange-gradient hover:brightness-110 text-white rounded-xl px-6 h-10 font-bold flex items-center gap-2 transition-all self-end"
-                >
-                  {commissionLoading ? (
-                    <Loader className="w-4 h-4 animate-spin" />
-                  ) : commissionSaved ? (
-                    <Check className="w-4 h-4" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
-                  {commissionSaved ? 'Guardado' : 'Guardar'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      )}
+      {/* El bloque "Comisiones por tier" se sacó el 31/7. La comisión de ENTRÁ es
+          ÚNICA del 8% (está fija en CreateEvent), así que ese panel configuraba
+          tarifas por plan que ya nadie aplica: mostraba números que no eran los
+          que se cobraban. */}
 
       {/* Users Table */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mb-8">
@@ -710,7 +605,6 @@ export default function AdminDashboard() {
                   <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Nombre</th>
                   <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Email</th>
                   <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Rol</th>
-                  <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Plan</th>
                   <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Registro</th>
                   <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Acciones</th>
                 </tr>
@@ -724,33 +618,6 @@ export default function AdminDashboard() {
                       <span className={`inline-block text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full border ${roleColor(u.role)}`}>
                         {u.role}
                       </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="relative">
-                        <button
-                          onClick={() => setPlanDropdown(planDropdown === u.id ? null : u.id)}
-                          className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[10px] font-bold uppercase tracking-widest transition ${planColor(u.plan || 'starter')}`}
-                          disabled={updatingPlanId === u.id}
-                        >
-                          {updatingPlanId === u.id ? '...' : (u.plan || 'starter')}
-                          <ChevronDown className="w-3 h-3" />
-                        </button>
-                        {planDropdown === u.id && (
-                          <div className="absolute top-full mt-1 left-0 bg-zinc-900 border border-white/10 rounded-xl overflow-hidden z-10 shadow-xl min-w-max">
-                            {(['starter', 'pro', 'enterprise'] as const).map(p => (
-                              <button
-                                key={p}
-                                onClick={() => handlePlanChange(u.id, p)}
-                                className={`w-full text-left px-4 py-2 hover:bg-orange-500/20 transition text-xs font-bold ${
-                                  (u.plan || 'starter') === p ? 'text-orange-400 bg-orange-500/10' : 'text-zinc-300'
-                                }`}
-                              >
-                                {p}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
                     </td>
                     <td className="py-3 px-4 text-zinc-500 text-xs">{formatDate(u.createdAt)}</td>
                     <td className="py-3 px-4">
@@ -807,7 +674,7 @@ export default function AdminDashboard() {
             <h2 className="text-xl font-heading font-black">
               <span className="text-orange-500">Eventos</span>
               <span className="text-zinc-500 text-sm font-normal ml-3">
-                {filteredEvents.length} de {events.length}
+                {eventosFiltrados.length}{eventosFiltrados.length !== events.length ? ` de ${events.length}` : ''}
               </span>
             </h2>
             
@@ -823,75 +690,67 @@ export default function AdminDashboard() {
                 <Search className="w-5 h-5 text-zinc-500 absolute left-4 top-1/2 -translate-y-1/2" />
               </div>
 
-              {/* Time filter Tabs */}
-              <div className="flex bg-white/5 border border-white/10 rounded-2xl p-1 w-full md:w-auto">
-                {(['all', 'upcoming', 'past'] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setEventTimeFilter(t)}
-                    className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
-                      eventTimeFilter === t
-                        ? 'bg-orange-500 text-white'
-                        : 'text-zinc-500 hover:text-white'
-                    }`}
-                  >
-                    {t === 'all' ? 'Todos' : t === 'upcoming' ? 'Próximos' : 'Pasados'}
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
-            {/* Event filter chips */}
-            <div className="flex gap-1.5">
-              {([
-                { key: 'all', label: `Todos (${events.length})` },
-                { key: 'pending', label: `Pendientes (${countsByStatus.pending || 0})` },
-                { key: 'active', label: `Activos (${countsByStatus.active || 0})` },
-                { key: 'paused', label: `Pausados (${countsByStatus.paused || 0})` },
-                { key: 'scheduled', label: `Programados (${countsByStatus.scheduled || 0})` },
-                { key: 'deleted', label: `Eliminados (${countsByStatus.deleted || 0})` },
-              ] as const).map(f => (
-                <button
-                  key={f.key}
-                  onClick={() => setEventFilter(f.key)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
-                    eventFilter === f.key
-                      ? 'orange-gradient text-white'
-                      : 'bg-white/5 border border-white/10 text-muted-foreground hover:text-white'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {filteredEvents.length === 0 ? (
+          {gruposEventos.length === 0 ? (
             <div className="text-center py-12">
               <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
               <p className="text-sm text-muted-foreground">
                 {events.length === 0
-                  ? 'No hay eventos en la base de datos. Creá el primero con el botón arriba.'
-                  : 'No hay eventos que coincidan con este filtro.'}
+                  ? 'No hay eventos en la base de datos. Creá el primero con el botón de arriba.'
+                  : 'Ningún evento coincide con la búsqueda.'}
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-white/10">
-                    <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Título</th>
-                    <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Fecha</th>
-                    <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Tickets</th>
-                    <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Estado</th>
-                    <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Comisión</th>
-                    <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredEvents.map(e => {
+            <div className="space-y-3">
+              {gruposEventos.map(grupo => {
+                const abierta = seccionesAbiertas[grupo.key] ?? grupo.defecto;
+                return (
+                  <div
+                    key={grupo.key}
+                    className={`rounded-2xl border overflow-hidden ${
+                      grupo.acento ? 'border-orange-500/30 bg-orange-500/[0.04]' : 'border-white/10 bg-white/[0.02]'
+                    }`}
+                  >
+                    <button
+                      onClick={() => alternarSeccion(grupo.key, grupo.defecto)}
+                      className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left hover:bg-white/[0.03] transition"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2.5">
+                          <ChevronDown
+                            className={`w-4 h-4 shrink-0 transition-transform ${abierta ? '' : '-rotate-90'} ${
+                              grupo.acento ? 'text-orange-400' : 'text-zinc-500'
+                            }`}
+                          />
+                          <span className={`font-bold text-sm ${grupo.acento ? 'text-orange-400' : 'text-white'}`}>
+                            {grupo.titulo}
+                          </span>
+                          <span className="text-xs text-zinc-500 font-bold">{grupo.eventos.length}</span>
+                        </div>
+                        <p className="text-[11px] text-zinc-500 mt-1 ml-[26px] truncate">{grupo.ayuda}</p>
+                      </div>
+                      {!abierta && (
+                        <span className="text-[10px] uppercase tracking-widest text-zinc-600 font-bold shrink-0">Ver</span>
+                      )}
+                    </button>
+
+                    {abierta && (
+                      <div className="overflow-x-auto border-t border-white/5">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-white/10">
+                              <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Título</th>
+                              <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Fecha</th>
+                              <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Tickets</th>
+                              <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Estado</th>
+                              <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Comisión</th>
+                              <th className="text-left py-3 px-4 text-zinc-500 font-bold text-xs uppercase tracking-widest">Acciones</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                  {grupo.eventos.map(e => {
                     const badge = statusBadge(e.status || 'active');
                     const totalAvailable = (e.tickets || []).reduce((s, t) => s + (t.available || 0), 0);
                     const totalCapacity = (e.tickets || []).reduce((s, t) => s + (t.available || 0), 0);
@@ -925,7 +784,6 @@ export default function AdminDashboard() {
                         <td className="py-3 px-4">
                           <div className="flex flex-col">
                             <span className="text-zinc-200 font-bold text-xs">{e.commissionRate || '8'}%</span>
-                            <span className="text-[9px] text-zinc-500 uppercase tracking-tighter">{e.organizerPlan || 'starter'}</span>
                           </div>
                         </td>
                         <td className="py-3 px-4">
@@ -947,16 +805,6 @@ export default function AdminDashboard() {
                             >
                               <Edit3 className="w-3.5 h-3.5" />
                             </button>
-                            {isSuperAdmin && (
-                              <button
-                                onClick={() => handleResnapshotCommission(e)}
-                                disabled={resnapshotId === e.id}
-                                className="px-2.5 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-400 text-xs font-bold transition"
-                                title="Recalcular comisión según plan actual del organizador"
-                              >
-                                {resnapshotId === e.id ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                              </button>
-                            )}
                             {!isDeleted && (
                               <>
                                 {e.status === 'pending' ? (
@@ -1013,8 +861,13 @@ export default function AdminDashboard() {
                       </tr>
                     );
                   })}
-                </tbody>
-              </table>
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
