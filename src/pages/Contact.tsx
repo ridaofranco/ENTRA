@@ -38,7 +38,11 @@ export default function Contact() {
               </div>
               <div>
                 <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">Oficinas</div>
-                <div className="text-xl font-bold">Palermo Soho, CABA, Argentina</div>
+                {/* Decisión de Franco (31/7): el domicilio es el mismo en TODOS los
+                    productos, el de SOMOS DER. Antes acá decía "Palermo Soho, CABA"
+                    y en somosder.ar "Aráoz 1146, Palermo, CABA": dos direcciones
+                    distintas para la misma empresa. Si cambia, cambia en los cinco. */}
+                <div className="text-xl font-bold">Aráoz 1146, Palermo, CABA, Argentina</div>
               </div>
             </div>
           </div>
