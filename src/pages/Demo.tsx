@@ -9,7 +9,7 @@ import {
 import { WhatsAppIcon } from '@/src/components/icons/WhatsAppIcon';
 
 // Los dos eventos demo tienen ID FIJO en Firestore y los mantiene vigentes el cron
-// api/cron/eventos-demo.ts (les corre la fecha antes de que se venzan). Por eso acá
+// api/_cron-demos.ts (les corre la fecha antes de que se venzan). Por eso acá
 // se puede linkear directo sin que nadie tenga que venir a actualizar esta constante:
 // antes esto apuntaba a '/eventos' y, con la cartelera vacía, "probar la demo" dejaba
 // al cliente mirando una lista sin nada.

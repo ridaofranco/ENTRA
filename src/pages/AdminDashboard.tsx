@@ -13,6 +13,9 @@ import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { formatCurrency } from '@/src/lib/utils';
+// Misma definición que usa el cron (api/_cron-demos.ts), para que el botón de acá
+// y la tarea programada no puedan describir dos eventos distintos.
+import { DEMOS, proximaFechaDemo, aDate, hayQueReprogramar } from '../../api/_demo-eventos';
 
 interface UserData {
   id: string;
@@ -387,6 +390,67 @@ export default function AdminDashboard() {
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `events/${eventId}`);
       alert('No se pudo eliminar el evento.');
+    }
+  };
+
+  // Crea (o pone al día) los dos eventos demo desde acá, sin depender del cron.
+  //
+  // POR QUÉ EXISTE ESTE BOTÓN. Los demos los mantiene vigentes el cron, pero para
+  // dispararlo a mano hace falta el CF_CRON_SECRET, y no siempre se lo tiene a
+  // mano. Un admin ya tiene permiso de sobra para escribir esto, así que puede
+  // resolverlo con un clic.
+  //
+  // EL ALTA VA EN DOS PASOS A PROPÓSITO. La regla de creación exige
+  // status == 'pending' (para que nadie publique saltándose la revisión), así que
+  // el documento nace pendiente y recién después se lo activa, que es lo que la
+  // regla de update sí le permite a un admin. El cron no necesita este rodeo
+  // porque el Admin SDK saltea las reglas.
+  const [creandoDemos, setCreandoDemos] = useState(false);
+  const handleEventosDemo = async () => {
+    setCreandoDemos(true);
+    const hechos: string[] = [];
+    try {
+      const nueva = proximaFechaDemo();
+      for (const demo of DEMOS) {
+        const { id, ...datos } = demo;
+        const ref = doc(db, 'events', id);
+        const snap = await getDoc(ref);
+
+        if (!snap.exists()) {
+          await setDoc(ref, {
+            ...datos,
+            status: 'pending',
+            date: Timestamp.fromDate(nueva),
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
+          });
+          await updateDoc(ref, { status: 'active', updatedAt: Timestamp.now() });
+          hechos.push(`${datos.title}: creado`);
+          continue;
+        }
+
+        const actual: any = snap.data() || {};
+        const fin = aDate(actual.endDate) || aDate(actual.date);
+        if (!hayQueReprogramar(fin) && actual.status === 'active' && !actual.hidden) {
+          hechos.push(`${datos.title}: ya estaba al día`);
+          continue;
+        }
+        await updateDoc(ref, {
+          date: Timestamp.fromDate(nueva),
+          status: 'active',
+          hidden: false,
+          updatedAt: Timestamp.now(),
+        });
+        hechos.push(`${datos.title}: reprogramado`);
+      }
+
+      await fetchData();
+      alert(`Eventos demo listos:\n\n${hechos.join('\n')}`);
+    } catch (error: any) {
+      handleFirestoreError(error, OperationType.WRITE, 'events/demo');
+      alert(`No se pudieron crear los eventos demo: ${error?.message || 'error desconocido'}`);
+    } finally {
+      setCreandoDemos(false);
     }
   };
 
@@ -799,6 +863,16 @@ export default function AdminDashboard() {
                 <Search className="w-5 h-5 text-zinc-500 absolute left-4 top-1/2 -translate-y-1/2" />
               </div>
 
+              {/* Los dos eventos de ejemplo para mostrarle a un cliente. Idempotente:
+                  si ya están y siguen vigentes, no toca nada. */}
+              <Button
+                onClick={handleEventosDemo}
+                disabled={creandoDemos}
+                variant="outline"
+                className="h-12 rounded-2xl bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20 text-sm whitespace-nowrap"
+              >
+                {creandoDemos ? 'Creando...' : 'Eventos demo'}
+              </Button>
             </div>
           </div>
 
