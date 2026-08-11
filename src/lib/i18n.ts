@@ -219,6 +219,7 @@ const es = {
     ctaOrganizasBajada:
       'Vendé tus entradas en ENTRÁ y cobrá el 100% neto del valor de tu ticket sin costos sorpresivos.',
     ctaOrganizasBoton: 'Quiero vender entradas',
+    ctaOrganizasDuda: 'Tengo una duda',
     // Texto que se precarga en el WhatsApp del CTA de productores.
     ctaOrganizasWhatsapp: '¡Hola! Quiero vender mis eventos con ENTRÁ',
   },
@@ -517,6 +518,7 @@ const en: typeof es = {
     ctaOrganizasBajada:
       'Sell your tickets on ENTRÁ and keep 100% of your ticket price, with no surprise costs.',
     ctaOrganizasBoton: 'I want to sell tickets',
+    ctaOrganizasDuda: 'I have a question',
     ctaOrganizasWhatsapp: "Hi! I'd like to sell my events with ENTRÁ",
   },
   evento: {
