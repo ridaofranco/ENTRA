@@ -1,5 +1,5 @@
 // ============================================================================
-// CRON DIARIO: LOS DOS EVENTOS DEMO SIEMPRE VIGENTES
+// TAREA: LOS DOS EVENTOS DEMO SIEMPRE VIGENTES
 // ============================================================================
 // ENTRÁ necesita eventos de ejemplo permanentes para mostrarle a un cliente cómo
 // se compra una entrada de punta a punta. Había cuatro, pero tenían la fecha
@@ -10,8 +10,8 @@
 // seedEventsIfMissing() corría en el cliente, sin sesión, y las reglas de
 // Firestore piden isVerified() + organizer/admin + status == 'pending' para
 // crear un evento. O sea que fallaba SIEMPRE y el try/catch se comía el error.
-// Acá se usa el Admin SDK, que saltea las reglas, y por eso el endpoint tiene
-// que estar cerrado con la misma llave que el resto de los crons.
+// Acá se usa el Admin SDK, que saltea las reglas, y por eso api/cron/[tarea].ts
+// autentica antes de llamar a esto.
 //
 // QUÉ HACE, EXACTAMENTE
 //   - Si el evento demo no existe, lo crea entero.
@@ -22,12 +22,14 @@
 //
 // Es idempotente: los documentos tienen ID fijo, así que correrlo diez veces
 // deja lo mismo que correrlo una.
+//
+// El prefijo `_` la saca del ruteo de Vercel: esto NO es un endpoint.
 
 import { Timestamp } from 'firebase-admin/firestore';
-import { getAdminDb } from '../_lib/firebaseAdmin.js';
+import { getAdminDb } from './_lib/firebaseAdmin.js';
 
 // Argentina es UTC-3 fijo (sin horario de verano desde 2009). Mismo criterio
-// que recordatorio-evento.ts.
+// que _cron-recordatorio.ts.
 const ART_OFFSET_MS = 3 * 60 * 60 * 1000;
 
 // A cuántos días se reprograma el demo cuando hay que moverlo.
@@ -113,85 +115,66 @@ function aDate(raw: any): Date | null {
   return d && !isNaN(d.getTime()) ? d : null;
 }
 
-export default async function handler(req: any, res: any) {
-  // Mismo criterio fail-closed que recordatorio-evento.ts: sin ninguna llave
-  // cargada no se atiende. Este endpoint ESCRIBE en la base con Admin SDK, así
-  // que dejarlo abierto sería peor que en cualquier otro cron.
-  const aceptados = [process.env.CRON_SECRET, process.env.CF_CRON_SECRET].filter(Boolean);
-  const auth = req.headers?.authorization;
-  if (!aceptados.length) {
-    console.error('[eventos-demo] sin CRON_SECRET ni CF_CRON_SECRET: no se atiende');
-    return res.status(401).json({ ok: false, error: 'No autorizado' });
-  }
-  if (!aceptados.some((s) => auth === `Bearer ${s}`)) {
-    console.error('[eventos-demo] rechazado: Authorization inválido');
-    return res.status(401).json({ ok: false, error: 'No autorizado' });
-  }
+export async function correrEventosDemo() {
+  const db = getAdminDb();
+  const ahora = Date.now();
+  const nueva = proximaFecha();
+  const detalle: Array<{ id: string; accion: string; fecha: string }> = [];
 
-  try {
-    const db = getAdminDb();
-    const ahora = Date.now();
-    const nueva = proximaFecha();
-    const detalle: Array<{ id: string; accion: string; fecha: string }> = [];
+  for (const demo of DEMOS) {
+    const { id, ...datos } = demo;
+    const ref = db.collection('events').doc(id);
+    const snap = await ref.get();
 
-    for (const demo of DEMOS) {
-      const { id, ...datos } = demo;
-      const ref = db.collection('events').doc(id);
-      const snap = await ref.get();
-
-      if (!snap.exists) {
-        await ref.set({
-          ...datos,
-          date: Timestamp.fromDate(nueva),
-          createdAt: Timestamp.now(),
-          updatedAt: Timestamp.now(),
-        });
-        detalle.push({ id, accion: 'creado', fecha: nueva.toISOString() });
-        continue;
-      }
-
-      // Ya existe: el cron es dueño de la fecha y de NADA más. Si alguien le
-      // cambió el título, la imagen o el precio desde el panel, eso se respeta.
-      const actual: any = snap.data() || {};
-      const fin = aDate(actual.endDate) || aDate(actual.date);
-      const diasRestantes = fin ? (fin.getTime() - ahora) / DIA_MS : -1;
-
-      if (diasRestantes >= DIAS_MINIMOS) {
-        detalle.push({
-          id,
-          accion: 'sin cambios',
-          fecha: fin ? fin.toISOString() : 'sin fecha',
-        });
-        continue;
-      }
-
-      const update: Record<string, any> = {
+    if (!snap.exists) {
+      await ref.set({
+        ...datos,
         date: Timestamp.fromDate(nueva),
+        createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
-      };
-      // Un endDate viejo lo dejaría vencido igual (getEventEnd le da prioridad
-      // sobre date), así que si estaba cargado se corre el mismo margen.
-      const endActual = aDate(actual.endDate);
-      const inicioActual = aDate(actual.date);
-      if (endActual && inicioActual) {
-        const duracion = endActual.getTime() - inicioActual.getTime();
-        if (duracion > 0) {
-          update.endDate = Timestamp.fromDate(new Date(nueva.getTime() + duracion));
-        }
-      }
-      // Si estaba pausado o cancelado, volver a ponerlo en venta: un demo que no
-      // se puede comprar no sirve para mostrarle nada a nadie.
-      if (actual.status && actual.status !== 'active') update.status = 'active';
-      if (actual.hidden) update.hidden = false;
-
-      await ref.update(update);
-      detalle.push({ id, accion: 'reprogramado', fecha: nueva.toISOString() });
+      });
+      detalle.push({ id, accion: 'creado', fecha: nueva.toISOString() });
+      continue;
     }
 
-    console.log(`[eventos-demo] ${detalle.map((d) => `${d.id}=${d.accion}`).join(' ')}`);
-    return res.status(200).json({ ok: true, demos: detalle });
-  } catch (err: any) {
-    console.error('[eventos-demo] error:', err?.message || err);
-    return res.status(500).json({ ok: false, error: 'Falló la puesta a punto de los demos.' });
+    // Ya existe: el cron es dueño de la fecha y de NADA más. Si alguien le
+    // cambió el título, la imagen o el precio desde el panel, eso se respeta.
+    const actual: any = snap.data() || {};
+    const fin = aDate(actual.endDate) || aDate(actual.date);
+    const diasRestantes = fin ? (fin.getTime() - ahora) / DIA_MS : -1;
+
+    if (diasRestantes >= DIAS_MINIMOS) {
+      detalle.push({
+        id,
+        accion: 'sin cambios',
+        fecha: fin ? fin.toISOString() : 'sin fecha',
+      });
+      continue;
+    }
+
+    const update: Record<string, any> = {
+      date: Timestamp.fromDate(nueva),
+      updatedAt: Timestamp.now(),
+    };
+    // Un endDate viejo lo dejaría vencido igual (getEventEnd le da prioridad
+    // sobre date), así que si estaba cargado se corre el mismo margen.
+    const endActual = aDate(actual.endDate);
+    const inicioActual = aDate(actual.date);
+    if (endActual && inicioActual) {
+      const duracion = endActual.getTime() - inicioActual.getTime();
+      if (duracion > 0) {
+        update.endDate = Timestamp.fromDate(new Date(nueva.getTime() + duracion));
+      }
+    }
+    // Si estaba pausado o cancelado, volver a ponerlo en venta: un demo que no
+    // se puede comprar no sirve para mostrarle nada a nadie.
+    if (actual.status && actual.status !== 'active') update.status = 'active';
+    if (actual.hidden) update.hidden = false;
+
+    await ref.update(update);
+    detalle.push({ id, accion: 'reprogramado', fecha: nueva.toISOString() });
   }
+
+  console.log(`[eventos-demo] ${detalle.map((d) => `${d.id}=${d.accion}`).join(' ')}`);
+  return { ok: true, demos: detalle };
 }
