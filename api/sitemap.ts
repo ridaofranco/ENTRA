@@ -80,15 +80,29 @@ export default async function handler(_req: any, res: any) {
 
   let eventos = 0;
   try {
-    // Solo los publicados. El filtro de "ya pasó" se hace acá y no en la query
-    // para no depender de un índice compuesto de Firestore ni del tipo exacto del
-    // campo fecha (que puede ser Timestamp o string según cómo se cargó).
-    const snap = await getAdminDb().collection('events').where('status', '==', 'published').limit(1000).get();
+    // Solo los que están a la venta. El filtro de "ya pasó" se hace acá y no en la
+    // query para no depender de un índice compuesto de Firestore ni del tipo exacto
+    // del campo fecha (que puede ser Timestamp o string según cómo se cargó).
+    //
+    // ⚠️ ACÁ DECÍA where('status', '==', 'published') Y NINGÚN EVENTO TIENE ESE
+    // ESTADO. Un evento nace 'pending' (CreateEvent) y el admin lo publica a
+    // 'active' (AdminDashboard); 'published' solo aparece en filtros de LECTURA que
+    // lo toleran, nunca en una escritura. O sea que el sitemap venía devolviendo
+    // CERO eventos desde siempre y ninguna página de evento se descubría por acá.
+    // Verificado el 11/8/2026 contra producción: header x-eventos-en-sitemap: 0.
+    // Se dejan los dos estados porque las reglas siguen admitiendo 'published' y
+    // create-payment lo acepta como vendible.
+    const snap = await getAdminDb().collection('events')
+      .where('status', 'in', ['active', 'published'])
+      .limit(1000)
+      .get();
     const ahora = Date.now();
 
     snap.forEach((doc) => {
       const e: any = doc.data() || {};
       if (e.deleted === true) return;
+      // Oculto es oculto: si no se lista en la cartelera, tampoco se indexa.
+      if (e.hidden === true) return;
       const fecha = iso(e.date);
       // Un evento que ya pasó no se indexa: la página queda viva para el que tenga
       // el link, pero no aporta nada al índice.

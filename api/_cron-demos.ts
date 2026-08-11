@@ -1,17 +1,14 @@
 // ============================================================================
 // TAREA: LOS DOS EVENTOS DEMO SIEMPRE VIGENTES
 // ============================================================================
-// ENTRÁ necesita eventos de ejemplo permanentes para mostrarle a un cliente cómo
-// se compra una entrada de punta a punta. Había cuatro, pero tenían la fecha
-// escrita a mano en el código (abril/junio 2026) y se vencieron todos: desde
-// entonces la cartelera quedó vacía y /demo mandaba a una lista sin nada.
+// Los eventos demo estan definidos en _demo-eventos.ts, que comparte con el
+// panel de admin. Acá está solo la mecánica de escribirlos.
 //
-// POR QUÉ ESTO NO PODÍA ARREGLARSE DESDE EL NAVEGADOR
-// seedEventsIfMissing() corría en el cliente, sin sesión, y las reglas de
-// Firestore piden isVerified() + organizer/admin + status == 'pending' para
-// crear un evento. O sea que fallaba SIEMPRE y el try/catch se comía el error.
-// Acá se usa el Admin SDK, que saltea las reglas, y por eso api/cron/[tarea].ts
-// autentica antes de llamar a esto.
+// POR QUÉ ESTO NO PODÍA ARREGLARSE DESDE EL NAVEGADOR SIN SESIÓN
+// seedEventsIfMissing() corría en el cliente, anónimo, y las reglas de Firestore
+// piden isVerified() + organizer/admin para crear un evento. O sea que fallaba
+// SIEMPRE y el try/catch se comía el error. Acá se usa el Admin SDK, que saltea
+// las reglas, y por eso api/cron/[tarea].ts autentica antes de llamar a esto.
 //
 // QUÉ HACE, EXACTAMENTE
 //   - Si el evento demo no existe, lo crea entero.
@@ -27,98 +24,12 @@
 
 import { Timestamp } from 'firebase-admin/firestore';
 import { getAdminDb } from './_lib/firebaseAdmin.js';
-
-// Argentina es UTC-3 fijo (sin horario de verano desde 2009). Mismo criterio
-// que _cron-recordatorio.ts.
-const ART_OFFSET_MS = 3 * 60 * 60 * 1000;
-
-// A cuántos días se reprograma el demo cuando hay que moverlo.
-const DIAS_ADELANTE = 30;
-// Umbral: si al demo le quedan menos de estos días, se lo manda de nuevo a
-// DIAS_ADELANTE. Sin umbral habría una escritura por día para no cambiar nada.
-const DIAS_MINIMOS = 7;
-
-const DIA_MS = 24 * 60 * 60 * 1000;
-
-// Los dos IDs son fijos a propósito: son la clave de que esto sea idempotente y
-// de que /demo pueda linkear al evento sin adivinar nada.
-//
-// ⚠️ SIN GUIONES. La URL pública es `titulo-slugificado-<docId>` y resolveEventId()
-// (src/lib/slug.ts) saca el id tomando el ÚLTIMO segmento separado por guiones. Un
-// id como 'demo-entrada-gratis' resolvería a 'gratis' y el evento daría 404.
-export const DEMO_GRATIS_ID = 'demogratis';
-export const DEMO_PAGO_ID = 'demopago';
-
-// El evento pago cobra de verdad (cae en la cuenta de MercadoPago de ENTRÁ,
-// porque organizerId 'demo' no tiene cuenta conectada y create-payment usa
-// MP_ACCESS_TOKEN como fallback). Por eso el precio es simbólico: tiene que
-// parecer una entrada real sin que devolver la plata sea un problema.
-const PRECIO_DEMO = 1000;
-
-const BASE_DEMO = {
-  venue: 'Sala ENTRÁ',
-  location: 'Palermo, CABA',
-  organizerId: 'demo',
-  organizerName: 'ENTRÁ',
-  organizerEmail: 'soporte@entratickets.com',
-  status: 'active',
-  ticketsSold: 0,
-  totalRevenue: 0,
-  // La marca que hace que el cron los reconozca. También sirve para filtrarlos
-  // desde el panel sin depender del título.
-  isDemo: true,
-};
-
-const DEMOS = [
-  {
-    id: DEMO_GRATIS_ID,
-    ...BASE_DEMO,
-    title: 'Demo ENTRÁ · Entrada gratis',
-    description:
-      'Evento de demostración de ENTRÁ. Reservá tu lugar sin costo y vas a recibir por mail el QR y el ticket en PDF, igual que en un evento real. No es un evento real: no se cobra nada y no hay que ir a ningún lado.',
-    category: 'Conferencia',
-    image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&h=600&fit=crop',
-    isFree: true,
-    price: 0,
-    tickets: [{ type: 'General', price: 0, available: 500 }],
-  },
-  {
-    id: DEMO_PAGO_ID,
-    ...BASE_DEMO,
-    title: 'Demo ENTRÁ · Entrada paga',
-    description:
-      'Evento de demostración de ENTRÁ para ver el checkout con MercadoPago tal cual lo ve tu público. No es un evento real. La entrada sale $1.000 simbólicos y el pago es de verdad: si comprás una para probar, escribinos a soporte@entratickets.com y te la devolvemos.',
-    category: 'Recital',
-    image: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=1200&h=600&fit=crop',
-    isFree: false,
-    price: PRECIO_DEMO,
-    tickets: [{ type: 'General', price: PRECIO_DEMO, available: 500 }],
-  },
-];
-
-// La próxima fecha del demo: dentro de DIAS_ADELANTE días, a las 21:00 de
-// Argentina. Se calcula sobre el día calendario argentino para que no se corra
-// un día según la hora a la que dispare el cron.
-function proximaFecha(): Date {
-  const ahoraArt = new Date(Date.now() - ART_OFFSET_MS);
-  const diaArt = Date.UTC(
-    ahoraArt.getUTCFullYear(),
-    ahoraArt.getUTCMonth(),
-    ahoraArt.getUTCDate() + DIAS_ADELANTE,
-    21, 0, 0,
-  );
-  return new Date(diaArt + ART_OFFSET_MS);
-}
-
-function aDate(raw: any): Date | null {
-  const d = raw?.toDate ? raw.toDate() : raw?.seconds ? new Date(raw.seconds * 1000) : null;
-  return d && !isNaN(d.getTime()) ? d : null;
-}
+import { DEMOS, proximaFechaDemo, aDate, hayQueReprogramar } from './_demo-eventos.js';
 
 export async function correrEventosDemo() {
   const db = getAdminDb();
   const ahora = Date.now();
-  const nueva = proximaFecha();
+  const nueva = proximaFechaDemo(ahora);
   const detalle: Array<{ id: string; accion: string; fecha: string }> = [];
 
   for (const demo of DEMOS) {
@@ -127,8 +38,12 @@ export async function correrEventosDemo() {
     const snap = await ref.get();
 
     if (!snap.exists) {
+      // El Admin SDK saltea las reglas, así que puede nacer 'active' directo.
+      // (El panel, que sí pasa por las reglas, tiene que crearlo 'pending' y
+      // recién después activarlo.)
       await ref.set({
         ...datos,
+        status: 'active',
         date: Timestamp.fromDate(nueva),
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
@@ -141,9 +56,8 @@ export async function correrEventosDemo() {
     // cambió el título, la imagen o el precio desde el panel, eso se respeta.
     const actual: any = snap.data() || {};
     const fin = aDate(actual.endDate) || aDate(actual.date);
-    const diasRestantes = fin ? (fin.getTime() - ahora) / DIA_MS : -1;
 
-    if (diasRestantes >= DIAS_MINIMOS) {
+    if (!hayQueReprogramar(fin, ahora)) {
       detalle.push({
         id,
         accion: 'sin cambios',
@@ -168,7 +82,7 @@ export async function correrEventosDemo() {
     }
     // Si estaba pausado o cancelado, volver a ponerlo en venta: un demo que no
     // se puede comprar no sirve para mostrarle nada a nadie.
-    if (actual.status && actual.status !== 'active') update.status = 'active';
+    if (actual.status !== 'active') update.status = 'active';
     if (actual.hidden) update.hidden = false;
 
     await ref.update(update);
