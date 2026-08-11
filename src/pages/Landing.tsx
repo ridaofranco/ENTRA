@@ -4,10 +4,9 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Calendar, MapPin, Search, Music, QrCode } from 'lucide-react';
+import { ArrowRight, Calendar, MapPin, Search, Music } from 'lucide-react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
-import { seedEventsIfMissing } from '@/src/services/eventService';
 import { useAuth } from '@/src/context/AuthContext';
 import HeroAtmosphere from '@/src/components/HeroAtmosphere';
 import PosterFallback from '@/src/components/PosterFallback';
@@ -35,18 +34,8 @@ export default function Landing() {
   const [featuredEvents, setFeaturedEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // La home cambia de cara segun haya o no cartelera.
-  // Sin eventos a la venta, el unico visitante que puede dejar plata es un productor,
-  // asi que el hero le habla a el. Cuando entra el primer evento vuelve solo al modo
-  // comprador, sin que nadie tenga que acordarse de deshacer nada.
-  // Arranca en modo productor a proposito: es el estado real mientras la cartelera este
-  // vacia, y asi no parpadea en el caso de hoy (que es el 100% de las visitas).
-  const modoProductor = loading || featuredEvents.length === 0;
-
   useEffect(() => {
     const init = async () => {
-      await seedEventsIfMissing();
-
       try {
         const snapshot = await getDocs(collection(db, 'events'));
         const all = snapshot.docs
@@ -104,61 +93,26 @@ export default function Landing() {
             transition={{ duration: 0.8 }}
             className="space-y-8"
           >
-            {modoProductor ? (
-              <>
-                <div className="space-y-6">
-                  <h1 className="text-[clamp(2rem,10vw,2.75rem)] sm:text-6xl md:text-7xl lg:text-[84px] font-heading font-black tracking-tighter leading-[0.95] sm:leading-[0.88] uppercase select-none break-words">
-                    {t.home.prodTituloA}<br />
-                    {t.home.prodTituloB}<br />
-                    {t.home.prodTituloC}<span className="orange-text-gradient">100%</span>{t.home.prodTituloD}
-                  </h1>
-                  <p className="max-w-2xl text-base sm:text-lg text-muted-foreground leading-relaxed font-sans">
-                    {t.home.prodBajada}
-                  </p>
-                </div>
+            <div className="space-y-4">
+              <h1 className="text-[clamp(2rem,11vw,3rem)] sm:text-7xl md:text-8xl lg:text-[100px] font-heading font-black tracking-tighter leading-[0.9] sm:leading-[0.85] uppercase select-none break-words">
+                {t.home.tituloA}<br />
+                <span className="orange-text-gradient">{t.home.tituloB}</span><br />
+                {t.home.tituloC}
+              </h1>
+            </div>
 
-                <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 pt-4">
-                  {/* Al alta directa, no a WhatsApp: crear la cuenta es un clic y el
-                      evento igual pasa por revisión antes de salir a la venta. */}
-                  <Link to="/crear-evento" className="w-full sm:w-auto">
-                    <Button className="w-full sm:w-auto h-14 px-6 sm:px-10 orange-gradient border-none text-white text-sm sm:text-base rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
-                      {t.home.prodCta}
-                    </Button>
-                  </Link>
-                  <Link to="/eventos" className="w-full sm:w-auto">
-                    <Button variant="outline" className="w-full sm:w-auto h-14 px-6 sm:px-10 rounded-xl bg-white/[0.03] border border-white/10 text-white text-sm sm:text-base hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide">
-                      {t.home.verCartelera}
-                    </Button>
-                  </Link>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="space-y-6">
-                  <h1 className="text-[clamp(2rem,11vw,3rem)] sm:text-7xl md:text-8xl lg:text-[100px] font-heading font-black tracking-tighter leading-[0.9] sm:leading-[0.85] uppercase select-none break-words">
-                    {t.home.compradorTituloA}<br />
-                    <span className="orange-text-gradient">{t.home.compradorTituloB}</span><br />
-                    {t.home.compradorTituloC}
-                  </h1>
-                  <p className="max-w-xl text-base sm:text-lg text-muted-foreground leading-relaxed font-sans">
-                    {t.home.compradorBajada}
-                  </p>
-                </div>
-
-                <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 pt-4">
-                  <Link to="/eventos" className="w-full sm:w-auto">
-                    <Button className="w-full sm:w-auto h-14 px-6 sm:px-10 orange-gradient border-none text-white text-sm sm:text-base rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
-                      {t.home.verCartelera}
-                    </Button>
-                  </Link>
-                  <Link to={user ? "/perfil" : "/auth/login"} className="w-full sm:w-auto">
-                    <Button variant="outline" className="w-full sm:w-auto h-14 px-6 sm:px-10 rounded-xl bg-white/[0.03] border border-white/10 text-white text-sm sm:text-base hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide">
-                      {t.home.misTickets}
-                    </Button>
-                  </Link>
-                </div>
-              </>
-            )}
+            <div className="flex flex-wrap gap-4 pt-4">
+              <Link to={user ? "/perfil" : "/auth/login"}>
+                <Button className="h-14 px-10 orange-gradient border-none text-white text-base rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
+                  ENTRÁ
+                </Button>
+              </Link>
+              <Link to="/eventos">
+                <Button variant="outline" className="h-14 px-10 rounded-xl bg-white/[0.03] border border-white/10 text-white text-base hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide">
+                  {t.home.verEventos}
+                </Button>
+              </Link>
+            </div>
           </motion.div>
         </div>
       </section>
@@ -254,68 +208,14 @@ export default function Landing() {
             })}
           </div>
         ) : (
-          /* Cartelera vacia: en vez de pedirle paciencia al que llega, se le pide algo.
-             El unico que puede convertir con la cartelera vacia es un productor. */
           <div className="glass rounded-[2rem] border-white/5 p-16 text-center max-w-xl mx-auto space-y-4">
             <Music className="w-10 h-10 text-primary mx-auto opacity-40" />
             <h3 className="font-heading font-black text-xl uppercase">{t.home.vacioTitulo}</h3>
             <p className="text-sm text-muted-foreground leading-relaxed font-sans">
               {t.home.vacioTexto}
             </p>
-            <div className="pt-2">
-              <Link to="/crear-evento">
-                <Button className="h-12 px-8 orange-gradient border-none text-white rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase text-xs tracking-wide">
-                  {t.home.vacioCta}
-                </Button>
-              </Link>
-            </div>
           </div>
         )}
-      </section>
-
-      {/* 4. EL ACCESO (Antifraude, contado emocional, no técnico) */}
-      <section className="bg-black py-28 border-y border-white/5">
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            className=""
-          >
-            <span className="block text-[10px] font-bold text-primary uppercase tracking-[0.3em] font-sans">
-              {t.home.seguridadKicker}
-            </span>
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-heading font-black tracking-tighter uppercase max-w-[673px] mt-5" style={{ lineHeight: '1.15' }}>
-              {t.home.seguridadTituloA}<br />
-              {t.home.seguridadTituloB}
-            </h2>
-            <p className="text-lg text-muted-foreground font-sans leading-relaxed mt-6">
-              {t.home.seguridadTexto}
-            </p>
-          </motion.div>
-
-          {/* Genuine Big QR code card, clean, no hype decoration */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="flex justify-center"
-          >
-            <div className="glass p-10 rounded-[3rem] border-white/10 relative overflow-hidden bg-white/[0.01]">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full filter blur-xl pointer-events-none" />
-              <div className="border border-white/10 rounded-2xl p-6 bg-white/[0.02]">
-                {/* Genuine styled vector look of a clean QR */}
-                <QrCode className="w-64 h-64 text-white font-thin" strokeWidth={1} />
-              </div>
-              <div className="text-center mt-6">
-                <span className="inline-flex items-center gap-2 text-[10px] font-sans font-bold uppercase tracking-[0.25em] text-primary bg-primary/5 px-4 py-1.5 rounded-full border border-primary/20">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                  {t.home.qrUnico}
-                </span>
-              </div>
-            </div>
-          </motion.div>
-        </div>
       </section>
 
       {/* 5. CULTURA — photographic, raw, real, argentinian, nightlife */}

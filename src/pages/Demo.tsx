@@ -8,9 +8,16 @@ import {
 } from 'lucide-react';
 import { WhatsAppIcon } from '@/src/components/icons/WhatsAppIcon';
 
-// Cambiá esto por el link del evento de ejemplo que publiques (ej: '/evento/abc123').
-// Por defecto manda a la cartelera, donde va a aparecer el evento demo.
-const DEMO_EVENT_PATH = '/eventos';
+// Los dos eventos demo tienen ID FIJO en Firestore y los mantiene vigentes el cron
+// api/cron/eventos-demo.ts (les corre la fecha antes de que se venzan). Por eso acá
+// se puede linkear directo sin que nadie tenga que venir a actualizar esta constante:
+// antes esto apuntaba a '/eventos' y, con la cartelera vacía, "probar la demo" dejaba
+// al cliente mirando una lista sin nada.
+// El slug del principio es cosmético: resolveEventId() solo mira el último segmento,
+// así que si alguien le cambia el título al evento desde el panel, estos links siguen
+// funcionando igual.
+const DEMO_GRATIS_PATH = '/evento/demo-entra-entrada-gratis-demogratis';
+const DEMO_PAGO_PATH = '/evento/demo-entra-entrada-paga-demopago';
 
 const whatsappNumber = '5491171540675';
 const whatsappUrl = `https://wa.me/${whatsappNumber}?text=Hola!%20Vi%20la%20demo%20de%20ENTR%C3%81%20y%20quiero%20saber%20m%C3%A1s`;
@@ -49,7 +56,7 @@ export default function Demo() {
               Vendé o reservá entradas, validá en la puerta y quedate con tu data y tu plata. Eventos de uno o varios días, gratis o pagos, con QR antifraude. Así funciona ENTRÁ:
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center mt-10">
-              <Link to={DEMO_EVENT_PATH} className="w-full sm:w-auto">
+              <Link to={DEMO_GRATIS_PATH} className="w-full sm:w-auto">
                 <Button className="w-full sm:w-auto h-14 px-10 orange-gradient border-none text-white rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
                   Probar la demo en vivo
                   <ArrowRight className="ml-2 w-5 h-5" />
@@ -128,14 +135,25 @@ export default function Demo() {
             <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-primary" /> QR al instante</span>
             <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-primary" /> Multi-día y gratis</span>
           </div>
-          <div className="mt-10">
-            <Link to={DEMO_EVENT_PATH}>
-              <Button className="h-14 px-10 orange-gradient border-none text-white rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
-                Abrir evento demo
+          {/* Dos caminos, porque muestran cosas distintas: el gratis recorre todo sin
+              que se mueva un peso, y el pago es el único que enseña el checkout real
+              de MercadoPago. */}
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mt-10">
+            <Link to={DEMO_GRATIS_PATH} className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto h-14 px-10 orange-gradient border-none text-white rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
+                Reservar gratis
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
             </Link>
+            <Link to={DEMO_PAGO_PATH} className="w-full sm:w-auto">
+              <Button variant="outline" className="w-full sm:w-auto h-14 px-10 rounded-xl bg-white/[0.03] border border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide">
+                Ver el checkout con pago
+              </Button>
+            </Link>
           </div>
+          <p className="text-xs text-muted-foreground font-sans mt-5">
+            El demo pago cobra $1.000 reales para mostrar la pantalla de MercadoPago. Si lo probás, te lo devolvemos.
+          </p>
         </Card>
       </section>
 
