@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Calendar, MapPin, Search, Music } from 'lucide-react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
-import { seedEventsIfMissing } from '@/src/services/eventService';
 import { useAuth } from '@/src/context/AuthContext';
 import HeroAtmosphere from '@/src/components/HeroAtmosphere';
 import PosterFallback from '@/src/components/PosterFallback';
@@ -37,8 +36,6 @@ export default function Landing() {
 
   useEffect(() => {
     const init = async () => {
-      await seedEventsIfMissing();
-
       try {
         const snapshot = await getDocs(collection(db, 'events'));
         const all = snapshot.docs
