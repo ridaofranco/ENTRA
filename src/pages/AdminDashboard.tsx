@@ -12,7 +12,7 @@ import { Card } from '@/src/components/ui/card';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { handleFirestoreError, OperationType } from '@/src/lib/firebase';
-import { formatCurrency } from '@/src/lib/utils';
+import { formatCurrency, isEventFinished } from '@/src/lib/utils';
 // Misma definición que usa el cron (api/_cron-demos.ts), para que el botón de acá
 // y la tarea programada no puedan describir dos eventos distintos.
 import { DEMOS, proximaFechaDemo, aDate, hayQueReprogramar } from '../../api/_demo-eventos';
@@ -584,17 +584,11 @@ export default function AdminDashboard() {
            e.venue?.toLowerCase().includes(q);
   });
 
-  const ahora = new Date();
-  const fechaDe = (e: EventData): Date | null =>
-    e.date?.toDate ? e.date.toDate() : e.date?.seconds ? new Date(e.date.seconds * 1000) : null;
-  const yaPaso = (e: EventData): boolean => {
-    const d = fechaDe(e);
-    if (!d) return false;
-    // Mismo criterio que la cartelera: sin hora de fin, un evento se da por
-    // terminado 3 horas después de empezar.
-    const fin = (e as any).endDate?.toDate ? (e as any).endDate.toDate() : new Date(d.getTime() + 3 * 60 * 60 * 1000);
-    return fin < ahora;
-  };
+  // El panel usa EXACTAMENTE la misma función que la cartelera y la home. Antes acá
+  // había una copia del criterio, y una copia se desincroniza: es lo que permitió
+  // que el panel y el sitio público pudieran opinar distinto sobre si un evento
+  // terminó. Una sola fuente de verdad (src/lib/utils.ts) y listo.
+  const yaPaso = (e: EventData): boolean => isEventFinished(e as any);
 
   const gruposEventos = (() => {
     const paraAprobar: EventData[] = [];
