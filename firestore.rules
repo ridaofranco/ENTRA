@@ -108,7 +108,7 @@ service cloud.firestore {
     }
 
     function isValidEvent(data) {
-      return hasOnlyAllowedFields(['id', 'title', 'description', 'date', 'endDate', 'location', 'venue', 'latitude', 'longitude', 'price', 'image', 'category', 'organizerId', 'organizerEmail', 'organizerName', 'tickets', 'status', 'featured', 'minAge', 'refundPolicy', 'maxPerPurchase', 'createdAt', 'updatedAt', 'deletedAt', 'ticketsSold', 'totalRevenue', 'allowTransfer', 'customFields', 'organizerPlan', 'commissionRate', 'officialSaleLaunched', 'isDateTBD', 'isTimeTBD', 'isVenueTBD', 'isMultiDay', 'days', 'entryMode', 'isFree', 'hidden']) &&
+      return hasOnlyAllowedFields(['id', 'title', 'description', 'date', 'endDate', 'location', 'venue', 'latitude', 'longitude', 'price', 'image', 'category', 'organizerId', 'organizerEmail', 'organizerName', 'tickets', 'status', 'featured', 'minAge', 'refundPolicy', 'maxPerPurchase', 'createdAt', 'updatedAt', 'deletedAt', 'ticketsSold', 'totalRevenue', 'allowTransfer', 'customFields', 'organizerPlan', 'commissionRate', 'officialSaleLaunched', 'isDateTBD', 'isTimeTBD', 'isVenueTBD', 'isMultiDay', 'days', 'entryMode', 'isFree', 'hidden', 'country']) &&
              (!('title' in data) || (data.title is string && data.title.size() < 100)) &&
              (!('venue' in data) || (data.venue is string && data.venue.size() < 100)) &&
              (!('date' in data) || data.date is timestamp) &&
@@ -121,6 +121,11 @@ service cloud.firestore {
              (!('isMultiDay' in data) || data.isMultiDay is bool) &&
              (!('isFree' in data) || data.isFree is bool) &&
              (!('hidden' in data) || data.hidden is bool) &&
+             // País del evento. Sin este campo el evento es argentino (es lo que
+             // asume paisDe() en src/lib/paises.ts), así que los que ya existen
+             // siguen valiendo. La lista se valida acá para que nadie cargue un
+             // evento de un país donde ENTRÁ no opera.
+             (!('country' in data) || data.country in ['AR', 'PY']) &&
              (!('entryMode' in data) || data.entryMode in ['per_day', 'whole_event']);
     }
 

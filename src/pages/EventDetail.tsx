@@ -8,6 +8,7 @@ import { Calendar, MapPin, Clock, Share2, Info, Ticket, ChevronRight, Minus, Plu
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { formatCurrency, isEventFinished } from '@/src/lib/utils';
+import { paisDe } from '@/src/lib/paises';
 import PosterFallback from '@/src/components/PosterFallback';
 import { resolveEventId } from '@/src/lib/slug';
 import { useLang, textos, dateLocale } from '@/src/lib/i18n';
@@ -92,6 +93,11 @@ export default function EventDetail() {
   // Gratis se deriva TAMBIÉN del precio: un evento con isFree apagado pero
   // todas las entradas en $0 cobra $0 igual (el server lo resuelve como
   // gratis), así que no tiene sentido mostrarle cargos ni "Total Final".
+  // La plata se muestra en la moneda del PAIS DEL EVENTO, no en la de quien mira.
+  // Un evento paraguayo cotiza en guaranies aunque lo abra alguien desde Buenos Aires.
+  const paisEvento = paisDe(event as any);
+  const plata = (n: number) => formatCurrency(n, paisEvento);
+
   const isFree =
     Boolean((event as any)?.isFree) ||
     (Boolean(event?.tickets?.length) && (event?.tickets || []).every(t => !(Number(t.price) > 0)));
@@ -547,7 +553,7 @@ export default function EventDetail() {
                             </span>
 
                             <div className="text-primary font-heading font-black text-2xl pt-2">
-                              {isFree ? t.comun.gratis : formatCurrency(Number(tk.price) || 0)}
+                              {isFree ? t.comun.gratis : plata(Number(tk.price) || 0)}
                             </div>
                           </div>
 
@@ -584,17 +590,17 @@ export default function EventDetail() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground/80 font-medium font-sans">{t.comun.subtotal}</span>
-                      <span className="font-bold text-white font-sans">{formatCurrency(subtotalVal)}</span>
+                      <span className="font-bold text-white font-sans">{plata(subtotalVal)}</span>
                     </div>
                     {subtotalVal > 0 && (
                       <div className="space-y-1.5 border-t border-white/5 pt-2">
                         <div className="flex justify-between text-xs text-muted-foreground/75 font-sans">
                           <span>{t.evento.cargoServicio}</span>
-                          <span>{formatCurrency(feeEntraConIva)}</span>
+                          <span>{plata(feeEntraConIva)}</span>
                         </div>
                         <div className="flex justify-between text-xs text-muted-foreground/75 font-sans">
                           <span>{t.evento.costoProcesador}</span>
-                          <span>{formatCurrency(processorFee)}</span>
+                          <span>{plata(processorFee)}</span>
                         </div>
                       </div>
                     )}
@@ -606,7 +612,7 @@ export default function EventDetail() {
                         {isFree ? t.evento.reserva : t.evento.totalFinal} ({totalQty} {t.evento.entradasCount(Number(totalQty))}{isPerDay ? ` · ${t.evento.diasCount(dayCount)}` : ''})
                       </div>
                       <div className="text-3xl font-heading font-black orange-text-gradient mt-1">
-                        {isFree ? t.comun.gratis : formatCurrency(finalCalculatedTotal)}
+                        {isFree ? t.comun.gratis : plata(finalCalculatedTotal)}
                       </div>
                     </div>
                     <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary rounded-xl">

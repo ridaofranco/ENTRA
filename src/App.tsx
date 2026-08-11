@@ -23,6 +23,7 @@ import ClaimTicket from '@/src/pages/ClaimTicket';
 import Productores from '@/src/pages/Productores';
 import Ayuda from '@/src/pages/Ayuda';
 import Demo from '@/src/pages/Demo';
+import LandingPy from '@/src/pages/LandingPy';
 import Terminos from '@/src/pages/Terminos';
 import Privacidad from '@/src/pages/Privacidad';
 import NotFound from '@/src/pages/NotFound';
@@ -40,6 +41,9 @@ export default function App() {
             <Route path="/productores" element={<Productores />} />
             <Route path="/ayuda" element={<Ayuda />} />
             <Route path="/demo" element={<Demo />} />
+            {/* Paraguay. Cartelera propia: los precios son en guaraníes y no se
+                pueden mezclar con la argentina. */}
+            <Route path="/py" element={<LandingPy />} />
             <Route path="/terminos" element={<Terminos />} />
             <Route path="/privacidad" element={<Privacidad />} />
             <Route path="/evento/:id" element={<EventDetail />} />

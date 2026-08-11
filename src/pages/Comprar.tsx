@@ -16,6 +16,7 @@ import { WhatsAppIcon } from '@/src/components/icons/WhatsAppIcon';
 import { eventPath } from '@/src/lib/slug';
 import { useAuth } from '@/src/context/AuthContext';
 import { formatCurrency, isEventFinished } from '@/src/lib/utils';
+import { paisDe } from '@/src/lib/paises';
 import { useLang, textos, dateLocale } from '@/src/lib/i18n';
 
 interface TicketType {
@@ -122,6 +123,10 @@ export default function Comprar() {
 
   const visibleEvents = events.filter(event => {
     const status = event.status || 'active';
+    // Esta es la cartelera ARGENTINA. Un evento paraguayo cotiza en guaraníes y
+    // acá se mostraría con el signo de peso: cada país tiene su propia cartelera
+    // (Paraguay vive en /py). Los eventos sin campo país son argentinos.
+    if (paisDe(event as any) !== 'AR') return false;
     if (isAdmin && showHiddenAdmin) return true;
     if ((event as any).hidden) return false; // ocultos: solo por link directo
     // Un evento finalizado sale de la cartelera publica por completo, tambien
