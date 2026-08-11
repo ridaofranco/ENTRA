@@ -62,12 +62,13 @@ export default function Demo() {
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </Link>
-              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
-                <Button variant="outline" className="w-full sm:w-auto h-14 px-10 rounded-xl bg-white/[0.03] border border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide gap-2.5">
-                  <WhatsAppIcon className="w-5 h-5" />
-                  Quiero ENTRÁ
+              {/* El que se convence no tiene que esperar a que alguien le conteste:
+                  se registra y carga su evento ahora. */}
+              <Link to="/crear-evento" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full sm:w-auto h-14 px-10 rounded-xl bg-white/[0.03] border border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide">
+                  Crear mi evento
                 </Button>
-              </a>
+              </Link>
             </div>
           </motion.div>
         </div>
@@ -185,20 +186,23 @@ export default function Demo() {
             ¿Lo querés para<br />tu evento?
           </h2>
           <p className="text-muted-foreground font-sans leading-relaxed mt-6 max-w-md mx-auto">
-            Te lo dejamos andando en minutos. Escribinos y coordinamos.
+            Activás tu cuenta y cargás tu evento ahora mismo, sin esperar a nadie. Lo revisamos
+            y lo publicamos. Si necesitás una mano, escribinos.
           </p>
+          {/* El primario es el alta directa. WhatsApp queda para la duda: antes era al
+              revés y el que ya estaba decidido tenía que esperar una respuesta. */}
           <div className="flex flex-col sm:flex-row gap-3 justify-center mt-10">
-            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
-              <Button className="w-full sm:w-auto h-16 px-12 orange-gradient border-none text-white text-lg rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide gap-2.5">
-                <WhatsAppIcon className="w-5 h-5" />
-                Hablar por WhatsApp
-              </Button>
-            </a>
-            <Link to="/productores" className="w-full sm:w-auto">
-              <Button variant="outline" className="w-full sm:w-auto h-16 px-12 rounded-xl bg-white/[0.03] border border-white/10 text-white text-lg hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide">
-                Ver para productores
+            <Link to="/crear-evento" className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto h-16 px-12 orange-gradient border-none text-white text-lg rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
+                Crear mi evento
               </Button>
             </Link>
+            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+              <Button variant="outline" className="w-full sm:w-auto h-16 px-12 rounded-xl bg-white/[0.03] border border-white/10 text-white text-lg hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide gap-2.5">
+                <WhatsAppIcon className="w-5 h-5" />
+                Tengo una duda
+              </Button>
+            </a>
           </div>
         </div>
       </section>

@@ -334,12 +334,11 @@ export default function Comprar() {
             </p>
             {events.length === 0 && (
               <div className="mt-6">
-                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-                  <Button className="h-12 px-8 orange-gradient border-none text-white rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase text-xs tracking-wide gap-2">
-                    <WhatsAppIcon className="w-4 h-4" />
+                <Link to="/crear-evento">
+                  <Button className="h-12 px-8 orange-gradient border-none text-white rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase text-xs tracking-wide">
                     {t.cartelera.vacioCta}
                   </Button>
-                </a>
+                </Link>
               </div>
             )}
           </motion.div>
@@ -464,10 +463,19 @@ export default function Comprar() {
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
               {t.cartelera.ctaOrganizasBajada}
             </p>
-            <div>
-              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-                <Button className="h-12 px-8 orange-gradient border-none font-heading font-black rounded-xl hover:brightness-110">
+            {/* Al alta directa, no a WhatsApp: el productor se registra y carga su
+                evento solo, y el evento igual pasa por revisión antes de venderse.
+                WhatsApp queda para la duda, no para empezar. */}
+            <div className="flex flex-col sm:flex-row justify-center gap-3">
+              <Link to="/crear-evento" className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto h-12 px-8 orange-gradient border-none font-heading font-black rounded-xl hover:brightness-110">
                   {t.cartelera.ctaOrganizasBoton}
+                </Button>
+              </Link>
+              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full sm:w-auto h-12 px-8 rounded-xl bg-white/[0.03] border border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20 font-heading font-black gap-2">
+                  <WhatsAppIcon className="w-4 h-4" />
+                  {t.cartelera.ctaOrganizasDuda}
                 </Button>
               </a>
             </div>

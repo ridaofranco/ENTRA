@@ -580,25 +580,26 @@ export default function Auth() {
                   <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest leading-none mb-1">
                     ¿Sos organizador?
                   </p>
+                  {/* "Te activamos tu cuenta" prometia un alta a mano que ya no existe:
+                      el productor se activa solo y carga su evento, que igual pasa por
+                      revisión antes de salir a la venta. El mail queda como la salida
+                      del que tiene una duda, no como la puerta de entrada. */}
                   <p className="text-[10px] text-zinc-500 mb-4 leading-relaxed font-sans">
-                    Te activamos tu cuenta para publicar y vender accesos en un clic.
+                    Activá tu cuenta y cargá tu evento ahora mismo. Lo revisamos y lo publicamos.
                   </p>
                   <div className="flex gap-2">
-                    <a
-                      href="https://wa.me/5491171540675?text=Hola!%20Quiero%20poner%20a%20la%20venta%20mis%20eventos%20con%20ENTRÁ"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 h-9 bg-zinc-900 border border-white/5 text-white text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 rounded-lg hover:border-emerald-500/30 transition-colors"
+                    <Link
+                      to="/crear-evento"
+                      className="flex-1 h-9 orange-gradient text-white text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 rounded-lg transition-all hover:brightness-110"
                     >
-                      <WhatsAppIcon className="w-3.5 h-3.5 text-emerald-400" />
-                      WhatsApp
-                    </a>
+                      Crear mi evento
+                    </Link>
                     <a
-                      href="mailto:organizadores@entratickets.com"
+                      href="mailto:soporte@entratickets.com?subject=Consulta%20para%20vender%20entradas%20con%20ENTR%C3%81"
                       className="flex-1 h-9 bg-zinc-900 border border-white/5 text-white text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 rounded-lg hover:border-orange-500/30 transition-colors"
                     >
                       <Mail className="w-3.5 h-3.5 text-primary" />
-                      Email
+                      Tengo una duda
                     </a>
                   </div>
                 </div>
