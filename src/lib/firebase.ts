@@ -4,11 +4,32 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-// Use current hostname as authDomain so Google OAuth popup
-// always redirects back to the same origin where the app runs.
-// This makes login work on any domain: AI Studio, Vercel, entratickets.com, localhost.
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// ── EL DOMINIO QUE VE EL QUE INICIA SESIÓN ────────────────────────────────────
+// Con el authDomain que trae la config, la pantalla de Google decía:
+//
+//     Ir a gen-lang-client-0748196420.firebaseapp.com
+//
+// Ese nombre lo puso Google AI Studio al crear el proyecto y NO se puede cambiar
+// (el project ID de Google Cloud es permanente). Un productor que va a poner sus
+// eventos y su plata veía eso en la ventana de login.
+//
+// vercel.json YA proxea /__/auth/ hacia el handler de Firebase, así que la pieza
+// que faltaba era solo esta: usar el dominio propio como authDomain. El comentario
+// que estaba acá describía justamente esto, pero el código nunca lo hizo.
+//
+// Solo se cambia en los dominios propios, que son los únicos donde existe el
+// proxy y los únicos que están en la lista de dominios autorizados de Firebase.
+// En preview de Vercel y en localhost sigue el de siempre, así que ahí el login
+// no se toca.
+const DOMINIOS_PROPIOS = ['entratickets.com', 'www.entratickets.com'];
+const AUTH_DOMAIN_PROPIO = 'www.entratickets.com';
+
+const hostActual = typeof window !== 'undefined' ? window.location.hostname : '';
+const config = DOMINIOS_PROPIOS.includes(hostActual)
+  ? { ...firebaseConfig, authDomain: AUTH_DOMAIN_PROPIO }
+  : firebaseConfig;
+
+const app = initializeApp(config);
 
 // Initialize Firestore with experimental long-polling to prevent connection blocking in proxy/iframe environments.
 // `persistentLocalCache` activa la persistencia offline (IndexedDB): los tickets del evento
