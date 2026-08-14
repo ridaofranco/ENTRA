@@ -205,6 +205,23 @@ export default async function handler(req: any, res: any) {
     }
 
     const isFree = Boolean(event.isFree);
+
+    // ── FRENO DE PAÍS ──────────────────────────────────────────────────────
+    // MercadoPago no opera en Paraguay. Un evento paraguayo con precio llegaría
+    // igual hasta acá y se cobraría con el token argentino de ENTRÁ: el
+    // comprador terminaría pagando en PESOS un precio pensado en guaraníes.
+    // Es un cobro mal hecho a una persona real, así que se corta ANTES de crear
+    // la orden, en el servidor, que es el único lugar que el navegador no puede
+    // saltear. La reserva sin cargo sigue funcionando (no toca MercadoPago).
+    // Cuando Paraguay tenga procesador, esto se levanta junto con `cobra` en
+    // src/lib/paises.ts.
+    if (event.country === 'PY' && !isFree) {
+      console.error(`[create-payment] evento PY con precio, cobro bloqueado: ${eventId}`);
+      return res.status(409).json({
+        error: 'Todavía no podemos cobrar entradas en Paraguay. Este evento tiene que ser sin cargo.',
+      });
+    }
+
     const eventTickets: any[] = Array.isArray(event.tickets) ? event.tickets : [];
     const validDays: string[] = Array.isArray(event.validDays) ? event.validDays : [];
     const isPerDay = Boolean(event.isMultiDay) && event.entryMode === 'per_day' && validDays.length > 0;

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card } from '@/src/components/ui/card';
@@ -29,6 +29,7 @@ import { logAction } from '@/src/services/auditService';
 import { formatCurrency } from '@/src/lib/utils';
 import { uploadEventImage } from '@/src/lib/imageUpload';
 import { EVENT_CATEGORIES } from '@/src/lib/categories';
+import { PAISES, PAIS_POR_DEFECTO, type Pais } from '@/src/lib/paises';
 
 export default function CreateEvent() {
   const navigate = useNavigate();
@@ -62,6 +63,13 @@ export default function CreateEvent() {
 
   // =================== GRATIS vs PAGO ===================
   const [isFreeEvent, setIsFreeEvent] = useState(false);
+  const [pais, setPais] = useState<Pais>(PAIS_POR_DEFECTO);
+  // Un país sin procesador solo admite reserva sin cargo. Se fuerza acá y el
+  // servidor lo vuelve a chequear: la UI puede mentir, create-payment no.
+  const paisCobra = PAISES[pais].cobra;
+  useEffect(() => {
+    if (!paisCobra) setIsFreeEvent(true);
+  }, [paisCobra]);
 
   // =================== EVENTO MULTI-DÍA ===================
   const [isMultiDay, setIsMultiDay] = useState(false);
@@ -294,6 +302,7 @@ export default function CreateEvent() {
         id: eventId,
         price: isFreeEvent ? 0 : minPrice,
         isFree: isFreeEvent,
+        country: pais,
         date: Timestamp.fromDate(eventDate),
         ...multiDayExtra,
         ...(explicitEnd ? { endDate: Timestamp.fromDate(explicitEnd) } : {}),
@@ -735,17 +744,58 @@ export default function CreateEvent() {
             <h2 className="text-xl font-heading font-black uppercase tracking-tight">Tickets y Precios</h2>
           </div>
           <Card className="glass p-8 rounded-[2.5rem] border-white/5 space-y-6">
-            {/* Toggle: evento gratuito */}
-            <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-white/5 border border-white/10">
+            {/* País del evento. Define la moneda y en qué cartelera aparece. */}
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+              <div>
+                <p className="text-sm font-heading font-black uppercase tracking-wide">País del evento</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Define la moneda y en qué cartelera se publica.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                {(Object.values(PAISES)).map(p => (
+                  <button
+                    key={p.codigo}
+                    type="button"
+                    onClick={() => setPais(p.codigo)}
+                    className={`flex-1 h-11 rounded-xl text-xs font-heading font-black uppercase tracking-wide transition-all border ${
+                      pais === p.codigo
+                        ? 'orange-gradient border-transparent text-white'
+                        : 'bg-white/[0.03] border-white/10 text-zinc-400 hover:border-white/20'
+                    }`}
+                  >
+                    {p.nombre}
+                  </button>
+                ))}
+              </div>
+              {!paisCobra && (
+                <p className="text-[11px] text-yellow-200 leading-relaxed bg-yellow-950/30 border border-yellow-500/30 rounded-xl p-3">
+                  En {PAISES[pais].nombre} todavía no podemos cobrar entradas, así que el evento va
+                  con reserva sin cargo. Tu público reserva su lugar y recibe el QR igual que en
+                  cualquier evento; en la puerta lo escaneás como siempre.
+                </p>
+              )}
+            </div>
+
+            {/* Toggle: evento gratuito. Con un país que no cobra queda fijo en gratis
+                y sin poder apagarse: el servidor rechaza igual un evento pago de ahí
+                (create-payment), así que dejarlo tocar sería prometer algo que falla
+                recién en el checkout, con el comprador adentro. */}
+            <div className={`flex items-center justify-between gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 ${!paisCobra ? 'opacity-60' : ''}`}>
               <div>
                 <p className="text-sm font-heading font-black uppercase tracking-wide">Evento gratuito</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Los asistentes reservan su lugar sin pagar (igual sacan su QR de acceso).</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {paisCobra
+                    ? 'Los asistentes reservan su lugar sin pagar (igual sacan su QR de acceso).'
+                    : `Obligatorio en ${PAISES[pais].nombre} por ahora.`}
+                </p>
               </div>
               <button
                 type="button"
-                onClick={() => setIsFreeEvent(v => !v)}
+                onClick={() => paisCobra && setIsFreeEvent(v => !v)}
+                disabled={!paisCobra}
                 aria-label="Evento gratuito"
-                className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${isFreeEvent ? 'bg-primary' : 'bg-white/15'}`}
+                className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${isFreeEvent ? 'bg-primary' : 'bg-white/15'} ${!paisCobra ? 'cursor-not-allowed' : ''}`}
               >
                 <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform ${isFreeEvent ? 'translate-x-5' : ''}`} />
               </button>

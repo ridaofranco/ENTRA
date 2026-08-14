@@ -1,0 +1,100 @@
+# ============================================================================
+# DEPLOY DE LAS REGLAS DE FIRESTORE
+# ============================================================================
+# POR QUÉ EXISTE. `firestore.rules` vivía en el repo pero NADA lo publicaba: el
+# CI solo compila. Cada cambio de reglas de la historia del proyecto se aplicó a
+# mano, así que nadie podía saber si lo que estaba en git era lo que estaba de
+# verdad en producción. Para el archivo que decide quién puede leer y escribir la
+# base entera, esa duda no es aceptable.
+#
+# Con esto, git pasa a ser la fuente de verdad: cualquier diferencia se corrige
+# sola en el próximo merge que toque el archivo.
+#
+# ── CUÁNDO CORRE ──
+#   - En cada push a main que modifique firestore.rules.
+#   - A mano, desde la pestaña Actions (workflow_dispatch), para reaplicar las
+#     reglas del repo sin tener que cambiarlas.
+#
+# ── QUÉ NECESITA (una sola vez) ──
+# Un secret del repo, en Settings → Secrets and variables → Actions. Cualquiera
+# de los dos sirve; se prefiere el primero si están los dos:
+#
+#   FIREBASE_SERVICE_ACCOUNT  El JSON completo de una cuenta de servicio. Es el
+#                             mismo formato que ya usa Vercel para el Admin SDK,
+#                             pero OJO: la cuenta necesita permiso para publicar
+#                             reglas (rol "Firebase Rules Admin" o superior). La
+#                             de firebase-adminsdk normalmente NO lo tiene.
+#
+#   FIREBASE_TOKEN            Lo que devuelve `firebase login:ci`. Es un comando y
+#                             listo, sin tocar permisos de IAM. Está deprecado
+#                             pero funciona en firebase-tools 13, que es la
+#                             versión pineada acá.
+#
+# Sin ninguno de los dos, el job FALLA con un mensaje claro en vez de pasar en
+# verde sin haber deployado nada: un deploy que no ocurrió no puede parecer
+# exitoso.
+
+name: Reglas de Firestore
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'firestore.rules'
+      - '.github/workflows/firestore-rules.yml'
+  workflow_dispatch:
+
+# Si entran dos merges seguidos, que gane el último y no se pisen entre sí.
+concurrency:
+  group: firestore-rules
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Publicar firestore.rules
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # El chequeo va ANTES de instalar nada: si falta la credencial, que corte
+      # en 5 segundos y con un mensaje que se entienda, no a los dos minutos con
+      # un stacktrace de la CLI.
+      - name: Verificar que haya credencial
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          if [ -z "$SA" ] && [ -z "$TOKEN" ]; then
+            echo "::error::Falta la credencial de Firebase. Cargá FIREBASE_SERVICE_ACCOUNT (JSON de una cuenta de servicio con rol Firebase Rules Admin) o FIREBASE_TOKEN (lo que devuelve 'firebase login:ci') en Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+      - name: Instalar firebase-tools
+        run: npm install -g firebase-tools@13
+
+      # El JSON se escribe a un archivo y se apunta GOOGLE_APPLICATION_CREDENTIALS:
+      # es la forma soportada de autenticar sin login interactivo. El archivo vive
+      # en el runner, que se destruye al terminar.
+      - name: Publicar reglas
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "$SA" ]; then
+            echo "Autenticando con cuenta de servicio."
+            printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+            export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+            firebase deploy --only firestore:rules --non-interactive
+          else
+            echo "Autenticando con FIREBASE_TOKEN."
+            firebase deploy --only firestore:rules --non-interactive --token "$TOKEN"
+          fi
+
+      - name: Resultado
+        run: echo "Reglas publicadas desde ${{ github.sha }}."

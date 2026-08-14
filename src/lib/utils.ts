@@ -1,14 +1,21 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { PAISES, PAIS_POR_DEFECTO, type Pais } from "./paises"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('es-AR', {
+// El país es opcional y cae en Argentina a propósito: hay 51 llamadas a esta
+// función en el repo y todas son argentinas. Así Paraguay se suma pasando el país
+// donde importa, sin tocar las otras 50 ni arriesgar que una quede con la moneda
+// equivocada por olvido.
+// Los 0 decimales ya estaban y le sirven a los dos: el guaraní tampoco los usa.
+export function formatCurrency(amount: number, pais: Pais = PAIS_POR_DEFECTO) {
+  const { locale, moneda } = PAISES[pais] ?? PAISES[PAIS_POR_DEFECTO];
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency: 'ARS',
+    currency: moneda,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount)
