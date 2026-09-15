@@ -64,10 +64,16 @@ export async function correrReconciliarPagos() {
       // El pago vive en la cuenta del PRODUCTOR cuando la venta fue por split, así
       // que hay que preguntarle a MP con SU token; si no, con el de ENTRÁ.
       let accessToken = process.env.MP_ACCESS_TOKEN;
+      // De qué cuenta se preguntó. Importa: si la venta fue por split y acá
+      // cayéramos al token de ENTRÁ, estaríamos buscando el pago en la cuenta
+      // equivocada y "no hay pagos" no querría decir "no pagó". Sin este dato la
+      // conclusión no se puede sostener.
+      let tokenSrc = 'plataforma';
       if (orden.collectorId) {
         const acc = await db.collection('mp_accounts').doc(String(orden.collectorId)).get();
         const tok = acc.exists ? (acc.data() as any)?.access_token : null;
-        if (tok) accessToken = tok;
+        if (tok) { accessToken = tok; tokenSrc = `seller:${orden.collectorId}`; }
+        else tokenSrc = `SIN TOKEN DEL SELLER ${orden.collectorId} (busco con el de ENTRÁ)`;
       }
       if (!accessToken) continue;
 
@@ -83,7 +89,7 @@ export async function correrReconciliarPagos() {
         // (token equivocado, pago en otra cuenta, búsqueda que no devuelve nada).
         // Cuando alguien dice "pagué y no me llegó", esta línea es la respuesta.
         console.log(
-          `[reconciliar] orden=${orderId} sin pago aprobado · ${pagos.length} intento(s): ` +
+          `[reconciliar] orden=${orderId} sin pago aprobado · token=${tokenSrc} · ${pagos.length} intento(s): ` +
             (pagos.map((p) => `${p?.id}:${p?.status}/${p?.status_detail || '—'}`).join(', ') || 'ninguno'),
         );
         continue;
