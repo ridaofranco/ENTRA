@@ -58,9 +58,10 @@ export default function Ayuda() {
           <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-[5.5rem] font-heading font-black tracking-tighter uppercase mt-6" style={{ lineHeight: '1.05' }}>
             Resolución <span className="orange-text-gradient">al toque.</span>
           </h1>
-          <p className="text-lg text-muted-foreground/80 font-sans max-w-xl mx-auto leading-relaxed mt-8">
-            Sin bots automáticos que repiten lo mismo sin entender nada. Detrás de ENTRÁ hay personas reales listas para resolver tus consultas sobre accesos.
-          </p>
+          {/* Acá había una bajada que decía "sin bots automáticos... personas reales
+              listas para resolver tus consultas". Prometer que no sos un bot es
+              justo lo que escribe un bot: no aporta nada y ensucia la pantalla.
+              El título y los dos botones dicen todo lo que hay que decir. */}
           <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
             <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
               <Button className="w-full sm:w-auto h-14 px-8 orange-gradient border-none text-white font-heading font-black text-xs uppercase tracking-wide rounded-xl transition-all hover:brightness-110 flex items-center justify-center gap-2.5">
