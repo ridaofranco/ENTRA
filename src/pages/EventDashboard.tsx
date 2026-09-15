@@ -808,13 +808,39 @@ export default function EventDashboard() {
     }
   };
 
+  // ── Corregir el mail de una entrada y reenviarla ──────────────────────────
+  // El 15/9 un comprador escribió su dirección sin arroba: se le cobró, la entrada
+  // se emitió y el envío murió. La entrada existía y no había forma de hacérsela
+  // llegar desde acá, porque el botón de reenvío usa el mail roto que está guardado.
+  const [fixTicket, setFixTicket] = useState<any | null>(null);
+  const [fixEmail, setFixEmail] = useState('');
+  const [fixSaving, setFixSaving] = useState(false);
+  const [fixMsg, setFixMsg] = useState<string | null>(null);
+
+  // ── Rescatar pagos de los que MercadoPago nunca avisó ──────────────────────
+  const [buscandoPagos, setBuscandoPagos] = useState(false);
+  const [resultadoPagos, setResultadoPagos] = useState<string | null>(null);
+
+  // La sesión del que está operando viaja en el header. El endpoint de mail
+  // verifica ese token contra Firebase y contra el rol real: así se puede cerrar
+  // el candado del endpoint (hoy acepta a cualquiera) sin dejar sin reenvío al
+  // panel, que corre en el navegador y no puede guardar un secreto.
+  const headersConSesion = async () => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    try {
+      const token = await authUser?.getIdToken?.();
+      if (token) headers.Authorization = `Bearer ${token}`;
+    } catch { /* sin sesión, el endpoint decide */ }
+    return headers;
+  };
+
   const handleResendEmail = async (ticket: any) => {
     try {
       setIsSaving(true);
       // Reenvío REAL del email (antes estaba simulado con console.log).
       await fetch('/api/send-ticket-email', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await headersConSesion(),
         body: JSON.stringify({
           eventId: ticket.eventId,
           eventTitle: ticket.eventTitle,
@@ -829,6 +855,78 @@ export default function EventDashboard() {
       console.error('Error resending email:', error);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const guardarMailYReenviar = async () => {
+    if (!fixTicket) return;
+    const nuevo = fixEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(nuevo)) {
+      setFixMsg('Esa dirección no es válida.');
+      return;
+    }
+    setFixSaving(true);
+    setFixMsg(null);
+    try {
+      // Las entradas de una misma compra se corrigen todas juntas: si el mail
+      // estaba mal, lo estaba para todas.
+      const hermanas = (tickets || []).filter((t: any) => t.orderId && t.orderId === fixTicket.orderId);
+      const delGrupo = hermanas.length > 0 ? hermanas : [fixTicket];
+
+      const resp = await fetch('/api/send-ticket-email', {
+        method: 'POST',
+        headers: await headersConSesion(),
+        body: JSON.stringify({
+          corregirDestinatario: true,
+          ticketIds: delGrupo.map((t: any) => t.id),
+          orderId: fixTicket.orderId || undefined,
+          eventId: fixTicket.eventId || event?.id,
+          eventTitle: fixTicket.eventTitle || event?.title,
+          buyerEmail: nuevo,
+          buyerName: fixTicket.buyerName,
+          tickets: delGrupo.map((t: any) => ({ qrCode: t.qrCode, type: t.ticketType })),
+        }),
+      });
+      if (!resp.ok) {
+        const detalle = await resp.text().catch(() => '');
+        setFixMsg(`No se pudo enviar (${resp.status}). ${detalle.slice(0, 160)}`);
+        return;
+      }
+      await logAction('FIX_EMAIL_AND_RESEND', 'tickets', fixTicket.id, { email: nuevo });
+      setFixMsg(`Listo: la entrada salió a ${nuevo}.`);
+      setTimeout(() => { setFixTicket(null); setFixMsg(null); }, 1800);
+    } catch (e: any) {
+      setFixMsg(e?.message || 'No se pudo enviar.');
+    } finally {
+      setFixSaving(false);
+    }
+  };
+
+  // Le pregunta a MercadoPago por las compras que quedaron pendientes y emite las
+  // que están pagadas. Es la misma tarea que corre sola cada pocos minutos: acá
+  // está el botón para no esperarla cuando hay alguien reclamando su entrada.
+  const buscarPagosSinAcreditar = async () => {
+    setBuscandoPagos(true);
+    setResultadoPagos(null);
+    try {
+      const resp = await fetch('/api/cron/reconciliar-pagos', { headers: await headersConSesion() });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        setResultadoPagos(`No se pudo revisar (${resp.status}).`);
+        return;
+      }
+      const r = data?.resultado ?? data;
+      const rescatadas = Number(r?.rescatadas ?? 0);
+      const miradas = Number(r?.miradas ?? 0);
+      setResultadoPagos(
+        rescatadas > 0
+          ? `Se encontraron ${rescatadas} compra(s) pagadas sin entrega y ya salieron las entradas.`
+          : `Revisadas ${miradas} compra(s) pendientes: ninguna estaba pagada.`,
+      );
+    } catch (e: any) {
+      setResultadoPagos(e?.message || 'No se pudo revisar.');
+    } finally {
+      setBuscandoPagos(false);
     }
   };
 
@@ -1994,9 +2092,7 @@ El equipo de ENTRÁ`;
                     <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Tipo</th>
                     <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Origen</th>
                     <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Check-in</th>
-                    {canRefund && (
-                      <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Acciones</th>
-                    )}
+                    <th className="p-2 text-xs font-bold uppercase tracking-widest text-zinc-500">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2019,19 +2115,29 @@ El equipo de ENTRÁ`;
                           {ticket.status === 'used' ? 'Ingresó' : 'Pendiente'}
                         </span>
                       </td>
-                      {canRefund && (
-                        <td className="p-2">
+                      <td className="p-2">
+                        <div className="flex gap-1.5 flex-wrap">
                           <button
-                            onClick={() => handleRefundTicket(ticket)}
-                            disabled={isSaving}
-                            title={ticket.isCourtesy ? 'Devolver cortesía' : 'Devolver ticket (refund)'}
-                            className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 disabled:opacity-50"
+                            onClick={() => { setFixTicket(ticket); setFixEmail(ticket.buyerEmail || ''); setFixMsg(null); }}
+                            title="Corregir el email y reenviar la entrada"
+                            className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg bg-white/5 text-zinc-300 hover:bg-white/10 border border-white/10"
                           >
-                            <RotateCcw className="w-3 h-3" />
-                            Devolver
+                            <Mail className="w-3 h-3" />
+                            Mail y reenviar
                           </button>
-                        </td>
-                      )}
+                          {canRefund && (
+                            <button
+                              onClick={() => handleRefundTicket(ticket)}
+                              disabled={isSaving}
+                              title={ticket.isCourtesy ? 'Devolver cortesía' : 'Devolver ticket (refund)'}
+                              className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 disabled:opacity-50"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              Devolver
+                            </button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -2053,7 +2159,15 @@ El equipo de ENTRÁ`;
                   {emailLogs.length} {emailLogs.length === 1 ? 'envío registrado' : 'envíos registrados'}
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
+                <button
+                  onClick={buscarPagosSinAcreditar}
+                  disabled={buscandoPagos}
+                  title="Le pregunta a MercadoPago por las compras que quedaron pendientes y emite las que están pagadas"
+                  className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/30 hover:bg-orange-500/20 disabled:opacity-50"
+                >
+                  {buscandoPagos ? 'Revisando…' : 'Buscar pagos sin acreditar'}
+                </button>
                 <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
                   {emailLogs.filter((l: any) => l.status === 'sent').length} enviados
                 </span>
@@ -2062,6 +2176,10 @@ El equipo de ENTRÁ`;
                 </span>
               </div>
             </div>
+
+            {resultadoPagos && (
+              <p className="mb-4 text-xs text-zinc-300 bg-white/5 border border-white/10 rounded-xl px-4 py-3">{resultadoPagos}</p>
+            )}
 
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -2744,6 +2862,61 @@ El equipo de ENTRÁ`;
                 className="flex-1 px-6 py-3 rounded-2xl bg-blue-600 text-white font-bold transition"
               >
                 Sí, enviar email
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Corregir el email de una entrada y reenviarla. La entrada ya existe: lo
+          único que falla es a dónde se manda. Se corrige el dato en el ticket y en
+          la orden (por el Admin SDK, que el navegador no puede tocar `orders`) y
+          sale el mail a la dirección nueva. */}
+      {fixTicket && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-zinc-950 border border-white/10 rounded-3xl p-6 w-full max-w-md space-y-4"
+          >
+            <div>
+              <h3 className="font-heading font-black text-lg">Corregir el mail y reenviar</h3>
+              <p className="text-xs text-zinc-500 mt-1">
+                {fixTicket.buyerName || 'Sin nombre'} · {fixTicket.ticketType}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                Dirección a la que mandarla
+              </label>
+              <input
+                type="email"
+                value={fixEmail}
+                onChange={(e) => setFixEmail(e.target.value)}
+                placeholder="nombre@ejemplo.com"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500/50"
+              />
+              <p className="text-[11px] text-zinc-500">
+                Queda guardada en la entrada y en la compra, así el próximo reenvío ya sale bien.
+              </p>
+            </div>
+
+            {fixMsg && <p className="text-xs text-zinc-300 bg-white/5 border border-white/10 rounded-xl px-3 py-2">{fixMsg}</p>}
+
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => { setFixTicket(null); setFixMsg(null); }}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-zinc-300 text-xs font-bold uppercase tracking-widest"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={guardarMailYReenviar}
+                disabled={fixSaving}
+                className="flex-1 px-4 py-2.5 rounded-xl orange-gradient text-white text-xs font-bold uppercase tracking-widest disabled:opacity-50"
+              >
+                {fixSaving ? 'Enviando…' : 'Guardar y reenviar'}
               </button>
             </div>
           </motion.div>

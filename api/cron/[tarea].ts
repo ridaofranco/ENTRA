@@ -19,12 +19,18 @@
 
 import { correrRecordatorioEvento } from '../_cron-recordatorio.js';
 import { correrEventosDemo } from '../_cron-demos.js';
+import { correrReconciliarPagos } from '../_cron-reconciliar.js';
+import { usuarioDelRequest, esAdmin } from '../_lib/auth-panel.js';
 
 // El nombre de la tarea es el último tramo de la URL. Agregar una tarea nueva es
 // sumar una entrada acá.
 const TAREAS: Record<string, () => Promise<any>> = {
   'recordatorio-evento': correrRecordatorioEvento,
   'eventos-demo': correrEventosDemo,
+  // Rescata los pagos aprobados de los que MercadoPago nunca mandó el webhook.
+  // Conviene correrla seguido (cada 5 minutos): cada corrida es la diferencia
+  // entre que alguien tenga su entrada o siga esperándola sin que nadie sepa.
+  'reconciliar-pagos': correrReconciliarPagos,
 };
 
 export default async function handler(req: any, res: any) {
@@ -41,12 +47,18 @@ export default async function handler(req: any, res: any) {
   // fail-closed: sin ninguna clave cargada, 401.
   const aceptados = [process.env.CRON_SECRET, process.env.CF_CRON_SECRET].filter(Boolean);
   const auth = req.headers?.authorization;
-  if (!aceptados.length) {
-    console.error('[cron] sin CRON_SECRET ni CF_CRON_SECRET: no se atiende');
-    return res.status(401).json({ ok: false, error: 'No autorizado' });
-  }
-  if (!aceptados.some((s) => auth === `Bearer ${s}`)) {
-    console.error('[cron] rechazado: Authorization inválido');
+  const porSecreto = aceptados.some((s) => auth === `Bearer ${s}`);
+
+  // Además del despachador, un ADMIN logueado puede disparar una tarea a mano
+  // desde el panel. El caso real: "alguien pagó y no le llegó la entrada" no se
+  // espera 5 minutos, se aprieta el botón. El navegador no manda el secreto de la
+  // casa (no sería un secreto): manda su sesión, y acá se verifica contra
+  // Firebase y contra el rol real en Firestore.
+  const porAdmin = porSecreto ? false : esAdmin(await usuarioDelRequest(req));
+
+  if (!porSecreto && !porAdmin) {
+    if (!aceptados.length) console.error('[cron] sin CRON_SECRET ni CF_CRON_SECRET: no se atiende');
+    else console.error('[cron] rechazado: Authorization inválido');
     return res.status(401).json({ ok: false, error: 'No autorizado' });
   }
 
