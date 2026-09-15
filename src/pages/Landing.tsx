@@ -71,13 +71,6 @@ export default function Landing() {
   };
 
   // 4 real Argentine scene raw photograph concepts (authentic concert lights, atmosphere)
-  const culturalImages = [
-    { url: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600&auto=format&fit=crop&q=80', caption: 'backstage / cabina' },
-    { url: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=600&auto=format&fit=crop&q=80', caption: 'crowd real' },
-    { url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80', caption: 'nightlife sound' },
-    { url: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=600&auto=format&fit=crop&q=80', caption: 'cemento y luces' }
-  ];
-
   return (
     <div className="bg-[#09090b] text-foreground min-h-screen">
       
@@ -218,40 +211,10 @@ export default function Landing() {
         )}
       </section>
 
-      {/* 5. CULTURA — photographic, raw, real, argentinian, nightlife */}
-      <section className="max-w-7xl mx-auto px-6 py-28 space-y-16">
-        <div>
-          <span className="block text-[10px] font-bold text-primary uppercase tracking-[0.2em] font-sans">{t.home.escenaKicker}</span>
-          <h2 className="text-4xl md:text-5xl font-heading font-black tracking-tighter uppercase mt-5" style={{ lineHeight: '1.15' }}>
-            {t.home.escenaTitulo}
-          </h2>
-        </div>
-
-        {/* Photomontage grid (4 images, editorial flow, high negative space feel) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {culturalImages.map((img, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 15 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-              className="relative aspect-square rounded-[1.5rem] overflow-hidden border border-white/5 bg-white/[0.01] group"
-            >
-              <img
-                src={img.url}
-                alt={img.caption}
-                className="w-full h-full object-cover transition duration-500"
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-              <span className="absolute bottom-4 left-4 text-[10px] font-sans font-bold uppercase tracking-[0.2em] text-white/50 group-hover:text-primary transition-colors">
-                {img.caption}
-              </span>
-            </motion.div>
-          ))}
-        </div>
-      </section>
+      {/* La home NO tiene fotos de archivo. Habia una seccion "Nuestra escena" con
+          4 imagenes de Unsplash de eventos ajenos: no eran nuestras, y puestas de
+          adorno le daban a la home cara de plantilla generica. Las unicas fotos de
+          esta pantalla son las de los eventos reales que estan a la venta. */}
 
       {/* 6. FRANJA PRODUCTORES (Discreto, al final, único guiño B2B) */}
       <section className="border-t border-white/5 bg-[#0b0b0d] py-16 px-6">

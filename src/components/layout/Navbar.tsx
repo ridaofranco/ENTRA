@@ -35,8 +35,13 @@ export function Navbar() {
   ].filter((l) => l.show);
 
   return (
+    // `transform-gpu` + `isolate` no son decoracion: en Safari, una barra fija con
+    // backdrop-blur encima de contenido que se anima deja RESTOS DE TEXTO pintados
+    // sobre la barra (se veia el titulo de la franja de productores pisando el menu).
+    // Forzar capa propia y un contexto de apilado aislado hace que el navegador
+    // repinte la barra entera en vez de reusar lo que ya habia dibujado.
     <nav className={cn(
-      "fixed top-0 w-full z-50 transition-all duration-300 px-6 h-20 flex items-center justify-between",
+      "fixed top-0 w-full z-50 transition-all duration-300 px-6 h-20 flex items-center justify-between transform-gpu isolate",
       (isScrolled || mobileOpen) ? "bg-background/80 backdrop-blur-xl border-b border-white/5" : "bg-transparent"
     )}>
       <Link to="/" className="flex items-center gap-2 group" onClick={() => setMobileOpen(false)}>
