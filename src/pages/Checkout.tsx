@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom';
 import { collection, Timestamp, doc, getDoc, updateDoc, query, where, getDocs } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { cn, formatCurrency } from '@/src/lib/utils';
+import { comisionGlobal, comisionDeEvento, calcularTotales, COMISION_POR_DEFECTO } from '@/src/lib/comision';
 import { useAuth } from '@/src/context/AuthContext';
 import { useLang, textos, dateLocale } from '@/src/lib/i18n';
 import { leerOrigen } from '@/src/lib/attribution';
@@ -71,6 +72,14 @@ export default function Checkout() {
   } | null>(null);
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [isValidatingDiscount, setIsValidatingDiscount] = useState(false);
+  // La comisión de la plataforma, leída de Firestore (se cachea 60s). Arranca en
+  // el respaldo para que la pantalla no parpadee con un total distinto.
+  const [comisionPlataforma, setComisionPlataforma] = useState<number>(COMISION_POR_DEFECTO);
+  useEffect(() => {
+    let vivo = true;
+    comisionGlobal().then(v => { if (vivo) setComisionPlataforma(v); });
+    return () => { vivo = false; };
+  }, []);
 
   // Toast auto-hide
   useEffect(() => {
@@ -204,18 +213,17 @@ export default function Checkout() {
   const discountAmount = appliedDiscount?.amount || 0;
   const subtotal = Math.max(0, subtotalOriginal - discountAmount);
 
-  // Nuevo modelo de comisiones ENTRÁ:
-  // 8% + IVA de service fee sobre el precio del ticket, cobrado al comprador.
-  // El comprador también absorbe el costo del procesador de pagos (4.99%).
+  // Modelo de comisiones ENTRÁ:
+  // comisión + IVA sobre el precio del ticket, cobrada al comprador, más el
+  // costo del procesador de pagos (4,99%), que también absorbe el comprador.
   // El organizador recibe el 100% de su ticket (subtotal).
-  const feeEntra = subtotal > 0 ? (subtotal * 0.08) : 0;
-  const feeEntraConIva = subtotal > 0 ? Math.round(feeEntra * 1.21) : 0;
-  const processorRate = 0.0499;
-
-  // Fórmula Gross-up: total_comprador = (subtotal + fee_entra_con_iva) / (1 - tasa_procesador_pago)
-  const total = subtotal > 0 ? Math.round((subtotal + feeEntraConIva) / (1 - processorRate)) : 0;
-  const processorFee = subtotal > 0 ? Math.max(0, total - subtotal - feeEntraConIva) : 0;
-  const platformFee = subtotal > 0 ? (total - subtotal) : 0; // La diferencia total que abona el comprador y retiene la ticketera/procesador
+  //
+  // El porcentaje NO está escrito acá: es el del panel, y si el evento tiene el
+  // suyo propio (un admin le puede poner 0%), manda ese. Es el mismo número que
+  // aplica `api/create-payment.ts` al cobrar: lo que se muestra es lo que se cobra.
+  const comisionPct = comisionDeEvento(event, comisionPlataforma);
+  const { feeConIva: feeEntraConIva, total, processorFee } = calcularTotales(subtotal, comisionPct);
+  const platformFee = subtotal > 0 ? (total - subtotal) : 0; // Lo que el comprador paga por encima del ticket
 
   const handleApplyDiscount = async () => {
     if (!discountCodeInput.trim()) return;

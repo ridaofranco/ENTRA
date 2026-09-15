@@ -73,6 +73,26 @@ async function comisionVigente(db: any): Promise<number> {
   return valor;
 }
 
+/**
+ * LA COMISIÓN DE UN EVENTO EN PARTICULAR.
+ *
+ * La global del panel rige para todos. Pero a veces un evento se cobra distinto
+ * (un productor al que se le hace precio, o directamente 0%: costo cero para él).
+ * Para esos casos el evento puede tener su propio `commissionPercent`, que lo
+ * escribe UN ADMIN desde /admin — nunca el productor: las reglas de Firestore
+ * dejan ese campo fuera de lo que el organizador puede tocar de su propio evento.
+ *
+ * Si el evento no tiene número propio, o el guardado es basura o está fuera del
+ * rango 0–50, se usa la global: antes que cobrar cualquier cosa, se cobra la de
+ * siempre. Ojo con `commissionRate`, que es otra cosa: el snapshot histórico de
+ * con cuánto se creó el evento, y no se cobra.
+ */
+function comisionPropia(event: any): number | null {
+  const num = Number(event?.commissionPercent);
+  if (Number.isFinite(num) && num >= 0 && num <= 50) return num;
+  return null;
+}
+
 function fmtDayKey(dk: string): string {
   try {
     const [y, m, d] = dk.split('-').map(Number);
@@ -264,7 +284,9 @@ export default async function handler(req: any, res: any) {
     // Es lo que se pidió: si se baja, baja para todos los eventos; si se sube,
     // sube para todos. El `commissionRate` guardado en el evento queda como
     // registro histórico de con cuánto se creó, no como lo que se cobra.
-    const comisionPct = await comisionVigente(db);
+    // Primero la del evento (si un admin le puso una propia), si no la global.
+    const propia = comisionPropia(event);
+    const comisionPct = propia ?? await comisionVigente(db);
     const feeConIva = isFree ? 0 : Math.round(subAfterDiscount * (comisionPct / 100) * IVA);
     const total = isFree ? 0 : Math.round((subAfterDiscount + feeConIva) / (1 - PROCESSOR_GROSSUP));
 
@@ -526,7 +548,7 @@ export default async function handler(req: any, res: any) {
       minimo.payer = { name: buyer.name, email: buyer.email };
       preference = await new Preference(mp).create({ body: minimo });
     }
-    console.log(`[create-payment] orden=${orderRef.id} buyer=${buyer.email} split=${isMarketplace} organizer=${organizerId} fee=${feeConIva} (${comisionPct}%) total=${total} pref=${preference.id} notif=${prefBody.notification_url} datosAntifraude=${datosCompletos ? 'completos' : 'MINIMOS(fallback)'} doc=${docComprador ? 'si' : 'no'} tel=${telComprador ? 'si' : 'no'} cp=${cpComprador ? 'si' : 'no'}`);
+    console.log(`[create-payment] orden=${orderRef.id} buyer=${buyer.email} split=${isMarketplace} organizer=${organizerId} fee=${feeConIva} (${comisionPct}%${propia !== null ? ' propia del evento' : ' global'}) total=${total} pref=${preference.id} notif=${prefBody.notification_url} datosAntifraude=${datosCompletos ? 'completos' : 'MINIMOS(fallback)'} doc=${docComprador ? 'si' : 'no'} tel=${telComprador ? 'si' : 'no'} cp=${cpComprador ? 'si' : 'no'}`);
 
     // MP_SANDBOX=true → devolvemos el link de PRUEBA (sandbox_init_point) para testear el
     // flujo completo con tarjetas de prueba, sin cobrar de verdad. Sin la flag, link real.

@@ -107,8 +107,15 @@ service cloud.firestore {
              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tickets', 'ticketsSold', 'totalRevenue', 'updatedAt']);
     }
 
+    // La comisión propia de un evento la pone ÚNICAMENTE un admin desde el panel.
+    // El organizador puede editar su evento; sin este cerrojo podría dejarse en 0%
+    // y vender sin comisión. Si el campo no se toca, la edición pasa normal.
+    function comisionSoloAdmin() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['commissionPercent']) || isAdmin();
+    }
+
     function isValidEvent(data) {
-      return hasOnlyAllowedFields(['id', 'title', 'description', 'date', 'endDate', 'location', 'venue', 'latitude', 'longitude', 'price', 'image', 'category', 'organizerId', 'organizerEmail', 'organizerName', 'tickets', 'status', 'featured', 'minAge', 'refundPolicy', 'maxPerPurchase', 'createdAt', 'updatedAt', 'deletedAt', 'ticketsSold', 'totalRevenue', 'allowTransfer', 'customFields', 'organizerPlan', 'commissionRate', 'officialSaleLaunched', 'isDateTBD', 'isTimeTBD', 'isVenueTBD', 'isMultiDay', 'days', 'entryMode', 'isFree', 'hidden']) &&
+      return hasOnlyAllowedFields(['id', 'title', 'description', 'date', 'endDate', 'location', 'venue', 'latitude', 'longitude', 'price', 'image', 'category', 'organizerId', 'organizerEmail', 'organizerName', 'tickets', 'status', 'featured', 'minAge', 'refundPolicy', 'maxPerPurchase', 'createdAt', 'updatedAt', 'deletedAt', 'ticketsSold', 'totalRevenue', 'allowTransfer', 'customFields', 'organizerPlan', 'commissionRate', 'commissionPercent', 'officialSaleLaunched', 'isDateTBD', 'isTimeTBD', 'isVenueTBD', 'isMultiDay', 'days', 'entryMode', 'isFree', 'hidden']) &&
              (!('title' in data) || (data.title is string && data.title.size() < 100)) &&
              (!('venue' in data) || (data.venue is string && data.venue.size() < 100)) &&
              (!('date' in data) || data.date is timestamp) &&
@@ -121,6 +128,7 @@ service cloud.firestore {
              (!('isMultiDay' in data) || data.isMultiDay is bool) &&
              (!('isFree' in data) || data.isFree is bool) &&
              (!('hidden' in data) || data.hidden is bool) &&
+             (!('commissionPercent' in data) || (data.commissionPercent is number && data.commissionPercent >= 0 && data.commissionPercent <= 50)) &&
              (!('entryMode' in data) || data.entryMode in ['per_day', 'whole_event']);
     }
 
@@ -205,8 +213,9 @@ service cloud.firestore {
                     (isOrganizer() || isAdmin()) && 
                     isValidEvent(request.resource.data) && 
                     (request.resource.data.organizerId == request.auth.uid || isAdmin()) &&
+                    (!('commissionPercent' in request.resource.data) || isAdmin()) &&
                     request.resource.data.status == 'pending';
-      allow update: if ((isOwner(resource.data.organizerId) || isAdmin()) && isValidEvent(request.resource.data)) || isStockUpdate();
+      allow update: if ((isOwner(resource.data.organizerId) || isAdmin()) && isValidEvent(request.resource.data) && comisionSoloAdmin()) || isStockUpdate();
       allow delete: if isAdmin();
     }
 

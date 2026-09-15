@@ -11,6 +11,7 @@ import { db } from '@/src/lib/firebase';
 import { useAuth } from '@/src/context/AuthContext';
 import { TransferTicketModal } from '@/src/components/TransferTicketModal';
 import { formatCurrency } from '@/src/lib/utils';
+import { calcularTotales, COMISION_POR_DEFECTO } from '@/src/lib/comision';
 import { estadoOrden } from '@/src/lib/estados';
 import { useLang, textos, dateLocale } from '@/src/lib/i18n';
 
@@ -25,13 +26,15 @@ function generateQRCodeSVG(text: string, size: number = 200): string {
   return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=8&data=${encodeURIComponent(text)}`;
 }
 
-// Helper to determine accurate final price paid with ENTRÁ commissions
-function getFinalPriceForTicket(ticketPrice: number): number {
+// Lo que pagó el comprador por una entrada. La comisión NO es siempre la misma:
+// cambia cuando Franco la mueve en el panel, y un evento puede tener la suya (0%
+// incluido). Por eso se usa el `feePercent` que quedó guardado en la orden, que
+// es con el que se cobró esa compra; si la orden no lo tiene (compras viejas,
+// de antes de que se guardara), se cae al 8% de entonces.
+function getFinalPriceForTicket(ticketPrice: number, feePercent?: number): number {
   if (ticketPrice <= 0) return 0;
-  const fee = ticketPrice * 0.08;
-  const feeConIva = Math.round(fee * 1.21);
-  const processorRate = 0.0499;
-  return Math.round((ticketPrice + feeConIva) / (1 - processorRate));
+  const pct = Number.isFinite(Number(feePercent)) ? Number(feePercent) : COMISION_POR_DEFECTO;
+  return calcularTotales(ticketPrice, pct).total;
 }
 
 // ============================================================
@@ -57,6 +60,8 @@ interface OrderData {
   eventTitle: string;
   items: Array<{ type: string; quantity: number; price: number }>;
   total: number;
+  // Con qué porcentaje de comisión se cobró esta orden.
+  feePercent?: number;
   status: string;
   createdAt: any;
 }
@@ -782,7 +787,7 @@ export default function Profile() {
                               <div>
                                 <p className="text-xs uppercase tracking-widest text-zinc-500 font-bold">{t.perfil.precioPagado}</p>
                                 <p className="font-bold text-white">
-                                  {formatCurrency(ticket.finalPricePaid || getFinalPriceForTicket(ticket.price || 0))}
+                                  {formatCurrency(ticket.finalPricePaid || getFinalPriceForTicket(ticket.price || 0, orders.find(o => o.id === ticket.orderId)?.feePercent))}
                                 </p>
                                 <p className="text-[10px] text-zinc-500 mt-0.5">{t.perfil.base}: {formatCurrency(ticket.price || 0)}</p>
                               </div>

@@ -8,6 +8,7 @@ import { Calendar, MapPin, Clock, Share2, Info, Ticket, ChevronRight, Minus, Plu
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { formatCurrency, isEventFinished } from '@/src/lib/utils';
+import { comisionGlobal, comisionDeEvento, calcularTotales, COMISION_POR_DEFECTO } from '@/src/lib/comision';
 import PosterFallback from '@/src/components/PosterFallback';
 import { resolveEventId } from '@/src/lib/slug';
 import { useLang, textos, dateLocale } from '@/src/lib/i18n';
@@ -47,6 +48,14 @@ export default function EventDetail() {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [selectedDays, setSelectedDays] = useState<number[]>([]); // índices de días elegidos (multi-día por jornada)
   const [linkCopied, setLinkCopied] = useState(false);
+  // Comisión de la plataforma (Firestore, cacheada 60s). El respaldo evita que el
+  // total salte apenas carga la página.
+  const [comisionPlataforma, setComisionPlataforma] = useState<number>(COMISION_POR_DEFECTO);
+  useEffect(() => {
+    let vivo = true;
+    comisionGlobal().then(v => { if (vivo) setComisionPlataforma(v); });
+    return () => { vivo = false; };
+  }, []);
 
   const docId = resolveEventId(id);
 
@@ -120,14 +129,16 @@ export default function EventDetail() {
   // Días que habilita la entrada = los que el comprador eligió.
   const validDays = isPerDay ? selectedDayKeys : [];
 
-  // Fee calculation matching Checkout page exactly:
-  // 8% + IVA service fee + 4.99% processor rate
+  // La misma cuenta que el checkout y que el servidor al cobrar: la comisión sale
+  // del panel (o la propia del evento, si un admin le puso una), nunca de un
+  // número escrito acá. Antes había un 8% fijo, y con otra comisión mentía.
   const subtotalVal = total;
-  const feeEntra = subtotalVal > 0 ? (subtotalVal * 0.08) : 0;
-  const feeEntraConIva = subtotalVal > 0 ? Math.round(feeEntra * 1.21) : 0;
-  const processorRate = 0.0499;
-  const finalCalculatedTotal = subtotalVal > 0 ? Math.round((subtotalVal + feeEntraConIva) / (1 - processorRate)) : 0;
-  const processorFee = subtotalVal > 0 ? Math.max(0, finalCalculatedTotal - subtotalVal - feeEntraConIva) : 0;
+  const comisionPct = comisionDeEvento(event, comisionPlataforma);
+  const {
+    feeConIva: feeEntraConIva,
+    total: finalCalculatedTotal,
+    processorFee,
+  } = calcularTotales(subtotalVal, comisionPct);
 
   // Check if event is available for purchase
   const isEventActive = !event?.status || event.status === 'active';
@@ -588,10 +599,14 @@ export default function EventDetail() {
                     </div>
                     {subtotalVal > 0 && (
                       <div className="space-y-1.5 border-t border-white/5 pt-2">
-                        <div className="flex justify-between text-xs text-muted-foreground/75 font-sans">
-                          <span>{t.evento.cargoServicio}</span>
-                          <span>{formatCurrency(feeEntraConIva)}</span>
-                        </div>
+                        {/* Con comisión 0% no se lista un cargo de $0: se muestra
+                            solo lo que realmente se cobra. */}
+                        {feeEntraConIva > 0 && (
+                          <div className="flex justify-between text-xs text-muted-foreground/75 font-sans">
+                            <span>{t.evento.cargoServicio}</span>
+                            <span>{formatCurrency(feeEntraConIva)}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between text-xs text-muted-foreground/75 font-sans">
                           <span>{t.evento.costoProcesador}</span>
                           <span>{formatCurrency(processorFee)}</span>

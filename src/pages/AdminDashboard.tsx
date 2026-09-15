@@ -39,6 +39,9 @@ interface EventData {
   organizerId?: string;
   organizerEmail?: string;
   commissionRate?: number;
+  // Comisión propia de ESTE evento (la escribe un admin desde acá). Si no está,
+  // rige la global del panel.
+  commissionPercent?: number;
   date: any;
   // Fin del evento (opcional): si existe, la venta termina exactamente ahi.
   // Sin endDate, el evento se da por finalizado 3hs despues del inicio.
@@ -200,6 +203,47 @@ export default function AdminDashboard() {
       setComisionError('No se pudo guardar: ' + (err?.message || 'error'));
     } finally {
       setComisionGuardando(false);
+    }
+  };
+
+  // ── La comisión de UN evento ───────────────────────────────────────────────
+  // Arriba se edita la global, que rige para todos. Acá, evento por evento, se
+  // le puede poner la suya: 3%, 0% para un productor al que no se le cobra, lo
+  // que sea. Se guarda en el evento (`commissionPercent`) y el servidor la usa
+  // al cobrar; vaciar el campo devuelve el evento a la global.
+  const [comisionEventoInput, setComisionEventoInput] = useState<Record<string, string>>({});
+  const [comisionEventoGuardando, setComisionEventoGuardando] = useState<string | null>(null);
+  const [comisionEventoOk, setComisionEventoOk] = useState<string | null>(null);
+  const [comisionEventoError, setComisionEventoError] = useState<{ id: string; msg: string } | null>(null);
+
+  const guardarComisionEvento = async (eventId: string, crudo: string) => {
+    const texto = (crudo ?? '').replace(',', '.').trim();
+    setComisionEventoError(null);
+    setComisionEventoGuardando(eventId);
+    try {
+      if (texto === '') {
+        // Vacío = sin comisión propia: vuelve a regir la global.
+        await updateDoc(doc(db, 'events', eventId), {
+          commissionPercent: deleteField(),
+          updatedAt: Timestamp.now(),
+        });
+      } else {
+        const valor = Number(texto);
+        if (!Number.isFinite(valor) || valor < 0 || valor > 50) {
+          setComisionEventoError({ id: eventId, msg: 'Entre 0 y 50' });
+          return;
+        }
+        await updateDoc(doc(db, 'events', eventId), {
+          commissionPercent: valor,
+          updatedAt: Timestamp.now(),
+        });
+      }
+      setComisionEventoOk(eventId);
+      setTimeout(() => setComisionEventoOk(prev => (prev === eventId ? null : prev)), 3000);
+    } catch (err: any) {
+      setComisionEventoError({ id: eventId, msg: err?.message || 'No se pudo guardar' });
+    } finally {
+      setComisionEventoGuardando(null);
     }
   };
 
@@ -714,7 +758,12 @@ export default function AdminDashboard() {
                 <p className="text-sm text-zinc-400 mt-2 leading-relaxed">
                   Es el porcentaje que cobra ENTRÁ sobre cada entrada vendida.
                   Rige para <b className="text-zinc-200">todos los eventos</b>, los que ya están publicados
-                  y los que se creen después.
+                  y los que se creen después, salvo los que tengan la suya propia.
+                </p>
+                <p className="text-xs text-zinc-500 mt-3 leading-relaxed">
+                  Para cobrarle distinto a un evento —o no cobrarle nada— no toques este número:
+                  en la tabla de eventos, columna <b className="text-zinc-300">Comisión</b>, escribís el %
+                  de ese evento (0 = sin comisión) y se guarda solo. Vacío, vuelve a regir esta.
                 </p>
                 <p className="text-xs text-zinc-500 mt-3 leading-relaxed">
                   El cargo lo paga el comprador, así que el productor cobra siempre el precio
@@ -963,9 +1012,52 @@ export default function AdminDashboard() {
                               cobrar a la próxima venta de este evento. Si el evento
                               nació con otra, se aclara abajo como dato histórico: el
                               número grande nunca puede ser uno que no se cobra. */}
-                          <div className="flex flex-col">
-                            <span className="text-zinc-200 font-bold text-xs">{comisionActual}%</span>
-                            {e.commissionRate != null && e.commissionRate !== comisionActual && (
+                          <div className="flex flex-col gap-1">
+                            {isSuperAdmin ? (
+                              <>
+                                {/* Se escribe el % acá mismo y se guarda: no hay que
+                                    pedirle el cambio a nadie. Vacío = la global. */}
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={comisionEventoInput[e.id] ?? (e.commissionPercent != null ? String(e.commissionPercent) : '')}
+                                    placeholder={String(comisionActual)}
+                                    onChange={(ev) => setComisionEventoInput(prev => ({ ...prev, [e.id]: ev.target.value }))}
+                                    onKeyDown={(ev) => { if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur(); }}
+                                    onBlur={(ev) => {
+                                      const valor = ev.target.value;
+                                      const actual = e.commissionPercent != null ? String(e.commissionPercent) : '';
+                                      if (valor.replace(',', '.').trim() !== actual) guardarComisionEvento(e.id, valor);
+                                    }}
+                                    className="w-14 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs font-bold text-zinc-100 focus:outline-none focus:border-orange-500/50"
+                                    title="Comisión de este evento. Vacío = la general del panel."
+                                  />
+                                  <span className="text-xs text-zinc-500 font-bold">%</span>
+                                  {comisionEventoGuardando === e.id && <Loader className="w-3 h-3 text-zinc-500 animate-spin" />}
+                                  {comisionEventoOk === e.id && <Check className="w-3 h-3 text-green-500" />}
+                                </div>
+                                {comisionEventoError?.id === e.id ? (
+                                  <span className="text-[10px] text-red-400">{comisionEventoError.msg}</span>
+                                ) : e.commissionPercent != null ? (
+                                  <span className="text-[10px] text-orange-400/80">
+                                    propia{e.commissionPercent === 0 ? ' · sin comisión' : ''}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-zinc-600">general ({comisionActual}%)</span>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-zinc-200 font-bold text-xs">
+                                  {e.commissionPercent != null ? e.commissionPercent : comisionActual}%
+                                </span>
+                                {e.commissionPercent != null && (
+                                  <span className="text-[10px] text-orange-400/80">propia de este evento</span>
+                                )}
+                              </>
+                            )}
+                            {e.commissionRate != null && e.commissionRate !== (e.commissionPercent ?? comisionActual) && (
                               <span className="text-[10px] text-zinc-600">se creó con {e.commissionRate}%</span>
                             )}
                           </div>
