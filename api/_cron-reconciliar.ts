@@ -77,7 +77,17 @@ export async function correrReconciliarPagos() {
       });
       const pagos: any[] = encontrados?.results || [];
       const aprobado = pagos.find((p) => p?.status === 'approved');
-      if (!aprobado) continue;
+      if (!aprobado) {
+        // Sin esto, "rescatadas=0" no distingue dos situaciones muy distintas:
+        // que la persona no haya pagado, o que haya pagado y no lo estemos viendo
+        // (token equivocado, pago en otra cuenta, búsqueda que no devuelve nada).
+        // Cuando alguien dice "pagué y no me llegó", esta línea es la respuesta.
+        console.log(
+          `[reconciliar] orden=${orderId} sin pago aprobado · ${pagos.length} intento(s): ` +
+            (pagos.map((p) => `${p?.id}:${p?.status}/${p?.status_detail || '—'}`).join(', ') || 'ninguno'),
+        );
+        continue;
+      }
 
       console.log(`[reconciliar] orden=${orderId} tenía un pago APROBADO (${aprobado.id}) del que nunca llegó el webhook`);
       const { emitidos } = await emitirOrdenPagada(orderId, aprobado, String(aprobado.id), 'reconciliacion');
