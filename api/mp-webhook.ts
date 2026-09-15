@@ -161,6 +161,14 @@ export default async function handler(req: any, res: any) {
     let orderData: any = null;
 
     await db.runTransaction(async (tx) => {
+      // Firestore REINTENTA este callback si hay contención (MercadoPago manda dos
+      // avisos casi juntos, y pasó: dos webhooks del mismo pago en el mismo segundo).
+      // Los tickets del intento abortado se descartan, pero `emitted` vive afuera y
+      // se los quedaba: el log decía "emitidos=1" cuando no se emitió nada, y peor,
+      // se mandaba el mail con un QR que NO existe en la base. En la puerta ese QR
+      // no escanea. Se vacía en cada intento para que solo queden los del que ganó.
+      emitted.length = 0;
+
       const orderSnap = await tx.get(orderRef);
       if (!orderSnap.exists) throw new PermanentError(`Orden ${orderId} inexistente`, 'order_missing');
       orderData = orderSnap.data();

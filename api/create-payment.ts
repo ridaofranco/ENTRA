@@ -207,6 +207,18 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: 'Faltan datos de la compra (evento, entradas o comprador).' });
     }
 
+    // EL MAIL TIENE QUE SER UN MAIL. El 15/9 alguien compró y escribió su
+    // dirección SIN la arroba ("nombreapellido.com"): se le cobró, se le emitió
+    // la entrada y el envío murió con un 422 de Resend ("Invalid `to` field"),
+    // porque eso no es una dirección. El comprador se quedó pagado y sin entrada.
+    // El `type="email"` del formulario no protege nada: no hay <form>, así que el
+    // navegador nunca valida. Se corta acá, ANTES de cobrar: una compra que no se
+    // puede entregar no tiene que empezar.
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(buyer.email).trim());
+    if (!emailOk) {
+      return res.status(400).json({ error: 'Revisá tu email: a esa dirección le falta algo (por ejemplo la arroba). Ahí te mandamos las entradas.' });
+    }
+
     // Normalizamos el email a minúsculas SIEMPRE. Firebase Auth guarda el email en
     // minúsculas, y "Mis Tickets" busca por igualdad exacta; si el comprador lo tipea
     // en mayúsculas (FRANCO@...), el ticket no aparecía en su cuenta. Bug real, cerrado acá.

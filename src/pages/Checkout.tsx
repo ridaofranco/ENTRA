@@ -210,6 +210,12 @@ export default function Checkout() {
     0
   );
 
+  // Un mail sin arroba no es un mail, y la entrada viaja por ahí: si no se valida,
+  // se cobra una compra que después no se puede entregar (pasó el 15/9). El
+  // `type="email"` del input no alcanza: sin <form>, el navegador nunca valida.
+  const emailValido = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((v || '').trim());
+  const emailMalEscrito = buyerInfo.email.trim().length > 0 && !emailValido(buyerInfo.email);
+
   const discountAmount = appliedDiscount?.amount || 0;
   const subtotal = Math.max(0, subtotalOriginal - discountAmount);
 
@@ -298,6 +304,11 @@ export default function Checkout() {
   const handleConfirmPurchase = async () => {
     if (!buyerInfo.name || !buyerInfo.email || !buyerInfo.dni) {
       setToast({ message: t.checkout.completaCampos, type: 'error' });
+      return;
+    }
+    if (!emailValido(buyerInfo.email)) {
+      setToast({ message: t.checkout.emailInvalido, type: 'error' });
+      setStep(1);
       return;
     }
 
@@ -679,8 +690,14 @@ ${successState.tickets.map((ticket, i) => `
               value={buyerInfo.email}
               onChange={(e) => setBuyerInfo({ ...buyerInfo, email: e.target.value })}
               placeholder={t.checkout.emailPlaceholder}
-              className="bg-white/5 border-white/10 h-12 rounded-2xl"
+              className={cn(
+                "bg-white/5 border-white/10 h-12 rounded-2xl",
+                emailMalEscrito && "border-red-500/60"
+              )}
             />
+            {emailMalEscrito && (
+              <p className="text-[11px] text-red-400">{t.checkout.emailInvalido}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -725,7 +742,7 @@ ${successState.tickets.map((ticket, i) => `
       </div>
 
       <Button
-        disabled={!buyerInfo.name || !buyerInfo.email || !buyerInfo.dni}
+        disabled={!buyerInfo.name || !emailValido(buyerInfo.email) || !buyerInfo.dni}
         onClick={() => setStep(2)}
         className="w-full h-14 orange-gradient border-none font-heading font-black text-lg rounded-xl"
       >
