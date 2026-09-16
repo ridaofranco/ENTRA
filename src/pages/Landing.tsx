@@ -235,21 +235,11 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* 7. FINAL CTA — minimal, black, huge space, focus */}
-      <section className="bg-black py-40 border-t border-white/5 text-center px-6">
-        <div className="max-w-4xl mx-auto space-y-12">
-          <h2 className="text-7xl sm:text-8xl md:text-[10rem] font-heading font-black tracking-tighter leading-none uppercase text-white select-none">
-            ENTR<span className="orange-text-gradient">Á.</span>
-          </h2>
-          <div>
-            <Link to="/eventos">
-              <Button className="h-16 px-12 orange-gradient border-none text-white text-lg rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
-                {t.home.verEventos}
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* Acá había un cierre a toda pantalla: la palabra ENTRÁ en 10rem y otro
+          botón "Ver eventos", con 40 de padding arriba y abajo. Era el mismo botón
+          que ya está en el hero, repetido al final de una home que no es larga, y
+          entre medio quedaba un bloque negro enorme que no decía nada. La página
+          ahora cierra con la franja de productores, que sí ofrece algo nuevo. */}
 
     </div>
   );
