@@ -27,7 +27,6 @@ interface Event {
 }
 
 export default function Landing() {
-  const { user } = useAuth();
   const lang = useLang();
   const t = textos(lang);
   const loc = dateLocale(lang);
@@ -74,8 +73,13 @@ export default function Landing() {
   return (
     <div className="bg-[#09090b] text-foreground min-h-screen">
       
-      {/* 1. HERO — full screen, dark, atmospheric */}
-      <section className="relative min-h-screen flex flex-col justify-center overflow-hidden px-6">
+      {/* 1. HERO — corto A PROPÓSITO.
+          Ocupaba la pantalla ENTERA: el que entraba a comprar una entrada tenía
+          que scrollear una pantalla completa de marca antes de ver un solo evento.
+          En una ticketera el producto es el evento, no la portada. Ahora mide poco
+          más de media pantalla, así la primera fila de la cartelera asoma sin
+          scrollear y se entiende de una que acá hay algo para comprar. */}
+      <section className="relative min-h-[60vh] md:min-h-[64vh] flex flex-col justify-center overflow-hidden px-6 py-20">
         {/* Atmósfera de marca: glows que respiran + brasas sutiles (detrás del texto) */}
         <HeroAtmosphere />
 
@@ -94,14 +98,13 @@ export default function Landing() {
               </h1>
             </div>
 
+            {/* UN solo botón, y es el de ver eventos. El otro era "ENTRÁ" y llevaba
+                al LOGIN: al que entra por primera vez se le pedía registrarse antes
+                de mostrarle nada. La puerta de la cuenta ya está en el menú de
+                arriba, que es donde la busca el que ya la tiene. */}
             <div className="flex flex-wrap gap-4 pt-4">
-              <Link to={user ? "/perfil" : "/auth/login"}>
-                <Button className="h-14 px-10 orange-gradient border-none text-white text-base rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
-                  ENTRÁ
-                </Button>
-              </Link>
               <Link to="/eventos">
-                <Button variant="outline" className="h-14 px-10 rounded-xl bg-white/[0.03] border border-white/10 text-white text-base hover:bg-white/[0.06] hover:border-white/20 transition-all font-heading font-black uppercase tracking-wide">
+                <Button className="h-14 px-10 orange-gradient border-none text-white text-base rounded-xl transition-all hover:brightness-110 font-heading font-black uppercase tracking-wide">
                   {t.home.verEventos}
                 </Button>
               </Link>
@@ -111,7 +114,7 @@ export default function Landing() {
       </section>
 
       {/* 3. EVENTOS EN VIVO (Posters editoriales, sin cajas de e-commerce, limpio, aire) */}
-      <section className="max-w-7xl mx-auto px-6 py-24 space-y-16">
+      <section className="max-w-7xl mx-auto px-6 pt-4 pb-24 space-y-10">
         <div>
           <span className="block text-[10px] font-bold text-primary uppercase tracking-[0.2em] font-sans">{t.home.enCartelera}</span>
           <h2 className="text-4xl md:text-5xl font-heading font-black tracking-tighter uppercase mt-5" style={{ lineHeight: '1.15' }}>
