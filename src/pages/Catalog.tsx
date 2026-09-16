@@ -217,7 +217,11 @@ export default function Catalog() {
         </section>
       )}
 
-      {/* Filters */}
+      {/* Los filtros aparecen recién cuando hay algo que filtrar. Con dos o tres
+          eventos en cartelera, el buscador y las categorías ocupaban más pantalla
+          que los eventos mismos: se scrolleaba para pasar el filtro y llegar a lo
+          único que la persona vino a ver. */}
+      {visibleEvents.length >= 6 && (
       <section className="max-w-7xl mx-auto px-6 mb-10">
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="flex-grow space-y-4">
@@ -271,6 +275,8 @@ export default function Catalog() {
           </div>
         </div>
       </section>
+
+      )}
 
       {/* Error banner */}
       {fetchError && (

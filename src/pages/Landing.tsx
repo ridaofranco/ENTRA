@@ -11,7 +11,7 @@ import { useAuth } from '@/src/context/AuthContext';
 import HeroAtmosphere from '@/src/components/HeroAtmosphere';
 import PosterFallback from '@/src/components/PosterFallback';
 import { eventPath } from '@/src/lib/slug';
-import { isEventFinished } from '@/src/lib/utils';
+import { cn, isEventFinished } from '@/src/lib/utils';
 import { useLang, textos, dateLocale } from '@/src/lib/i18n';
 
 interface Event {
@@ -129,9 +129,22 @@ export default function Landing() {
             ))}
           </div>
         ) : featuredEvents.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          /* CON POCOS EVENTOS NO VA LA GRILLA DE TRES. Con un solo evento
+             publicado se veía una tarjeta y dos huecos: parecía vacío lo que en
+             realidad es "recién arrancamos". Hasta dos eventos, cada uno ocupa
+             todo el ancho y la imagen va apaisada, que es como se mira un afiche.
+             Del tercero en adelante vuelve la grilla, sola. */
+          <div className={cn(
+            "grid gap-8",
+            featuredEvents.length === 1 ? "grid-cols-1 max-w-4xl"
+              : featuredEvents.length === 2 ? "grid-cols-1 md:grid-cols-2"
+              : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
+          )}>
             {featuredEvents.map((event, i) => {
               // Etiqueta de stock REAL según disponibilidad de las entradas
+              // Un solo evento (o dos) se muestra grande: es la diferencia entre una
+              // cartelera que arranca y una que parece vacía.
+              const destacado = featuredEvents.length <= 2;
               const tks: any[] = (event as any).tickets || [];
               const totalAvail = tks.reduce((s, t) => s + (Number(t.available) || 0), 0);
               const soldOut = tks.length > 0 && tks.every(t => (Number(t.available) || 0) <= 0);
@@ -157,7 +170,12 @@ export default function Landing() {
                   <Link to={eventPath(event)}>
                     <div className="flex flex-col h-full space-y-4">
                       {/* Image Frame */}
-                      <div className="relative aspect-[4/5] rounded-[2rem] border border-white/10 overflow-hidden bg-black group-hover:border-primary/40 transition-colors duration-300">
+                      <div className={cn(
+                        "relative rounded-[2rem] border border-white/10 overflow-hidden bg-black group-hover:border-primary/40 transition-colors duration-300",
+                        // 4/3 en celular y 16/9 en pantalla grande: apaisado sin comerse el afiche.
+                        // Un 21/9 sobre una imagen vertical recorta casi todo el arte.
+                        destacado ? "aspect-[4/3] md:aspect-[16/9]" : "aspect-[4/5]",
+                      )}>
                         {event.image ? (
                           <img
                             src={event.image}
@@ -182,7 +200,10 @@ export default function Landing() {
                           <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] font-sans">
                             {event.isDateTBD ? t.comun.proximamente : formatDate(event.date)}
                           </p>
-                          <h3 className="text-xl md:text-2xl font-heading font-black tracking-tight uppercase leading-none">
+                          <h3 className={cn(
+                            "font-heading font-black tracking-tight uppercase leading-none",
+                            destacado ? "text-3xl md:text-5xl" : "text-xl md:text-2xl",
+                          )}>
                             {event.title}
                           </h3>
                         </div>

@@ -148,6 +148,16 @@ export default function EventDetail() {
     ? event.tickets.every(t => (t.available || 0) <= 0)
     : false;
 
+  // El precio más barato disponible, para la barra de abajo en celular: es el
+  // número que decide si sigue leyendo o se va.
+  const precioDesde = (() => {
+    const precios = (event?.tickets || [])
+      .filter((tk: any) => (Number(tk.available) || 0) > 0)
+      .map((tk: any) => Number(tk.price) || 0);
+    if (precios.length === 0) return null;
+    return Math.min(...precios);
+  })();
+
   // Evento ya finalizado: bloquea la compra aunque entren por URL directa.
   const isFinished = event ? isEventFinished(event) : false;
 
@@ -238,7 +248,10 @@ export default function EventDetail() {
   return (
     <div className="pb-20 pt-20">
       {/* Banner — arranca debajo del navbar (h-20), no por detrás */}
-      <div className="relative h-[60vh] overflow-hidden">
+      {/* 45vh en celular, 60 en pantalla grande. A 60 la foto se comía más de
+          media pantalla del teléfono y empujaba el título, la fecha y el precio
+          fuera de la primera mirada. En desktop no cambia nada. */}
+      <div className="relative h-[45vh] md:h-[60vh] overflow-hidden">
         {event.image ? (
           <img
             src={event.image}
@@ -293,27 +306,15 @@ export default function EventDetail() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-3 gap-12 mt-12">
+      {/* En pantalla grande son dos columnas y se ven juntas. En el celular NO hay
+          dos columnas: la de entradas caía abajo de todo, así que el que llegaba
+          desde el link de Instagram pasaba por la foto, compartir, la descripción,
+          las jornadas y un mapa de 320px antes de ver un precio. En celular la
+          compra va primero (order-first) y la info después. `pb-28` deja lugar para
+          la barra fija de abajo, que si no tapa el final de la página. */}
+      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-3 gap-12 mt-12 pb-28 lg:pb-0">
         {/* Left Column: Info */}
-        <div className="lg:col-span-2 space-y-12">
-          {/* Acciones: compartir / agregar al calendario */}
-          <div className="flex flex-wrap gap-3 -mb-4">
-            <button
-              onClick={handleShare}
-              className="flex items-center gap-2 h-11 px-5 rounded-xl bg-white/[0.03] border border-white/10 text-white text-sm font-bold hover:bg-white/[0.06] hover:border-white/20 transition-all"
-            >
-              {linkCopied ? <Check className="w-4 h-4 text-primary" /> : <Share2 className="w-4 h-4" />}
-              {linkCopied ? t.evento.linkCopiado : t.evento.compartir}
-            </button>
-            <button
-              onClick={handleAddToCalendar}
-              className="flex items-center gap-2 h-11 px-5 rounded-xl bg-white/[0.03] border border-white/10 text-white text-sm font-bold hover:bg-white/[0.06] hover:border-white/20 transition-all"
-            >
-              <CalendarPlus className="w-4 h-4" />
-              {t.evento.agregarCalendario}
-            </button>
-          </div>
-
+        <div className="lg:col-span-2 space-y-12 order-2 lg:order-1">
           <section>
             <h2 className="text-2xl font-heading font-black mb-6 flex items-center gap-3">
               <Info className="w-6 h-6 text-primary" />
@@ -383,10 +384,30 @@ export default function EventDetail() {
               </div>
             </div>
           </section>
+          {/* Compartir y agendar son cosas de DESPUÉS de decidir: estaban de primeras,
+              arriba de todo, ocupando el lugar más valioso de la pantalla. Nadie
+              comparte un evento antes de saber cuánto sale. */}
+          <div className="flex flex-wrap gap-3 -mb-4">
+            <button
+              onClick={handleShare}
+              className="flex items-center gap-2 h-11 px-5 rounded-xl bg-white/[0.03] border border-white/10 text-white text-sm font-bold hover:bg-white/[0.06] hover:border-white/20 transition-all"
+            >
+              {linkCopied ? <Check className="w-4 h-4 text-primary" /> : <Share2 className="w-4 h-4" />}
+              {linkCopied ? t.evento.linkCopiado : t.evento.compartir}
+            </button>
+            <button
+              onClick={handleAddToCalendar}
+              className="flex items-center gap-2 h-11 px-5 rounded-xl bg-white/[0.03] border border-white/10 text-white text-sm font-bold hover:bg-white/[0.06] hover:border-white/20 transition-all"
+            >
+              <CalendarPlus className="w-4 h-4" />
+              {t.evento.agregarCalendario}
+            </button>
+          </div>
+
         </div>
 
         {/* Right Column: Tickets */}
-        <div className="space-y-6">
+        <div id="entradas" className="space-y-6 order-1 lg:order-2 scroll-mt-24">
           <Card className="glass p-8 rounded-[2.5rem] border-white/10 sticky top-28 shadow-2xl bg-[#09090b]/80 backdrop-blur-xl">
             {event.status === 'cancelled' ? (
               /* Evento cancelado: compra bloqueada y aviso claro (prioridad
@@ -679,6 +700,29 @@ export default function EventDetail() {
           </Card>
         </div>
       </div>
+
+      {/* BARRA DE COMPRA EN CELULAR. Acompaña mientras lee: el precio y el botón
+          están siempre a mano, sin volver a buscar arriba. Solo en celular (en
+          desktop la caja de entradas ya queda fija al costado) y solo cuando se
+          puede comprar de verdad: con el evento cancelado, terminado, pausado o
+          agotado no aparece, para no ofrecer lo que no se puede dar. */}
+      {isEventActive && !isFinished && !isSoldOut && event.status !== 'cancelled' && (
+        <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-white/10 bg-[#09090b]/95 backdrop-blur-xl px-4 py-3 flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[10px] font-sans font-bold uppercase tracking-widest text-muted-foreground">
+              {isFree ? t.comun.gratis : t.evento.desde}
+            </p>
+            <p className="font-heading font-black text-lg text-white truncate">
+              {isFree || !precioDesde ? '' : formatCurrency(precioDesde)}
+            </p>
+          </div>
+          <a href="#entradas" className="shrink-0">
+            <Button className="h-12 px-7 orange-gradient border-none text-white rounded-xl font-heading font-black uppercase text-xs tracking-wide">
+              {isFree ? t.evento.reservar : t.evento.comprar}
+            </Button>
+          </a>
+        </div>
+      )}
     </div>
   );
 }

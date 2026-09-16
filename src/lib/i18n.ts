@@ -229,6 +229,10 @@ const es = {
     jornadasCortas: (n: number) => `${n} jornadas`,
     compartir: 'Compartir',
     linkCopiado: 'Link copiado',
+    // Barra de compra en celular
+    desde: 'Desde',
+    comprar: 'Comprar',
+    reservar: 'Reservar',
     agregarCalendario: 'Agregar al calendario',
     sobreEvento: 'Sobre el evento',
     jornadasTitulo: (n: number) => `Jornadas (${n} días)`,
@@ -526,6 +530,10 @@ const en: typeof es = {
     jornadasCortas: (n: number) => `${n} days`,
     compartir: 'Share',
     linkCopiado: 'Link copied',
+    // Mobile purchase bar
+    desde: 'From',
+    comprar: 'Buy',
+    reservar: 'Reserve',
     agregarCalendario: 'Add to calendar',
     sobreEvento: 'About this event',
     jornadasTitulo: (n: number) => `Schedule (${n} days)`,
