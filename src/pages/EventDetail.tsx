@@ -112,7 +112,9 @@ export default function EventDetail() {
 
   const ticketsSubtotal = event?.tickets.reduce((acc, t) => acc + (quantities[t.type] || 0) * t.price, 0) || 0;
   const total = ticketsSubtotal * dayCount;
-  const totalQty = Object.values(quantities).reduce((acc: number, q) => acc + (q as number), 0);
+  // Tipado explícito: el reduce devolvía `unknown` y obligaba a un Number() en
+  // cada uso (y rompía el que faltara).
+  const totalQty: number = Object.values(quantities).reduce<number>((acc, q) => acc + (Number(q) || 0), 0);
 
   const toggleDay = (i: number) =>
     setSelectedDays(prev => (prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i].sort((a, b) => a - b)));
@@ -147,6 +149,34 @@ export default function EventDetail() {
   const isSoldOut = event?.tickets?.length
     ? event.tickets.every(t => (t.available || 0) <= 0)
     : false;
+
+  // Lo que se lleva al checkout. Vive acá arriba porque lo usan DOS botones: el
+  // de la caja de entradas y el de la barra de abajo en celular. Cuando estaba
+  // escrito adentro de un solo botón, la barra no podía comprar lo elegido: te
+  // mandaba al checkout sin el carrito.
+  const estadoCheckout = {
+    event: event ? {
+      id: event.id,
+      title: event.title,
+      venue: event.venue,
+      location: event.location,
+      image: event.image,
+      date: event.date,
+      isMultiDay,
+      entryMode: entryMode || null,
+      isFree,
+      validDays,
+      selectedDayKeys,
+    } : null,
+    selectedTickets: (event?.tickets || [])
+      .filter((tk: any) => (quantities[tk.type] || 0) > 0)
+      .map((tk: any) => ({
+        type: tk.type,
+        price: tk.price,
+        quantity: quantities[tk.type],
+        days: dayCount,
+      })),
+  };
 
   // El precio más barato disponible, para la barra de abajo en celular: es el
   // número que decide si sigue leyendo o se va.
@@ -658,29 +688,7 @@ export default function EventDetail() {
 
                   <Link
                     to="/checkout"
-                    state={{
-                      event: {
-                        id: event.id,
-                        title: event.title,
-                        venue: event.venue,
-                        location: event.location,
-                        image: event.image,
-                        date: event.date,
-                        isMultiDay,
-                        entryMode: entryMode || null,
-                        isFree,
-                        validDays,
-                        selectedDayKeys,
-                      },
-                      selectedTickets: event.tickets
-                        .filter(t => (quantities[t.type] || 0) > 0)
-                        .map(t => ({
-                          type: t.type,
-                          price: t.price,
-                          quantity: quantities[t.type],
-                          days: dayCount,
-                        }))
-                    }}
+                    state={estadoCheckout}
                     className={(totalQty === 0 || needsDays) ? "pointer-events-none" : ""}
                   >
                     <Button
@@ -701,26 +709,53 @@ export default function EventDetail() {
         </div>
       </div>
 
-      {/* BARRA DE COMPRA EN CELULAR. Acompaña mientras lee: el precio y el botón
-          están siempre a mano, sin volver a buscar arriba. Solo en celular (en
-          desktop la caja de entradas ya queda fija al costado) y solo cuando se
-          puede comprar de verdad: con el evento cancelado, terminado, pausado o
-          agotado no aparece, para no ofrecer lo que no se puede dar. */}
+      {/* BARRA DE COMPRA EN CELULAR.
+          Antes decía siempre "Desde $8.000" y el botón solo hacía scroll hasta la
+          caja de entradas: elegías dos entradas, tocabas COMPRAR y te llevaba sin
+          el carrito, mostrando un precio que no era el tuyo. Ahora es la misma
+          compra que el botón de arriba: mientras no elegiste nada muestra el precio
+          más barato y te lleva al selector; apenas elegís, muestra CUÁNTAS y CUÁNTO
+          y te manda al checkout con eso.
+          Solo en celular (en desktop la caja ya queda fija al costado) y solo si se
+          puede comprar: con el evento cancelado, terminado, pausado o agotado no
+          aparece, para no ofrecer lo que no se puede dar. */}
       {isEventActive && !isFinished && !isSoldOut && event.status !== 'cancelled' && (
         <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-white/10 bg-[#09090b]/95 backdrop-blur-xl px-4 py-3 flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[10px] font-sans font-bold uppercase tracking-widest text-muted-foreground">
-              {isFree ? t.comun.gratis : t.evento.desde}
+            <p className="text-[10px] font-sans font-bold uppercase tracking-widest text-muted-foreground truncate">
+              {totalQty > 0
+                ? t.evento.entradasElegidas(totalQty)
+                : (isFree ? t.comun.gratis : t.evento.desde)}
             </p>
             <p className="font-heading font-black text-lg text-white truncate">
-              {isFree || !precioDesde ? '' : formatCurrency(precioDesde)}
+              {isFree
+                ? ''
+                : totalQty > 0
+                ? formatCurrency(finalCalculatedTotal)
+                : (precioDesde ? formatCurrency(precioDesde) : '')}
             </p>
           </div>
-          <a href="#entradas" className="shrink-0">
-            <Button className="h-12 px-7 orange-gradient border-none text-white rounded-xl font-heading font-black uppercase text-xs tracking-wide">
-              {isFree ? t.evento.reservar : t.evento.comprar}
-            </Button>
-          </a>
+
+          {totalQty > 0 ? (
+            <Link
+              to="/checkout"
+              state={estadoCheckout}
+              className={needsDays ? "pointer-events-none shrink-0" : "shrink-0"}
+            >
+              <Button
+                disabled={needsDays}
+                className="h-12 px-7 orange-gradient border-none text-white rounded-xl font-heading font-black uppercase text-xs tracking-wide disabled:opacity-50"
+              >
+                {needsDays ? t.evento.elegiUnDia : (isFree ? t.evento.reservar : t.evento.comprar)}
+              </Button>
+            </Link>
+          ) : (
+            <a href="#entradas" className="shrink-0">
+              <Button className="h-12 px-7 orange-gradient border-none text-white rounded-xl font-heading font-black uppercase text-xs tracking-wide">
+                {t.evento.elegiEntradas}
+              </Button>
+            </a>
+          )}
         </div>
       )}
     </div>

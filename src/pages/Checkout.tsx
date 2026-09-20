@@ -50,11 +50,6 @@ export default function Checkout() {
     email: user?.email || '',
     dni: '',
     phone: '',
-    // Código postal: es la señal antifraude que MercadoPago pidió en el ticket
-    // WCS-43463 y la única de domicilio que se puede pedir sin romper la
-    // conversión (una dirección completa son tres campos más). Viene sugerido
-    // con el de CABA, que es de donde compra la mayoría, y se puede corregir.
-    zip: 'C1414',
   });
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [successState, setSuccessState] = useState<SuccessState | null>(null);
@@ -103,7 +98,6 @@ export default function Checkout() {
             email: prev.email || data.email || '',
             dni: data.dni || '',
             phone: data.phone || '',
-            zip: data.zip || prev.zip,
           }));
         }
         setProfileLoaded(true);
@@ -338,7 +332,9 @@ export default function Checkout() {
             email: buyerInfo.email,
             dni: buyerInfo.dni,
             phone: buyerInfo.phone || '',
-            zip: buyerInfo.zip || '',
+            // Sin código postal: se sacó el campo, y mandar el de CABA por
+            // defecto sería inventarle el domicilio al que compra desde otro lado.
+            // Un dato inventado es peor que ninguno para el motor de riesgo de MP.
           },
           buyerId,
           discountCode: appliedDiscount?.code || null,
@@ -372,7 +368,6 @@ export default function Checkout() {
           try {
             const updateData: any = { updatedAt: Timestamp.now() };
             if (buyerInfo.dni) updateData.dni = buyerInfo.dni;
-            if (buyerInfo.zip) updateData.zip = buyerInfo.zip;
             if (buyerInfo.phone) updateData.phone = buyerInfo.phone;
             if (buyerInfo.name) updateData.displayName = buyerInfo.name;
             await updateDoc(doc(db, 'users', user.uid), updateData);
@@ -725,19 +720,14 @@ ${successState.tickets.map((ticket, i) => `
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-              {t.checkout.codigoPostal}
-            </label>
-            <Input
-              value={buyerInfo.zip}
-              onChange={(e) => setBuyerInfo({ ...buyerInfo, zip: e.target.value })}
-              placeholder={t.checkout.codigoPostalPlaceholder}
-              maxLength={10}
-              className="bg-white/5 border-white/10 h-12 rounded-2xl"
-            />
-            <p className="text-[11px] text-muted-foreground/70">{t.checkout.codigoPostalAyuda}</p>
-          </div>
+          {/* El código postal se sacó del checkout el 20/9 a pedido de Franco: es un
+              campo más en la pantalla donde se pierde gente, y el que compra una
+              entrada no entiende para qué se lo piden.
+              ⚠️ Venía del ticket WCS-43463 de MercadoPago: era la señal antifraude
+              del domicilio, la única que faltaba. Sin ella, MP tiene menos contexto
+              del comprador al evaluar el riesgo y puede rechazar más pagos. Se
+              siguen mandando nombre, mail, DNI y teléfono. Si aparecen rechazos
+              raros, esto es lo primero que hay que volver a mirar. */}
         </div>
       </div>
 
