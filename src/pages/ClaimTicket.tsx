@@ -16,19 +16,16 @@ import { db } from '@/src/lib/firebase';
 import { useAuth } from '@/src/context/AuthContext';
 import { useLang, textos, dateLocale } from '@/src/lib/i18n';
 
-// Generador simple de QR code (UUID style)
-const generateQrCode = () => {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-};
+// El QR de la entrada es la llave de la puerta: se genera con el generador
+// criptográfico del navegador, igual que hacen el webhook y las cortesías
+// (ambos con randomUUID y el comentario "seguro, no Math.random"). Acá había
+// quedado un Math.random, que es predecible y no está pensado para esto.
+const generateQrCode = () => crypto.randomUUID();
 
 export default function ClaimTicket() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, resendVerification } = useAuth();
   const lang = useLang();
   const t = textos(lang);
 
@@ -110,6 +107,9 @@ export default function ClaimTicket() {
     loadTransfer();
   }, [token]);
 
+  const [necesitaVerificar, setNecesitaVerificar] = useState(false);
+  const [verificacionEnviada, setVerificacionEnviada] = useState(false);
+
   const handleClaim = async () => {
     if (!user || !transfer || !transferId) return;
     if (user.uid === transfer.fromUserId) {
@@ -125,6 +125,13 @@ export default function ClaimTicket() {
       setError(t.claim.enviadoA(transfer.toUserEmail));
       return;
     }
+    // La entrada solo se entrega a un email VERIFICADO (lo exigen las reglas de
+    // Firestore). Sin este aviso, el que no lo verificó veía un "no se pudo" que
+    // no explica nada y no tiene cómo salir.
+    if (user.emailVerified === false) {
+      setNecesitaVerificar(true);
+      return;
+    }
     setClaiming(true);
     setError(null);
     try {
@@ -137,6 +144,7 @@ export default function ClaimTicket() {
         qrCode: newQrCode,
         transferStatus: null,
         transferToken: null,
+        transferToEmail: null,
         transferredAt: Timestamp.now(),
         transferredFrom: transfer.fromUserEmail || null,
       });
@@ -177,6 +185,40 @@ export default function ClaimTicket() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+      </div>
+    );
+  }
+
+  // ============ FALTA VERIFICAR EL EMAIL ============
+  if (necesitaVerificar) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black px-6">
+        <div className="max-w-md w-full text-center space-y-5">
+          <h1 className="text-2xl font-heading font-black uppercase tracking-tight text-white">
+            Verificá tu email para recibir la entrada
+          </h1>
+          <p className="text-sm text-zinc-400 leading-relaxed">
+            La entrada se entrega solo a la dirección confirmada, así nadie más puede
+            quedársela. Te mandamos un mail a <b className="text-white">{user?.email}</b>:
+            abrilo, tocá el link y volvé a esta página.
+          </p>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={async () => {
+                try { await resendVerification(); setVerificacionEnviada(true); } catch { /* ya lo dice el texto */ }
+              }}
+              className="h-12 px-6 rounded-xl bg-white/5 border border-white/10 text-white text-xs font-heading font-black uppercase tracking-widest hover:bg-white/10 transition"
+            >
+              {verificacionEnviada ? 'Mail reenviado' : 'Reenviar el mail'}
+            </button>
+            <button
+              onClick={() => { setNecesitaVerificar(false); window.location.reload(); }}
+              className="h-12 px-6 rounded-xl orange-gradient text-white text-xs font-heading font-black uppercase tracking-widest"
+            >
+              Ya lo verifiqué
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

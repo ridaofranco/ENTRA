@@ -18,6 +18,7 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { randomUUID } from 'crypto';
 import { getAdminDb } from './_lib/firebaseAdmin.js';
+import { alerta } from './_alerta.js';
 
 const BASE_URL = process.env.PUBLIC_BASE_URL || 'https://www.entratickets.com';
 
@@ -173,7 +174,21 @@ export async function emitirOrdenPagada(
     }
 
     // 3) confirmar la orden
+    // QUÉ COBRÓ MERCADOPAGO DE VERDAD. `PROCESSOR_GROSSUP` es un 4,99% fijo que
+    // paga el comprador, pero la comisión real de MP cambia según el medio de pago
+    // (dinero en cuenta y débito son mucho más baratos que crédito) y no se conoce
+    // al armar el link de pago. Sin este dato, ajustar el grossup es adivinar.
+    // MP lo manda en cada pago y hasta ahora se tiraba.
+    const feeMp = Array.isArray(payment?.fee_details)
+      ? payment.fee_details.reduce((suma: number, f: any) => suma + (Number(f?.amount) || 0), 0)
+      : null;
     tx.update(orderRef, {
+      mpFeeDetails: payment?.fee_details ?? null,
+      mpFeeTotal: feeMp,
+      mpNetReceived: payment?.transaction_details?.net_received_amount ?? null,
+      mpPaymentMethod: payment?.payment_method_id ?? null,
+      mpPaymentType: payment?.payment_type_id ?? null,
+      mpInstallments: payment?.installments ?? null,
       status: 'confirmed',
       paymentMethod: 'mercadopago',
       mpPaymentId: String(paymentId),
@@ -220,6 +235,20 @@ export async function emitirOrdenPagada(
       emailError = e?.message || String(e);
       console.error(`${TAG} email falló:`, emailError);
     }
+    // AVISO CUANDO LA ENTRADA NO SE PUEDE ENTREGAR. Antes esto quedaba anotado en
+    // la orden y ahí moría: había que entrar al panel a mirarlo. El 15/9 nos
+    // enteramos porque la compradora reclamó, con el mail mal escrito guardado y
+    // la entrada emitida sin poder mandarla. Del otro lado hay alguien que pagó.
+    if (emailStatus !== 'sent') {
+      await alerta({
+        titulo: 'Una entrada pagada no se pudo entregar por mail',
+        plata: true,
+        datos: { orden: orderId, comprador: orderData.buyerEmail || null, entradas: emitted.length },
+        detalle: `Se puede corregir el mail y reenviar desde el panel del evento, en Asistentes. Motivo: ${emailError || 'sin detalle'}`,
+        clave: 'entrada-sin-entregar',
+      });
+    }
+
     await db.collection('orders').doc(orderId).update({
       emailStatus,
       emailError,

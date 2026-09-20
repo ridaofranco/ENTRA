@@ -157,6 +157,11 @@ export const TransferTicketModal = ({
       await updateDoc(doc(db, 'tickets', ticket.id), {
         transferStatus: 'pending',
         transferToken: token,
+        // A QUÉ EMAIL VA. No es informativo: es lo que miran las reglas de
+        // Firestore para dejar que el destinatario —y nadie más— reclame esta
+        // entrada. Sin este campo en el ticket, la regla no tiene contra qué
+        // comparar y el reclamo se rechaza.
+        transferToEmail: recipientEmail.trim().toLowerCase(),
       });
 
       const link = `${window.location.origin}/claim/${token}`;
