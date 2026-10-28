@@ -177,3 +177,6 @@ footer a:hover { color: var(--o2); }
 }
 .hcard p { color: var(--dim2); margin: 0; font-size: 0.96rem; }
 .hcard .meta { margin: 10px 0 0; }
+
+/* Links y códigos largos (por ejemplo un ?utm_source=...) no se salen de la pantalla en celulares chicos (28/10/2026). */
+article code, article a { overflow-wrap: anywhere; }
