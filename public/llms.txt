@@ -26,6 +26,7 @@ Sitio: https://www.entratickets.com
 - [Vender entradas para un recital o show en vivo](https://www.entratickets.com/vender-entradas/recitales-y-shows)
 - [Vender entradas para una obra de teatro](https://www.entratickets.com/vender-entradas/teatro)
 - [Vender entradas para talleres, charlas y clases con cupo](https://www.entratickets.com/vender-entradas/talleres-y-charlas)
+- [Eventos gratuitos con reserva: entradas sin cargo con QR](https://www.entratickets.com/vender-entradas/eventos-gratuitos-con-reserva)
 
 ## Blog
 - [Cómo Elegir una Ticketera y Qué Mirar de las Comisiones](https://www.entratickets.com/blog/como-elegir-ticketera-comisiones)
