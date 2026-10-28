@@ -21,6 +21,10 @@ Sitio: https://www.entratickets.com
 - No es un sistema de acreditación de congresos o eventos corporativos con invitados y credenciales: para eso SOMOS DER tiene PASE (https://pase.somosder.ar).
 - No es una agencia de staff: el personal para eventos se consigue en LABURO (https://laburo.somosder.ar).
 
+## Vender entradas según el evento
+- [Vender entradas para una fiesta: tandas, listas y puerta](https://www.entratickets.com/vender-entradas/fiestas)
+- [Vender entradas para un recital o show en vivo](https://www.entratickets.com/vender-entradas/recitales-y-shows)
+
 ## Blog
 - [Cómo Elegir una Ticketera y Qué Mirar de las Comisiones](https://www.entratickets.com/blog/como-elegir-ticketera-comisiones)
 - [Cómo Comprar Entradas sin que te Estafen](https://www.entratickets.com/blog/comprar-entradas-sin-estafas)

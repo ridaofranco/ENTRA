@@ -28,6 +28,14 @@
       "destination": "/blog/:slug.html"
     },
     {
+      "source": "/vender-entradas",
+      "destination": "/vender-entradas/index.html"
+    },
+    {
+      "source": "/vender-entradas/:slug",
+      "destination": "/vender-entradas/:slug.html"
+    },
+    {
       "source": "/((?!api/|assets|__/).*)",
       "destination": "/index.html"
     }
