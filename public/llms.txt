@@ -1,0 +1,41 @@
+# ENTRÁ
+
+> ENTRÁ es la ticketera de SOMOS DER (productora de eventos de Buenos Aires, Argentina). Sirve para vender entradas online a fiestas, recitales, obras y eventos con cupo, y para validarlas en la puerta desde el celular con un QR único por entrada.
+
+Sitio: https://www.entratickets.com
+
+## Para quien organiza un evento
+- Crear la cuenta y cargar el evento no tiene costo. Cada evento pasa por una revisión antes de publicarse, normalmente el mismo día.
+- El organizador cobra el 100% del precio que pone a cada entrada. Los costos de servicio y de procesamiento los paga quien compra, con el desglose a la vista en el checkout antes de pagar.
+- Incluido sin costo extra: publicación ilimitada, control de acceso integrado, transferencia oficial de entradas, exportación de la base de compradores y soporte por WhatsApp.
+- En el panel: cupos, descuentos, cortesías y la venta en tiempo real (quién compró, cuándo y qué).
+- Control de acceso: se escanea el QR de cada entrada desde el celular. Cada QR vale una sola vez y se invalida si la entrada se transfiere.
+- Más información: https://www.entratickets.com/productores
+
+## Para quien compra
+- Se compra sin crear una cuenta. La entrada llega por mail con su QR.
+- Ayuda y preguntas frecuentes: https://www.entratickets.com/ayuda
+- Contacto: https://www.entratickets.com/contacto
+
+## Qué no es ENTRÁ
+- No es un sistema de acreditación de congresos o eventos corporativos con invitados y credenciales: para eso SOMOS DER tiene PASE (https://pase.somosder.ar).
+- No es una agencia de staff: el personal para eventos se consigue en LABURO (https://laburo.somosder.ar).
+
+## Blog
+- [Cómo Elegir una Ticketera y Qué Mirar de las Comisiones](https://www.entratickets.com/blog/como-elegir-ticketera-comisiones)
+- [Cómo Comprar Entradas sin que te Estafen](https://www.entratickets.com/blog/comprar-entradas-sin-estafas)
+- [Cómo Funciona el Control de Acceso el Día del Evento](https://www.entratickets.com/blog/control-de-acceso-dia-del-evento)
+- [Qué Datos te Tiene que Dar una Ticketera para Saber Cómo va la Venta](https://www.entratickets.com/blog/datos-ventas-ticketera-productor)
+- [Cómo Evitar Entradas Truchas y Duplicadas en la Puerta](https://www.entratickets.com/blog/entradas-truchas-duplicadas-puerta)
+- [Evento Cancelado o Reprogramado: Qué Pasa con tu Entrada](https://www.entratickets.com/blog/evento-cancelado-reprogramado-transferir-entrada)
+- [Me Olvidé el Celular o se me Apagó: ¿Puedo Entrar Igual?](https://www.entratickets.com/blog/me-olvide-el-celular-entrar-al-evento)
+- [Pagaste y no te Llegó la Entrada al Mail: Qué Hacer](https://www.entratickets.com/blog/no-me-llego-la-entrada-al-mail)
+- [Qué Necesitás para Organizar tu Primer Evento: Checklist Real](https://www.entratickets.com/blog/organizar-primer-evento-checklist)
+- [Qué es y para qué Sirve el QR de tu Entrada](https://www.entratickets.com/blog/para-que-sirve-el-qr-de-tu-entrada)
+- [Cómo Poner Precio a tus Entradas y Armar las Tandas](https://www.entratickets.com/blog/poner-precio-entradas-tandas-preventa)
+- [Cómo Promocionar tu Evento y Medir de Dónde Vienen las Ventas](https://www.entratickets.com/blog/promocionar-evento-medir-ventas)
+
+## Ecosistema SOMOS DER
+- SOMOS DER, productora de eventos: https://somosder.ar
+- PASE, acreditación y control de accesos: https://pase.somosder.ar
+- LABURO, staff, proveedores y salones para eventos: https://laburo.somosder.ar

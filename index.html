@@ -26,6 +26,15 @@
     <meta property="twitter:title" content="ENTRÁ — Acceso a experiencias en vivo" />
     <meta property="twitter:description" content="Comprá y vendé entradas, gestioná tus eventos y controlá el acceso desde el celular." />
     <meta property="twitter:image" content="https://www.entratickets.com/og-image.png" />
+    <!-- Datos estructurados (28/10/2026): Google y las IA entienden que ENTRÁ es la ticketera de SOMOS DER.
+         Mismo @id de SOMOS DER que usan la web de DER, PASE y LABURO. -->
+    <script type="application/ld+json">
+    {"@context":"https://schema.org","@graph":[
+      {"@type":"WebSite","@id":"https://www.entratickets.com/#website","url":"https://www.entratickets.com/","name":"ENTRÁ","inLanguage":"es-AR","publisher":{"@id":"https://www.entratickets.com/#organization"}},
+      {"@type":"Organization","@id":"https://www.entratickets.com/#organization","name":"ENTRÁ","url":"https://www.entratickets.com/","logo":"https://www.entratickets.com/pwa-512.png","parentOrganization":{"@type":"Organization","@id":"https://www.somosder.ar/#organization","name":"SOMOS DER","url":"https://somosder.ar"}},
+      {"@type":"SoftwareApplication","name":"ENTRÁ","url":"https://www.entratickets.com/","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"Ticketera online para vender entradas y validarlas en la puerta desde el celular con un QR único por entrada. El organizador cobra el 100% del precio de cada entrada.","offers":{"@type":"Offer","price":"0","priceCurrency":"ARS","description":"Crear la cuenta y publicar eventos no tiene costo para el organizador; los costos de servicio los paga quien compra."},"publisher":{"@id":"https://www.entratickets.com/#organization"}}
+    ]}
+    </script>
   </head>
   <body>
     <div id="root"></div>
