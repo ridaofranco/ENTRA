@@ -24,6 +24,8 @@ Sitio: https://www.entratickets.com
 ## Vender entradas según el evento
 - [Vender entradas para una fiesta: tandas, listas y puerta](https://www.entratickets.com/vender-entradas/fiestas)
 - [Vender entradas para un recital o show en vivo](https://www.entratickets.com/vender-entradas/recitales-y-shows)
+- [Vender entradas para una obra de teatro](https://www.entratickets.com/vender-entradas/teatro)
+- [Vender entradas para talleres, charlas y clases con cupo](https://www.entratickets.com/vender-entradas/talleres-y-charlas)
 
 ## Blog
 - [Cómo Elegir una Ticketera y Qué Mirar de las Comisiones](https://www.entratickets.com/blog/como-elegir-ticketera-comisiones)

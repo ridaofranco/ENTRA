@@ -44,6 +44,8 @@ const FIJAS: Array<[string, string, string]> = [
   ['/vender-entradas', 'monthly', '0.7'],
   ['/vender-entradas/fiestas', 'monthly', '0.7'],
   ['/vender-entradas/recitales-y-shows', 'monthly', '0.7'],
+  ['/vender-entradas/teatro', 'monthly', '0.7'],
+  ['/vender-entradas/talleres-y-charlas', 'monthly', '0.7'],
   ['/terminos', 'yearly', '0.2'],
   ['/privacidad', 'yearly', '0.2'],
 ];
