@@ -40,6 +40,8 @@ const FIJAS: Array<[string, string, string]> = [
   ['/blog/control-de-acceso-dia-del-evento', 'monthly', '0.6'],
   ['/blog/para-que-sirve-el-qr-de-tu-entrada', 'monthly', '0.6'],
   ['/blog/me-olvide-el-celular-entrar-al-evento', 'monthly', '0.6'],
+  ['/blog/facturar-venta-de-entradas-monotributista', 'monthly', '0.6'],
+  ['/blog/cortesias-invitaciones-evento-cuantas-dar', 'monthly', '0.6'],
   // Páginas por público (28/10/2026): HTML estáticos en public/vender-entradas.
   ['/vender-entradas', 'monthly', '0.7'],
   ['/vender-entradas/como-funciona', 'monthly', '0.8'],
@@ -49,6 +51,8 @@ const FIJAS: Array<[string, string, string]> = [
   ['/vender-entradas/teatro', 'monthly', '0.7'],
   ['/vender-entradas/talleres-y-charlas', 'monthly', '0.7'],
   ['/vender-entradas/eventos-gratuitos-con-reserva', 'monthly', '0.7'],
+  ['/vender-entradas/stand-up-y-comedia', 'monthly', '0.7'],
+  ['/vender-entradas/transferencia-y-lista-o-ticketera', 'monthly', '0.7'],
   ['/terminos', 'yearly', '0.2'],
   ['/privacidad', 'yearly', '0.2'],
 ];
