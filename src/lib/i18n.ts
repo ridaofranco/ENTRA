@@ -99,6 +99,7 @@ const es = {
     terminos: 'Términos',
     privacidad: 'Privacidad',
     blog: 'Blog',
+    vender: 'Vender entradas',
   },
   comun: {
     cargando: 'Cargando...',
@@ -412,6 +413,7 @@ const en: typeof es = {
     terminos: 'Terms',
     privacidad: 'Privacy',
     blog: 'Blog',
+    vender: 'Sell tickets',
   },
   comun: {
     cargando: 'Loading...',

@@ -1,4 +1,26 @@
 {
+  "redirects": [
+    {
+      "source": "/en",
+      "destination": "/?lang=en",
+      "permanent": false
+    },
+    {
+      "source": "/en/:path*",
+      "destination": "/?lang=en",
+      "permanent": false
+    },
+    {
+      "source": "/pt",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/pt/:path*",
+      "destination": "/",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/__/auth/:path*",

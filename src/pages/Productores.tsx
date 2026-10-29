@@ -328,6 +328,16 @@ export default function Productores() {
               </Button>
             </a>
           </div>
+          {/* Guías en HTML estático (public/vender-entradas): van con <a>, no con <Link>. */}
+          <p className="text-muted-foreground font-sans text-sm mt-10">
+            Guías según tu evento:{' '}
+            <a href="/vender-entradas/fiestas" className="text-primary hover:underline">fiestas</a>,{' '}
+            <a href="/vender-entradas/recitales-y-shows" className="text-primary hover:underline">recitales</a>,{' '}
+            <a href="/vender-entradas/festivales" className="text-primary hover:underline">festivales</a>,{' '}
+            <a href="/vender-entradas/teatro" className="text-primary hover:underline">teatro</a>,{' '}
+            <a href="/vender-entradas/talleres-y-charlas" className="text-primary hover:underline">talleres</a> y{' '}
+            <a href="/vender-entradas" className="text-primary hover:underline">todas</a>.
+          </p>
         </div>
       </section>
     </div>

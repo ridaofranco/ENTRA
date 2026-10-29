@@ -47,7 +47,15 @@ export default defineConfig(() => {
           // Tampoco el blog: son HTML estáticos servidos por Vercel (rewrite /blog/:slug ->
           // /blog/:slug.html). Sin este denylist, el service worker les devolvería el shell de
           // la SPA a cualquiera que ya tenga la PWA instalada y el post no se vería nunca.
-          navigateFallbackDenylist: [/^\/api\//, /^\/blog(\/|$)/],
+          // Lo mismo para las páginas por público (public/vender-entradas), los .txt/.xml
+          // (llms.txt, sitemap) y /en y /pt, que son redirecciones de vercel.json.
+          navigateFallbackDenylist: [
+            /^\/api\//,
+            /^\/blog(\/|$)/,
+            /^\/vender-entradas(\/|$)/,
+            /\.(txt|xml)$/,
+            /^\/(en|pt)(\/|$)/,
+          ],
           cleanupOutdatedCaches: true,
           clientsClaim: true,
         },

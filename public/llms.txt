@@ -10,7 +10,7 @@ Sitio: https://www.entratickets.com
 - Incluido sin costo extra: publicación ilimitada, control de acceso integrado, transferencia oficial de entradas, exportación de la base de compradores y soporte por WhatsApp.
 - En el panel: cupos, descuentos, cortesías y la venta en tiempo real (quién compró, cuándo y qué).
 - Control de acceso: se escanea el QR de cada entrada desde el celular. Cada QR vale una sola vez y se invalida si la entrada se transfiere.
-- Más información: https://www.entratickets.com/productores
+- Más información: https://www.entratickets.com/productores (versión legible sin JavaScript: https://www.entratickets.com/vender-entradas/como-funciona)
 
 ## Para quien compra
 - Se compra sin crear una cuenta. La entrada llega por mail con su QR.
@@ -22,6 +22,7 @@ Sitio: https://www.entratickets.com
 - No es una agencia de staff: el personal para eventos se consigue en LABURO (https://laburo.somosder.ar).
 
 ## Vender entradas según el evento
+- [Cómo vender entradas con ENTRÁ: paso a paso, costos y control de acceso](https://www.entratickets.com/vender-entradas/como-funciona)
 - [Vender entradas para una fiesta: tandas, listas y puerta](https://www.entratickets.com/vender-entradas/fiestas)
 - [Vender entradas para un recital o show en vivo](https://www.entratickets.com/vender-entradas/recitales-y-shows)
 - [Vender entradas para un festival de varios días: abono o entrada por día](https://www.entratickets.com/vender-entradas/festivales)
