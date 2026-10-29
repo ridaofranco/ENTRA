@@ -79,7 +79,7 @@ export default function Contact() {
               </div>
               <div>
                 <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">Email Directo</div>
-                <a href="mailto:contacto@somosder.com.ar" className="text-xl font-bold hover:text-primary transition-colors">contacto@somosder.com.ar</a>
+                <a href="mailto:contacto@somosder.com.ar" className="text-base sm:text-xl font-bold hover:text-primary transition-colors break-all">contacto@somosder.com.ar</a>
               </div>
             </div>
 

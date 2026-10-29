@@ -55,7 +55,7 @@ export default function Ayuda() {
           <span className="block text-[10px] font-sans font-bold tracking-[0.3em] uppercase text-primary">
             SOPORTE OFICIAL · ENTRÁ
           </span>
-          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-[5.5rem] font-heading font-black tracking-tighter uppercase mt-6" style={{ lineHeight: '1.05' }}>
+          <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-[5.5rem] font-heading font-black tracking-tighter uppercase mt-6" style={{ lineHeight: '1.05' }}>
             Resolución <span className="orange-text-gradient">al toque.</span>
           </h1>
           {/* Acá había una bajada que decía "sin bots automáticos... personas reales
@@ -174,7 +174,7 @@ export default function Ayuda() {
           </p>
           <div className="pt-2">
             <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-              <Button size="sm" variant="outline" className="h-11 px-6 bg-white/[0.03] border border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20 text-xs font-heading font-black uppercase tracking-wide rounded-xl transition-all">
+              <Button size="sm" variant="outline" className="h-auto min-h-11 py-2 px-6 whitespace-normal bg-white/[0.03] border border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20 text-xs font-heading font-black uppercase tracking-wide rounded-xl transition-all">
                 Contactar a soporte en directo
               </Button>
             </a>

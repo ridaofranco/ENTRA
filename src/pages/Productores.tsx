@@ -149,7 +149,7 @@ export default function Productores() {
       <section className="max-w-7xl mx-auto px-6 py-16 border-t border-white/5">
         <div className="mb-16">
           <span className="block text-[10px] font-bold text-primary uppercase tracking-[0.2em] font-sans">Propuesta de Valor</span>
-          <h2 className="text-4xl md:text-5xl font-heading font-black tracking-tighter uppercase text-white mt-5" style={{ lineHeight: '1.15' }}>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-heading font-black tracking-tighter uppercase text-white mt-5" style={{ lineHeight: '1.15' }}>
             Infraestructura para operar sin fallas.
           </h2>
         </div>
@@ -208,7 +208,7 @@ export default function Productores() {
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           <div className="lg:col-span-5">
             <span className="block text-[10px] font-bold text-primary uppercase tracking-[0.3em] font-sans">PROCESO</span>
-            <h2 className="text-4xl md:text-5xl font-heading font-black tracking-tighter uppercase text-white mt-5" style={{ lineHeight: '1.15' }}>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-heading font-black tracking-tighter uppercase text-white mt-5" style={{ lineHeight: '1.15' }}>
               Cómo empezás.
             </h2>
             <p className="text-muted-foreground font-sans text-sm max-w-sm leading-relaxed mt-6">
@@ -247,7 +247,7 @@ export default function Productores() {
       <section className="max-w-7xl mx-auto px-6 py-16 space-y-16">
         <div className="text-center max-w-2xl mx-auto">
           <span className="block text-[10px] font-bold text-primary uppercase tracking-[0.3em] font-sans">CONTRATO CLARO</span>
-          <h2 className="text-4xl md:text-5xl font-heading font-black tracking-tighter uppercase text-white mt-5" style={{ lineHeight: '1.15' }}>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-heading font-black tracking-tighter uppercase text-white mt-5" style={{ lineHeight: '1.15' }}>
             Vos cobrás el 100%. Siempre.
           </h2>
           <p className="text-muted-foreground font-sans text-sm leading-relaxed mt-6">
@@ -309,7 +309,7 @@ export default function Productores() {
           <Badge className="orange-gradient border-none text-white uppercase tracking-widest text-[10px] px-4 py-1.5 font-heading font-black">
             COMENZAR AHORA
           </Badge>
-          <h2 className="text-4xl md:text-6xl font-heading font-black tracking-tighter uppercase text-white mt-6" style={{ lineHeight: '1.15' }}>
+          <h2 className="text-3xl sm:text-4xl md:text-6xl font-heading font-black tracking-tighter uppercase text-white mt-6" style={{ lineHeight: '1.15' }}>
             Producí con ENTRÁ.
           </h2>
           <p className="text-muted-foreground font-sans text-sm max-w-md mx-auto leading-relaxed mt-6">
