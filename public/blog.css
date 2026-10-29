@@ -180,3 +180,4 @@ footer a:hover { color: var(--o2); }
 
 /* Links y códigos largos (por ejemplo un ?utm_source=...) no se salen de la pantalla en celulares chicos (28/10/2026). */
 article code, article a { overflow-wrap: anywhere; }
+code{overflow-wrap:anywhere;word-break:break-word}
