@@ -19,6 +19,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { randomUUID } from 'crypto';
 import { getAdminDb } from './_lib/firebaseAdmin.js';
 import { alerta } from './_alerta.js';
+import { diasDeLaOrden, gruposDeEmision } from './_dias.js';
 
 const BASE_URL = process.env.PUBLIC_BASE_URL || 'https://www.entratickets.com';
 
@@ -117,8 +118,11 @@ export async function emitirOrdenPagada(
     const event: any = eventSnap.data();
 
     const eventTickets: any[] = Array.isArray(event.tickets) ? event.tickets : [];
-    const validDays: string[] = Array.isArray(event.validDays) ? event.validDays : [];
-    const isPerDay = Boolean(event.isMultiDay) && event.entryMode === 'per_day' && validDays.length > 0;
+    // Los días salen de la ORDEN (lo que eligió y pagó el comprador, validado en
+    // create-payment), no del evento: si el productor edita las jornadas entre
+    // el pago y este aviso, se entrega lo que se cobró. Ver api/_dias.ts.
+    const planDias = diasDeLaOrden(orderData, event);
+    const isPerDay = planDias.porDia;
     const items: Array<{ type: string; quantity: number; unitPrice: number }> = orderData.items || [];
 
     // 1) validar y descontar stock
@@ -144,7 +148,7 @@ export async function emitirOrdenPagada(
 
     // 2) emitir tickets (un QR por jornada si es per_day; uno para todo si no)
     for (const it of items) {
-      const issueGroups: string[][] = isPerDay ? validDays.map((dk) => [dk]) : [validDays];
+      const issueGroups: string[][] = gruposDeEmision(planDias);
       for (let i = 0; i < it.quantity; i++) {
         for (const grpDays of issueGroups) {
           const qrCode = randomUUID(); // seguro (CSPRNG), no Math.random

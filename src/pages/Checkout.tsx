@@ -327,6 +327,10 @@ export default function Checkout() {
         body: JSON.stringify({
           eventId: event.id,
           items: selectedTickets,
+          // Jornadas elegidas en el evento ("un QR por día"). El servidor las
+          // valida contra los días reales, cobra por cada una y emite un QR por
+          // día. Antes no viajaban: se mostraba el precio por N días y se cobraba uno.
+          selectedDayKeys: Array.isArray(event?.selectedDayKeys) ? event.selectedDayKeys : [],
           buyer: {
             name: buyerInfo.name,
             email: buyerInfo.email,

@@ -605,7 +605,7 @@ export default function CreateEvent() {
                   </button>
                   <button type="button" onClick={() => setEntryMode('per_day')} className={`text-left p-4 rounded-2xl border transition-all ${entryMode === 'per_day' ? 'border-primary bg-primary/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}>
                     <p className="text-sm font-heading font-black">Un QR por día</p>
-                    <p className="text-[11px] text-muted-foreground mt-1">Reservan por jornada. Permite cupo distinto por día (ej: día 1 solo invitados).</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">Eligen las jornadas y reciben un QR por cada día elegido. El precio de la entrada es por día.</p>
                   </button>
                 </div>
               </div>

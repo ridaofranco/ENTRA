@@ -19,6 +19,7 @@ import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { randomUUID } from 'crypto';
 import { getAdminDb } from './_lib/firebaseAdmin.js';
 import { frenado } from './_rate-limit.js';
+import { resolverDias, gruposDeEmision } from './_dias.js';
 
 // Comisión de ENTRÁ, de respaldo. El valor REAL lo pone Franco desde el panel y
 // vive en Firestore (`platform_config/settings.commissionPercent`). Este número
@@ -201,7 +202,7 @@ export default async function handler(req: any, res: any) {
   if (frenado(req, res, 'create-payment', 8)) return;
 
   try {
-    const { eventId, items, buyer, buyerId, discountCode, origen } = req.body || {};
+    const { eventId, items, buyer, buyerId, discountCode, origen, selectedDayKeys } = req.body || {};
 
     if (!eventId || !Array.isArray(items) || items.length === 0 || !buyer?.email || !buyer?.name || !buyer?.dni) {
       return res.status(400).json({ error: 'Faltan datos de la compra (evento, entradas o comprador).' });
@@ -238,9 +239,17 @@ export default async function handler(req: any, res: any) {
 
     const isFree = Boolean(event.isFree);
     const eventTickets: any[] = Array.isArray(event.tickets) ? event.tickets : [];
-    const validDays: string[] = Array.isArray(event.validDays) ? event.validDays : [];
-    const isPerDay = Boolean(event.isMultiDay) && event.entryMode === 'per_day' && validDays.length > 0;
-    const daysMultiplier = isPerDay ? validDays.length : 1;
+    // Días que habilita la compra: los elige el comprador ("un QR por día") y se
+    // validan acá contra los días reales del evento; en el abono son todos. Ver
+    // api/_dias.ts. Antes se leía event.validDays, que nada escribe.
+    const resDias = resolverDias(event, selectedDayKeys);
+    if (!resDias.plan) {
+      return res.status(400).json({ error: resDias.error || 'Los días elegidos no son válidos.' });
+    }
+    const planDias = resDias.plan;
+    const isPerDay = planDias.porDia;
+    const validDays = planDias.dias;
+    const daysMultiplier = planDias.multiplicador;
 
     // --- 2) validar cada tipo de entrada contra el evento real ---
     let subtotal = 0;
@@ -329,6 +338,11 @@ export default async function handler(req: any, res: any) {
       eventId,
       eventTitle: event.title,
       items: normalizedItems,
+      // Días que habilita esta compra y cómo se emiten. La emisión (gratis acá,
+      // paga en _emitir-entradas) los lee de la ORDEN, que es lo que se cobró.
+      validDays,
+      porDia: isPerDay,
+      daysMultiplier,
       discountCodeId: discountData?.id || null,
       discountCode: discountData?.code || null,
       discountAmount,
@@ -393,7 +407,7 @@ export default async function handler(req: any, res: any) {
 
           // 2) emitir tickets (un QR por jornada si es per_day; uno para todo si no)
           for (const it of normalizedItems) {
-            const issueGroups: string[][] = isPerDay ? validDays.map((dk) => [dk]) : [validDays];
+            const issueGroups: string[][] = gruposDeEmision(planDias);
             for (let i = 0; i < it.quantity; i++) {
               for (const grpDays of issueGroups) {
                 const qrCode = randomUUID();

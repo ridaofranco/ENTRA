@@ -95,7 +95,10 @@ export default function EventDetail() {
   };
 
   // Multi-día: si es "un QR por día", el comprador elige las jornadas y el
-  // precio se multiplica por la cantidad de días elegidos.
+  // precio se multiplica por la cantidad de días elegidos. Si es "un QR para todo
+  // el evento", es un abono: no elige días, paga una vez y su QR vale todos los
+  // días (una vez por día). Es la misma regla que aplica el servidor al cobrar
+  // (api/_dias.ts): lo que se muestra es lo que se cobra.
   const isMultiDay = Boolean((event as any)?.isMultiDay);
   const entryMode = (event as any)?.entryMode;
   // Gratis se deriva TAMBIÉN del precio: un evento con isFree apagado pero
@@ -105,9 +108,7 @@ export default function EventDetail() {
     Boolean((event as any)?.isFree) ||
     (Boolean(event?.tickets?.length) && (event?.tickets || []).every(t => !(Number(t.price) > 0)));
   const eventDays: any[] = Array.isArray((event as any)?.days) ? (event as any).days : [];
-  // En CUALQUIER evento multi-día el comprador elige los días (no depende del modo).
-  // El "modo" (per_day vs whole_event) solo cambia cuántos QR se generan en el checkout.
-  const isPerDay = isMultiDay && eventDays.length > 0;
+  const isPerDay = isMultiDay && entryMode === 'per_day' && eventDays.length > 0;
   const dayCount = isPerDay ? Math.max(1, selectedDays.length) : 1;
 
   const ticketsSubtotal = event?.tickets.reduce((acc, t) => acc + (quantities[t.type] || 0) * t.price, 0) || 0;
@@ -120,16 +121,20 @@ export default function EventDetail() {
     setSelectedDays(prev => (prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i].sort((a, b) => a - b)));
   const needsDays = isPerDay && selectedDays.length === 0;
 
-  // Clave local YYYY-MM-DD de cada día (para registrar en el ticket qué jornadas habilita)
+  // Clave YYYY-MM-DD de cada día, en hora de Argentina (la misma que arma el
+  // servidor para validar los días elegidos y la puerta para dejar entrar). Con
+  // la hora del navegador, alguien comprando desde otro huso mandaba otro día.
   const dayKey = (d: any): string | null => {
     const dt = d?.date?.toDate ? d.date.toDate() : (d?.date?.seconds ? new Date(d.date.seconds * 1000) : null);
-    if (!dt) return null;
-    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    if (!dt || Number.isNaN(dt.getTime())) return null;
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(dt);
   };
   const allDayKeys = eventDays.map(dayKey).filter(Boolean) as string[];
   const selectedDayKeys = selectedDays.map(i => dayKey(eventDays[i])).filter(Boolean) as string[];
-  // Días que habilita la entrada = los que el comprador eligió.
-  const validDays = isPerDay ? selectedDayKeys : [];
+  // Días que habilita la entrada: los elegidos (por día) o todos (abono).
+  const validDays = isPerDay ? selectedDayKeys : (isMultiDay ? allDayKeys : []);
 
   // La misma cuenta que el checkout y que el servidor al cobrar: la comisión sale
   // del panel (o la propia del evento, si un admin le puso una), nunca de un
