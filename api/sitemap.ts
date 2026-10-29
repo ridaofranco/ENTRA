@@ -42,6 +42,10 @@ const FIJAS: Array<[string, string, string]> = [
   ['/blog/me-olvide-el-celular-entrar-al-evento', 'monthly', '0.6'],
   ['/blog/facturar-venta-de-entradas-monotributista', 'monthly', '0.6'],
   ['/blog/cortesias-invitaciones-evento-cuantas-dar', 'monthly', '0.6'],
+  ['/blog/evento-gratis-reservan-y-no-vienen', 'monthly', '0.6'],
+  ['/blog/entrada-original-o-falsa-reventa', 'monthly', '0.6'],
+  ['/blog/transferir-entrada-a-otra-persona', 'monthly', '0.6'],
+  ['/blog/vender-entradas-con-mercado-pago', 'monthly', '0.6'],
   // Páginas por público (28/10/2026): HTML estáticos en public/vender-entradas.
   ['/vender-entradas', 'monthly', '0.7'],
   ['/vender-entradas/como-funciona', 'monthly', '0.8'],
