@@ -355,6 +355,14 @@ export default function AccessControl() {
         return;
       }
 
+      // Transferencia pendiente: el dueño ya la pasó a otra persona, que todavía no la
+      // reclamó. El QR viejo no puede entrar (la app le promete al que transfiere que se
+      // invalida). Si el dueño se arrepiente, cancela la transferencia desde su perfil.
+      if (ticketData.transferStatus === 'pending') {
+        triggerFeedback('error', 'DENEGADO · ENTRADA EN TRANSFERENCIA', buyerName, ticketType, 'Quien la recibe todavía no la reclamó');
+        return;
+      }
+
       // ===== MULTI-DÍA: validación por jornada =====
       // Si el ticket habilita días específicos (validDays), se valida así:
       //  - debe ser un día válido (sino, denegado)

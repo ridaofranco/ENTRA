@@ -33,6 +33,8 @@ Sitio: https://www.entratickets.com
 - [Vender por transferencia y lista o con una ticketera: qué cambia](https://www.entratickets.com/vender-entradas/transferencia-y-lista-o-ticketera)
 
 ## Blog
+- [Control de Acceso Sin Internet: Qué Pasa Si Se Cae la Señal](https://www.entratickets.com/blog/control-de-acceso-sin-internet)
+- [¿Se Puede Devolver una Entrada Comprada Online?](https://www.entratickets.com/blog/devolver-entrada-comprada-online)
 - [Evento Gratis: Cómo Evitar que Reserven y No Vengan](https://www.entratickets.com/blog/evento-gratis-reservan-y-no-vienen)
 - [Entrada Original o Falsa: Cómo Saberlo Antes de Comprar de Reventa](https://www.entratickets.com/blog/entrada-original-o-falsa-reventa)
 - [Cómo Transferir tu Entrada a Otra Persona sin Riesgo](https://www.entratickets.com/blog/transferir-entrada-a-otra-persona)
