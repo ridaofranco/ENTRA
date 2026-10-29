@@ -10,7 +10,7 @@ const sections: LegalSection[] = [
   {
     heading: 'Qué datos recopilamos',
     body: [
-      'Datos que nos brindás al comprar o reservar: nombre, correo electrónico, teléfono y, según el evento, DNI. Si te registrás como organizador, también datos de tu cuenta.',
+      'Datos que nos brindás al comprar o reservar: nombre, correo electrónico, DNI y, si lo cargás, teléfono. Si el organizador agregó preguntas propias (por ejemplo, talle o empresa), también tus respuestas, que se comparten con ese organizador. Si te registrás como organizador, también datos de tu cuenta.',
       'Datos de la transacción: entradas adquiridas, evento, fecha y estado del pago. El procesamiento del pago lo realiza el proveedor (por ejemplo, Mercado Pago); no almacenamos datos completos de tarjetas.',
       'Datos técnicos mínimos necesarios para el funcionamiento del sitio.',
     ],

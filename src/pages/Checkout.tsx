@@ -52,6 +52,14 @@ export default function Checkout() {
     phone: '',
   });
   const [profileLoaded, setProfileLoaded] = useState(false);
+  // Preguntas extra que cargó el productor al crear el evento (talle, empresa,
+  // etc.). Hasta el 29/10 se guardaban en el evento pero el comprador nunca las
+  // veía. El servidor (api/create-payment.ts) las vuelve a validar.
+  const camposExtra: Array<{ id: string; label: string; type: string; required: boolean; placeholder?: string; options?: string[] }> =
+    (Array.isArray((event as any)?.customFields) ? (event as any).customFields : [])
+      .filter((c: any) => c?.id && String(c.label || '').trim());
+  const [respuestasExtra, setRespuestasExtra] = useState<Record<string, string>>({});
+  const faltaObligatoria = camposExtra.find((c) => c.required && !String(respuestasExtra[c.id] || '').trim());
   const [successState, setSuccessState] = useState<SuccessState | null>(null);
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -305,6 +313,11 @@ export default function Checkout() {
       setStep(1);
       return;
     }
+    if (faltaObligatoria) {
+      setToast({ message: t.checkout.faltaResponder(faltaObligatoria.label.trim()), type: 'error' });
+      setStep(1);
+      return;
+    }
 
     setIsProcessing(true);
     try {
@@ -342,6 +355,7 @@ export default function Checkout() {
           },
           buyerId,
           discountCode: appliedDiscount?.code || null,
+          customAnswers: respuestasExtra,
           // De qué link vino esta persona (ver src/lib/attribution.ts). Va acá y
           // no en un servicio aparte a propósito: la atribución tiene que quedar
           // pegada a la orden, en la misma escritura, o se pierde justo en las
@@ -724,6 +738,62 @@ ${successState.tickets.map((ticket, i) => `
             />
           </div>
 
+          {camposExtra.length > 0 && (
+            <div className="space-y-4 pt-2">
+              <p className="text-xs font-bold uppercase tracking-widest text-orange-500">
+                {t.checkout.preguntasOrganizador}
+              </p>
+              {camposExtra.map((campo) => {
+                const valor = respuestasExtra[campo.id] || '';
+                const cambiar = (v: string) => setRespuestasExtra((prev) => ({ ...prev, [campo.id]: v.slice(0, 200) }));
+                const clase = 'w-full bg-white/5 border border-white/10 rounded-2xl px-4 text-sm';
+                const opciones = (campo.options || []).map((o) => String(o).trim()).filter(Boolean);
+                return (
+                  <div key={campo.id} className="space-y-2">
+                    <label htmlFor={`extra-${campo.id}`} className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                      {campo.label.trim()}
+                      {campo.required && <span className="normal-case font-normal"> ({t.checkout.obligatorio})</span>}
+                    </label>
+                    {campo.type === 'select' && opciones.length > 0 ? (
+                      <select
+                        id={`extra-${campo.id}`}
+                        value={valor}
+                        onChange={(e) => cambiar(e.target.value)}
+                        className={cn(clase, 'h-12')}
+                      >
+                        <option value="">{t.checkout.elegiUnaOpcion}</option>
+                        {opciones.map((o) => (
+                          <option key={o} value={o}>{o}</option>
+                        ))}
+                      </select>
+                    ) : campo.type === 'textarea' ? (
+                      <textarea
+                        id={`extra-${campo.id}`}
+                        value={valor}
+                        onChange={(e) => cambiar(e.target.value)}
+                        placeholder={campo.placeholder || ''}
+                        maxLength={200}
+                        rows={3}
+                        className={cn(clase, 'py-3')}
+                      />
+                    ) : (
+                      <Input
+                        id={`extra-${campo.id}`}
+                        type={campo.type === 'number' ? 'number' : 'text'}
+                        inputMode={campo.type === 'number' ? 'decimal' : undefined}
+                        value={valor}
+                        onChange={(e) => cambiar(e.target.value)}
+                        placeholder={campo.placeholder || ''}
+                        maxLength={200}
+                        className="bg-white/5 border-white/10 h-12 rounded-2xl"
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           {/* El código postal se sacó del checkout el 20/9 a pedido de Franco: es un
               campo más en la pantalla donde se pierde gente, y el que compra una
               entrada no entiende para qué se lo piden.
@@ -736,7 +806,7 @@ ${successState.tickets.map((ticket, i) => `
       </div>
 
       <Button
-        disabled={!buyerInfo.name || !emailValido(buyerInfo.email) || !buyerInfo.dni}
+        disabled={!buyerInfo.name || !emailValido(buyerInfo.email) || !buyerInfo.dni || Boolean(faltaObligatoria)}
         onClick={() => setStep(2)}
         className="w-full h-14 orange-gradient border-none font-heading font-black text-lg rounded-xl"
       >

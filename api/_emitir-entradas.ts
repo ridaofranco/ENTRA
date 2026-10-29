@@ -15,7 +15,7 @@
 // Las dos puertas tienen que emitir EXACTAMENTE igual (misma transacción, mismo
 // control de plata, misma idempotencia), así que hay una sola función.
 
-import { Timestamp } from 'firebase-admin/firestore';
+import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { randomUUID } from 'crypto';
 import { getAdminDb } from './_lib/firebaseAdmin.js';
 import { alerta } from './_alerta.js';
@@ -116,6 +116,13 @@ export async function emitirOrdenPagada(
     const eventSnap = await tx.get(eventRef);
     if (!eventSnap.exists) throw new PermanentError(`Evento ${orderData.eventId} inexistente`, 'event_missing');
     const event: any = eventSnap.data();
+    // El cupón se lee ANTES de escribir nada (Firestore exige todas las lecturas
+    // primero). Si el productor lo borró entre el link de pago y este aviso, no
+    // se cuenta el uso: la entrada se emite igual, que es lo que importa.
+    const discountRef = orderData.discountCodeId
+      ? db.collection('discount_codes').doc(String(orderData.discountCodeId))
+      : null;
+    const discountSnap = discountRef ? await tx.get(discountRef) : null;
 
     const eventTickets: any[] = Array.isArray(event.tickets) ? event.tickets : [];
     // Los días salen de la ORDEN (lo que eligió y pagó el comprador, validado en
@@ -163,6 +170,9 @@ export async function emitirOrdenPagada(
             buyerEmail: orderData.buyerEmail,
             buyerPhone: orderData.buyerPhone || '',
             buyerDni: orderData.buyerDni,
+            ...(Array.isArray(orderData.customAnswers) && orderData.customAnswers.length > 0
+              ? { customAnswers: orderData.customAnswers }
+              : {}),
             ticketType: it.type,
             price: it.unitPrice,
             status: 'valid',
@@ -186,6 +196,16 @@ export async function emitirOrdenPagada(
     const feeMp = Array.isArray(payment?.fee_details)
       ? payment.fee_details.reduce((suma: number, f: any) => suma + (Number(f?.amount) || 0), 0)
       : null;
+    // Uso del cupón: se cuenta acá, con la compra confirmada (antes se contaba
+    // al crear la orden pending y las compras abandonadas gastaban usos). Va en
+    // la misma transacción que confirma la orden, así que un aviso repetido de
+    // MercadoPago no lo cuenta dos veces (sale arriba por status 'confirmed').
+    if (discountRef && discountSnap?.exists) {
+      tx.update(discountRef, {
+        usedCount: FieldValue.increment(1),
+        updatedAt: Timestamp.now(),
+      });
+    }
     tx.update(orderRef, {
       mpFeeDetails: payment?.fee_details ?? null,
       mpFeeTotal: feeMp,

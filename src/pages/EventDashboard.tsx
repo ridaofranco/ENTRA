@@ -977,7 +977,23 @@ export default function EventDashboard() {
       fechaCompra: formatCsvDate(t.createdAt),
       estadoCheckIn: t.status === 'used' ? 'Ingresó' : (t.status === 'valid' ? 'Pendiente' : (t.status || '')),
       transferido: t.transferredFrom ? `Sí (de ${t.transferredFrom})` : 'No',
+      // Respuestas a las preguntas extra, una columna por pregunta (ver abajo).
+      ...Object.fromEntries(
+        (Array.isArray(t.customAnswers) ? t.customAnswers : []).map((r: any) => [`extra_${r.id}`, r.value ?? '']),
+      ),
     }));
+
+    // Una columna por pregunta extra: las del evento y, por si el productor
+    // borró alguna después de vender, las que aparezcan en las entradas.
+    const columnasExtra = new Map<string, string>();
+    for (const c of (Array.isArray((event as any).customFields) ? (event as any).customFields : [])) {
+      if (c?.id && String(c.label || '').trim()) columnasExtra.set(String(c.id), String(c.label).trim());
+    }
+    for (const t of sorted as any[]) {
+      for (const r of Array.isArray(t.customAnswers) ? t.customAnswers : []) {
+        if (r?.id && !columnasExtra.has(String(r.id))) columnasExtra.set(String(r.id), String(r.label || r.id));
+      }
+    }
 
     const headers = [
       { key: 'nombre', label: 'Nombre' },
@@ -991,6 +1007,7 @@ export default function EventDashboard() {
       { key: 'fechaCompra', label: 'Fecha de compra' },
       { key: 'estadoCheckIn', label: 'Check-in' },
       { key: 'transferido', label: 'Transferido' },
+      ...[...columnasExtra].map(([id, label]) => ({ key: `extra_${id}`, label })),
     ];
 
     const csv = toCsv(rows, headers);
@@ -1273,7 +1290,9 @@ El equipo de ENTRÁ`;
         value: Number(discountForm.value),
         maxUses: discountForm.maxUses ? Number(discountForm.maxUses) : null,
         usedCount: 0,
-        validUntil: discountForm.validUntil ? Timestamp.fromDate(new Date(discountForm.validUntil)) : null,
+        // Hasta las 23:59 de ese día en Argentina. `new Date('2026-11-05')` es la
+        // medianoche UTC, o sea las 21 del día ANTERIOR acá: el código vencía 27 h antes.
+        validUntil: discountForm.validUntil ? Timestamp.fromDate(new Date(`${discountForm.validUntil}T23:59:59-03:00`)) : null,
         active: true,
         createdBy: authUser.uid,
         createdAt: Timestamp.now(),

@@ -172,6 +172,8 @@ export default function EventDetail() {
       isFree,
       validDays,
       selectedDayKeys,
+      // Preguntas extra del productor: el checkout las pide (29/10).
+      customFields: Array.isArray((event as any).customFields) ? (event as any).customFields : [],
     } : null,
     selectedTickets: (event?.tickets || [])
       .filter((tk: any) => (quantities[tk.type] || 0) > 0)

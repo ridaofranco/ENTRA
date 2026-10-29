@@ -202,7 +202,7 @@ export default async function handler(req: any, res: any) {
   if (frenado(req, res, 'create-payment', 8)) return;
 
   try {
-    const { eventId, items, buyer, buyerId, discountCode, origen, selectedDayKeys } = req.body || {};
+    const { eventId, items, buyer, buyerId, discountCode, origen, selectedDayKeys, customAnswers } = req.body || {};
 
     if (!eventId || !Array.isArray(items) || items.length === 0 || !buyer?.email || !buyer?.name || !buyer?.dni) {
       return res.status(400).json({ error: 'Faltan datos de la compra (evento, entradas o comprador).' });
@@ -235,6 +235,38 @@ export default async function handler(req: any, res: any) {
     const event: any = eventSnap.data();
     if (!['active', 'published'].includes(event.status)) {
       return res.status(409).json({ error: 'El evento no está disponible para la venta.' });
+    }
+
+    // --- 1b) preguntas extra del productor (event.customFields) ---
+    // Se cargaban al crear el evento pero nadie las mostraba ni las guardaba
+    // (29/10). Ahora el checkout las pide y acá se validan contra el evento
+    // REAL: solo ids que existen, texto de hasta 200 caracteres, opciones de la
+    // lista y obligatorias presentes. Se guardan con su etiqueta para que la
+    // planilla no dependa de que el productor no las edite después.
+    const camposEvento: any[] = Array.isArray(event.customFields) ? event.customFields : [];
+    const respuestasIn: Record<string, unknown> =
+      customAnswers && typeof customAnswers === 'object' && !Array.isArray(customAnswers) ? customAnswers : {};
+    const respuestas: Array<{ id: string; label: string; value: string }> = [];
+    for (const campo of camposEvento) {
+      if (!campo?.id || !String(campo.label || '').trim()) continue;
+      const crudo = respuestasIn[campo.id];
+      const valor = typeof crudo === 'string' || typeof crudo === 'number' ? String(crudo).trim().slice(0, 200) : '';
+      if (!valor) {
+        if (campo.required) {
+          return res.status(400).json({ error: `Falta responder «${String(campo.label).trim()}».` });
+        }
+        continue;
+      }
+      if (campo.type === 'number' && !Number.isFinite(Number(valor.replace(',', '.')))) {
+        return res.status(400).json({ error: `«${String(campo.label).trim()}» tiene que ser un número.` });
+      }
+      if (campo.type === 'select') {
+        const opciones = (Array.isArray(campo.options) ? campo.options : []).map((o: any) => String(o).trim()).filter(Boolean);
+        if (opciones.length > 0 && !opciones.includes(valor)) {
+          return res.status(400).json({ error: `Elegí una opción válida en «${String(campo.label).trim()}».` });
+        }
+      }
+      respuestas.push({ id: String(campo.id), label: String(campo.label).trim().slice(0, 120), value: valor });
     }
 
     const isFree = Boolean(event.isFree);
@@ -361,15 +393,15 @@ export default async function handler(req: any, res: any) {
       // de que el pago se confirme: si esperáramos al webhook, MercadoPago sería
       // el último referrer y perderíamos justo lo que queremos medir.
       origen: saneaOrigen(origen),
+      customAnswers: respuestas,
       createdAt: Timestamp.now(),
     });
 
-    // incremento de uso del cupón (idempotencia real se refuerza en el webhook)
-    if (discountRef) {
-      // BUG FIX: antes escribía (usedCount||0)+1 con usedCount indefinido → siempre 1,
-      // así maxUses nunca limitaba (cupones infinitos). increment() suma sobre el valor real.
-      await discountRef.update({ usedCount: FieldValue.increment(1), updatedAt: Timestamp.now() }).catch(() => {});
-    }
+    // El uso del cupón ya NO se cuenta acá (29/10): se contaba al crear la orden
+    // pending, así que una compra abandonada en MercadoPago gastaba un uso y un
+    // código de 10 usos se agotaba con 10 personas que ni pagaron. Ahora suma
+    // cuando la compra se confirma: en la reserva gratis (abajo, dentro de la
+    // transacción) y en la paga en api/_emitir-entradas.ts.
 
     // --- evento gratis (o total $0): no pasa por MercadoPago, se resuelve ACÁ ---
     // Antes se devolvía {free:true} pelado y el NAVEGADOR seguía con su "flujo
@@ -387,6 +419,8 @@ export default async function handler(req: any, res: any) {
         await db.runTransaction(async (tx) => {
           const evSnap = await tx.get(eventSnap.ref);
           const ev: any = evSnap.data() || {};
+          // Lectura del cupón antes de cualquier escritura (regla de Firestore).
+          const discSnap = discountRef ? await tx.get(discountRef) : null;
           const evTickets: any[] = Array.isArray(ev.tickets) ? ev.tickets : [];
 
           // 1) validar y descontar stock (los gratis también se agotan)
@@ -423,6 +457,7 @@ export default async function handler(req: any, res: any) {
                   buyerPhone: buyer.phone || '',
       buyerZip: codigoPostal(buyer.zip)?.zip_code || '',
                   buyerDni: buyer.dni,
+                  ...(respuestas.length > 0 ? { customAnswers: respuestas } : {}),
                   ticketType: it.type,
                   price: 0,
                   status: 'valid',
@@ -438,6 +473,9 @@ export default async function handler(req: any, res: any) {
           }
 
           // 3) confirmar la orden (la ÚNICA orden de la reserva)
+          if (discountRef && discSnap?.exists) {
+            tx.update(discountRef, { usedCount: FieldValue.increment(1), updatedAt: Timestamp.now() });
+          }
           tx.update(orderRef, {
             status: 'confirmed',
             paymentMethod: 'free',
