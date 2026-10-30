@@ -58,6 +58,34 @@
       "destination": "/vender-entradas/:slug.html"
     },
     {
+      "source": "/productores",
+      "destination": "/_rutas/productores.html"
+    },
+    {
+      "source": "/ayuda",
+      "destination": "/_rutas/ayuda.html"
+    },
+    {
+      "source": "/contacto",
+      "destination": "/_rutas/contacto.html"
+    },
+    {
+      "source": "/eventos",
+      "destination": "/_rutas/eventos.html"
+    },
+    {
+      "source": "/comprar",
+      "destination": "/_rutas/eventos.html"
+    },
+    {
+      "source": "/terminos",
+      "destination": "/_rutas/terminos.html"
+    },
+    {
+      "source": "/privacidad",
+      "destination": "/_rutas/privacidad.html"
+    },
+    {
       "source": "/((?!api/|assets|__/).*)",
       "destination": "/index.html"
     }

@@ -26,10 +26,12 @@ import Demo from '@/src/pages/Demo';
 import Terminos from '@/src/pages/Terminos';
 import Privacidad from '@/src/pages/Privacidad';
 import NotFound from '@/src/pages/NotFound';
+import { RouteMeta } from '@/src/components/RouteMeta';
 
 export default function App() {
   return (
     <Router>
+      <RouteMeta />
       <div className="min-h-screen bg-background text-foreground flex flex-col">
         <Navbar />
         <main className="flex-grow">
