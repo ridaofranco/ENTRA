@@ -126,6 +126,12 @@ const FIJAS: Array<[string, string, string]> = [
   ['/vender-entradas/stand-up-y-comedia', 'monthly', '0.7'],
   ['/vender-entradas/eventos-deportivos', 'monthly', '0.7'],
   ['/vender-entradas/transferencia-y-lista-o-ticketera', 'monthly', '0.7'],
+  ['/vender-entradas/tucuman', 'monthly', '0.7'],
+  ['/vender-entradas/la-plata', 'monthly', '0.7'],
+  ['/vender-entradas/mendoza', 'monthly', '0.7'],
+  ['/vender-entradas/mar-del-plata', 'monthly', '0.7'],
+  ['/vender-entradas/rosario', 'monthly', '0.7'],
+  ['/vender-entradas/cordoba', 'monthly', '0.7'],
   ['/terminos', 'yearly', '0.2'],
   ['/privacidad', 'yearly', '0.2'],
 ];
