@@ -203,3 +203,6 @@ Sitio: https://www.entratickets.com
 - SOMOS DER, productora de eventos: https://somosder.ar
 - PASE, acreditación y control de accesos: https://pase.somosder.ar
 - LABURO, staff, proveedores y salones para eventos: https://laburo.somosder.ar
+
+## Desarrollo
+El software lo desarrolla HITO (https://hito.agency), el equipo que hace webs, apps web y sistemas a medida para negocios de eventos (también LABURO y el sitio de SOMOS DER en 5 idiomas).
