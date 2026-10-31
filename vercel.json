@@ -87,7 +87,7 @@
     },
     {
       "source": "/((?!api/|assets|__/).*)",
-      "destination": "/index.html"
+      "destination": "/_rutas/app.html"
     }
   ]
 }

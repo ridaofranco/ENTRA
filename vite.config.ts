@@ -41,6 +41,15 @@ function htmlPorRuta(): Plugin {
         }
         fs.writeFileSync(path.join(dir, '_rutas', `${m.archivo}.html`), html);
       }
+      // La home lleva canonical propio en el HTML (30/10/2026). Como Vercel sirve index.html en "/"
+      // y también como respaldo de toda ruta de la app (/evento/..., /checkout), el respaldo pasa a
+      // ser _rutas/app.html (el mismo HTML SIN canonical) y solo index.html, que es "/", lo trae.
+      fs.writeFileSync(path.join(dir, '_rutas', 'app.html'), base);
+      if (!/<title>[^<]*<\/title>/.test(base)) throw new Error('html-por-ruta: index.html sin <title>');
+      fs.writeFileSync(
+        path.join(dir, 'index.html'),
+        base.replace(/(<title>[^<]*<\/title>)/, `$1\n    <link rel="canonical" href="${SITIO}/" />`),
+      );
     },
   };
 }
