@@ -534,13 +534,25 @@ export default function EventDashboard() {
       setIsSaving(true);
       setSaveError('');
 
+      // Pasar a «Cancelado» NO se escribe desde acá: lo hace el server
+      // (/api/notify-event-cancelled), que marca el evento y les avisa por mail
+      // a todos los que tienen entradas. Si lo escribiéramos directo, los
+      // compradores nunca se enterarían.
+      const vaACancelar = editForm.status === 'cancelled' && event.status !== 'cancelled';
+      if (vaACancelar && !window.confirm(
+        'Vas a CANCELAR el evento. Les vamos a mandar un mail a todos los que compraron entradas avisando que se canceló. ¿Seguimos?'
+      )) {
+        setIsSaving(false);
+        return;
+      }
+
       const update: any = {
         title: editForm.title,
         description: editForm.description || '',
         venue: editForm.venue,
         location: editForm.location,
         category: editForm.category,
-        status: editForm.status,
+        status: vaACancelar ? event.status : editForm.status,
         image: editForm.image || '',
         isFree: editIsFree,
         isMultiDay: editIsMultiDay,
@@ -607,6 +619,31 @@ export default function EventDashboard() {
       Object.keys(update).forEach(k => { if (update[k] === undefined) delete update[k]; });
 
       await updateDoc(doc(db, 'events', event.id), update);
+
+      if (vaACancelar) {
+        const cuenta = authUser || auth.currentUser;
+        if (!cuenta) {
+          setSaveError('Los cambios se guardaron, pero para cancelar el evento tenés que volver a iniciar sesión.');
+          return;
+        }
+        const idToken = await cuenta.getIdToken();
+        const resp = await fetch('/api/notify-event-cancelled', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken, eventId: event.id }),
+        });
+        const data = await resp.json().catch(() => null);
+        if (!resp.ok || !data?.ok) {
+          setSaveError(`Los demás cambios se guardaron, pero el evento NO se canceló: ${data?.error || 'probá de nuevo en un momento.'}`);
+          return;
+        }
+        window.alert(
+          data.already
+            ? 'El evento ya estaba cancelado y los compradores ya habían sido avisados.'
+            : `Evento cancelado. Avisamos por mail a ${data.notified} comprador${data.notified === 1 ? '' : 'es'}${data.failed ? ` (${data.failed} envíos fallaron: escribinos y lo revisamos)` : ''}.`
+        );
+      }
+
       setShowSavedFeedback(true);
       setTimeout(() => {
         setIsEditingEvent(false);
@@ -2630,6 +2667,11 @@ El equipo de ENTRÁ`;
                   <option value="paused">Pausado</option>
                   <option value="cancelled">Cancelado</option>
                 </select>
+                {editForm.status === 'cancelled' && event?.status !== 'cancelled' && (
+                  <p className="text-xs text-amber-400 mt-2">
+                    Al guardar, les avisamos por mail a todos los que compraron que el evento se canceló. Las devoluciones se coordinan con ENTRÁ.
+                  </p>
+                )}
               </div>
             </div>
 
