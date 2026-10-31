@@ -31,6 +31,10 @@ Sitio: https://www.entratickets.com
 - [Eventos gratuitos con reserva: entradas sin cargo con QR](https://www.entratickets.com/vender-entradas/eventos-gratuitos-con-reserva)
 - [Vender entradas para eventos deportivos: torneos, partidos y exhibiciones](https://www.entratickets.com/vender-entradas/eventos-deportivos)
 - [Vender entradas para stand-up y comedia: funciones, sala chica e invitados](https://www.entratickets.com/vender-entradas/stand-up-y-comedia)
+- [Vender entradas para eventos solidarios y a beneficio](https://www.entratickets.com/vender-entradas/eventos-solidarios)
+- [Vender entradas para peñas, milongas y bailes](https://www.entratickets.com/vender-entradas/penas-milongas-y-baile)
+- [Inscripción paga a congresos, jornadas y capacitaciones](https://www.entratickets.com/vender-entradas/congresos-y-jornadas)
+- [Vender entradas para shows y eventos infantiles](https://www.entratickets.com/vender-entradas/eventos-infantiles)
 - [Vender por transferencia y lista o con una ticketera: qué cambia](https://www.entratickets.com/vender-entradas/transferencia-y-lista-o-ticketera)
 
 ## Vender entradas por ciudad
