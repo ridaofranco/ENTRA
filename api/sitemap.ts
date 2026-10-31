@@ -14,6 +14,7 @@
 // perder tiempo a Google en páginas que no venden nada.
 
 import { getAdminDb } from './_lib/firebaseAdmin.js';
+import { DEMO_GRATIS_ID, DEMO_PAGO_ID } from './_demo-eventos.js';
 
 const SITE = 'https://www.entratickets.com';
 
@@ -265,6 +266,8 @@ export default async function handler(_req: any, res: any) {
       if (e.deleted === true) return;
       // Oculto es oculto: si no se lista en la cartelera, tampoco se indexa.
       if (e.hidden === true) return;
+      // Los demos de /demo no son eventos reales: a Google no.
+      if (doc.id === DEMO_GRATIS_ID || doc.id === DEMO_PAGO_ID) return;
       const fecha = iso(e.date);
       // Un evento que ya pasó no se indexa: la página queda viva para el que tenga
       // el link, pero no aporta nada al índice.

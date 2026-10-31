@@ -22,6 +22,7 @@
 // resolver un problema de meta tags.
 
 import { getAdminDb } from './_lib/firebaseAdmin.js';
+import { DEMO_GRATIS_ID, DEMO_PAGO_ID } from './_demo-eventos.js';
 
 const SITE = 'https://www.entratickets.com';
 const OG_FALLBACK = `${SITE}/og-image.png`;
@@ -163,7 +164,8 @@ export default async function handler(req: any, res: any) {
         image: imagenAbsoluta(e.image),
         url,
         // Oculto = solo por link (fuera de /eventos y del sitemap): tampoco a Google.
-        noindex: e.hidden === true,
+        // Los demos de /demo tampoco: no son eventos reales.
+        noindex: e.hidden === true || snap.id === DEMO_GRATIS_ID || snap.id === DEMO_PAGO_ID,
       }),
     );
   } catch (err) {
