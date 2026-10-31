@@ -42,6 +42,8 @@ const FIJAS: Array<[string, string, string]> = [
   ['/blog/me-olvide-el-celular-entrar-al-evento', 'monthly', '0.6'],
   ['/blog/facturar-venta-de-entradas-monotributista', 'monthly', '0.6'],
   ['/blog/cortesias-invitaciones-evento-cuantas-dar', 'monthly', '0.6'],
+  ['/blog/evento-de-reyes-para-chicos-con-entrada', 'monthly', '0.6'],
+  ['/blog/vacaciones-de-invierno-vender-entradas', 'monthly', '0.6'],
   ['/blog/feria-de-vinilos-o-coleccionismo-con-entrada', 'monthly', '0.6'],
   ['/blog/noche-de-jazz-o-ciclo-en-un-bar-con-entrada', 'monthly', '0.6'],
   ['/blog/fiesta-del-dia-del-estudiante-o-primavera-entradas', 'monthly', '0.6'],
