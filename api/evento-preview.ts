@@ -69,15 +69,16 @@ function html(opts: {
   description: string;
   image: string;
   url: string;
+  noindex?: boolean;
 }): string {
-  const { title, description, image, url } = opts;
+  const { title, description, image, url, noindex } = opts;
   return `<!doctype html>
 <html lang="es"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
-<link rel="canonical" href="${esc(url)}">
+<link rel="canonical" href="${esc(url)}">${noindex ? '\n<meta name="robots" content="noindex">' : ''}
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="ENTRÁ">
@@ -121,6 +122,9 @@ export default async function handler(req: any, res: any) {
         description: 'Comprá tus entradas, gestioná tus eventos y controlá el acceso desde el celular.',
         image: OG_FALLBACK,
         url,
+        // Evento que no existe o fue borrado: la tarjeta sigue saliendo en
+        // WhatsApp, pero Google no tiene que indexar una página vacía.
+        noindex: true,
       }),
     );
 
@@ -148,6 +152,8 @@ export default async function handler(req: any, res: any) {
         description: desc,
         image: imagenAbsoluta(e.image),
         url,
+        // Oculto = solo por link (fuera de /eventos y del sitemap): tampoco a Google.
+        noindex: e.hidden === true,
       }),
     );
   } catch (err) {
