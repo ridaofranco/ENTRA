@@ -25,7 +25,22 @@ import { usuarioDelRequest, esAdmin } from '../_lib/auth-panel.js';
 // El nombre de la tarea es el último tramo de la URL. Agregar una tarea nueva es
 // sumar una entrada acá.
 const TAREAS: Record<string, () => Promise<any>> = {
-  'recordatorio-evento': correrRecordatorioEvento,
+  // El despachador de Cloudflare dispara recordatorio-evento una vez por día,
+  // pero NUNCA llamó a eventos-demo: el 31/10 los dos demos que enlaza /demo no
+  // existían y «probar la demo» daba «evento no encontrado». La corrida diaria
+  // también los asegura (idempotente: si están vigentes, no toca nada). Si los
+  // demos fallan, el recordatorio no se entera.
+  'recordatorio-evento': async () => {
+    const resultado: any = await correrRecordatorioEvento();
+    let demos: any;
+    try {
+      demos = await correrEventosDemo();
+    } catch (err: any) {
+      console.error('[cron:recordatorio-evento] demos fallaron:', err?.message || err);
+      demos = { ok: false };
+    }
+    return { ...(resultado || {}), eventosDemo: demos };
+  },
   'eventos-demo': correrEventosDemo,
   // Rescata los pagos aprobados de los que MercadoPago nunca mandó el webhook.
   // Conviene correrla seguido (cada 5 minutos): cada corrida es la diferencia
