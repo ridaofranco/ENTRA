@@ -122,7 +122,7 @@ export async function correrRecordatorioEvento() {
           weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
           timeZone: 'America/Argentina/Buenos_Aires',
         })}${ev.isTimeTBD ? '' : ` · ${fecha.toLocaleTimeString('es-AR', {
-          hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires',
+          hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'America/Argentina/Buenos_Aires',
         })} hs`}`
       : '';
     const lugar = ev.isVenueTBD ? '' : [ev.venue, ev.location].filter(Boolean).join(', ');

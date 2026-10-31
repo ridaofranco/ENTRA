@@ -1019,7 +1019,7 @@ export default function AccessControl() {
                           <div className="text-right shrink-0 pl-2">
                             <span className="text-[10px] bg-zinc-900 px-2 py-0.5 rounded-md text-zinc-400 font-mono flex items-center gap-1">
                               <Clock className="w-3 h-3 text-primary shrink-0" />
-                              {log.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                              {log.timestamp?.toDate().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' })}
                             </span>
                           </div>
                         </div>

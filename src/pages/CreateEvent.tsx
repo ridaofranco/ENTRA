@@ -339,7 +339,7 @@ export default function CreateEvent() {
           eventDate: eventData.isDateTBD
             ? 'A confirmar'
             : (eventData.date?.toDate?.()?.toLocaleString('es-AR', {
-                dateStyle: 'full', timeStyle: 'short',
+                dateStyle: 'full', timeStyle: 'short', hourCycle: 'h23',
                 timeZone: 'America/Argentina/Buenos_Aires',
               }) || ''),
           venue: eventData.venue,

@@ -103,7 +103,7 @@ export default function Catalog() {
   const formatScheduled = (date: any) => {
     if (date?.toDate) {
       return date.toDate().toLocaleString('es-AR', {
-        day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+        day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
       });
     }
     return '';

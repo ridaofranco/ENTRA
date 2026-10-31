@@ -49,6 +49,7 @@ function fechaLegible(v: any): string {
       month: 'long',
       hour: '2-digit',
       minute: '2-digit',
+      hourCycle: 'h23',
       timeZone: 'America/Argentina/Buenos_Aires',
     }).format(d);
   } catch {

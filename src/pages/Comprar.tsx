@@ -110,6 +110,7 @@ export default function Comprar() {
     if (date?.toDate) {
       return date.toDate().toLocaleString(dateLocale(lang), {
         day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+        ...(lang === 'es' ? { hourCycle: 'h23' as const } : {}),
       });
     }
     return '';

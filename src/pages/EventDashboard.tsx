@@ -2265,7 +2265,7 @@ El equipo de ENTRÁ`;
                         )}
                       </td>
                       <td className="p-2 text-zinc-400 text-xs">
-                        {log.createdAt?.toDate ? log.createdAt.toDate().toLocaleString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
+                        {log.createdAt?.toDate ? log.createdAt.toDate().toLocaleString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }) : '—'}
                       </td>
                     </tr>
                   ))}

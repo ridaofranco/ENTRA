@@ -330,7 +330,7 @@ export default function EventDetail() {
                 : event.isTimeTBD || event.isDateTBD
                 ? t.comun.proximamente
                 : lang === 'es'
-                ? `${eventDate?.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}hs`
+                ? `${eventDate?.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })} hs`
                 : eventDate?.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
             </div>
             <div className="flex items-center gap-2">
