@@ -132,7 +132,16 @@ export default async function handler(req: any, res: any) {
   if (!id) return generico();
 
   try {
-    const snap = await getAdminDb().collection('events').doc(id).get();
+    // Los links que comparte la app son /evento/<slug-del-titulo>-<id> (ver
+    // src/lib/slug.ts). Antes se buscaba el doc con el slug entero: nunca lo
+    // encontraba, y TODO link compartido salía con la tarjeta genérica y con
+    // noindex para Google. Igual que resolveEventId(): el id es el último tramo.
+    const col = getAdminDb().collection('events');
+    let snap = await col.doc(id).get();
+    if (!snap.exists && id.includes('-')) {
+      const ultimo = id.split('-').pop() || '';
+      if (ultimo) snap = await col.doc(ultimo).get();
+    }
     if (!snap.exists) return generico();
     const e: any = snap.data() || {};
 
