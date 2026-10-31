@@ -197,6 +197,9 @@ export default function Profile() {
         collection(db, 'ticket_transfers'),
         where('ticketId', '==', ticket.id),
         where('status', '==', 'pending'),
+        // Sin este filtro Firestore rechaza la consulta: la regla solo deja leer
+        // al que la mandó (o al destinatario), y tiene que poder probarlo.
+        where('fromUserId', '==', user?.uid || ''),
       ));
       await Promise.all(tq.docs.map((d) => updateDoc(d.ref, { status: 'cancelled' })));
       await updateDoc(doc(db, 'tickets', ticket.id), { transferStatus: 'none', transferToken: null });

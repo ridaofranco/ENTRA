@@ -36,6 +36,9 @@ export default function ClaimTicket() {
   const [transferId, setTransferId] = useState<string | null>(null);
   const [event, setEvent] = useState<any>(null);
   const [success, setSuccess] = useState(false);
+  // Sin sesión no se puede ni LEER la transferencia (las reglas piden estar
+  // logueado y ser el destinatario): se pide iniciar sesión ANTES de cargar.
+  const [necesitaSesion, setNecesitaSesion] = useState(false);
 
   useEffect(() => {
     const loadTransfer = async () => {
@@ -48,15 +51,35 @@ export default function ClaimTicket() {
         setLoading(false);
         return;
       }
+      if (authLoading) return;
+      if (!user) {
+        setNecesitaSesion(true);
+        setLoading(false);
+        return;
+      }
+      setNecesitaSesion(false);
+      setLoading(true);
+      setError(null);
       try {
-        const q = query(
+        // La regla de lectura deja ver la transferencia al destinatario (por su
+        // email) o al que la mandó. Firestore rechaza una consulta que no puede
+        // probar contra la regla: buscar SOLO por token daba «permisos
+        // insuficientes» siempre. Por eso se filtra también por el mail.
+        const mail = (user.email || '').toLowerCase().trim();
+        let snap = await getDocs(query(
           collection(db, 'ticket_transfers'),
-          where('token', '==', token)
-        );
-        const snap = await getDocs(q);
+          where('token', '==', token),
+          where('toUserEmail', '==', mail)
+        ));
 
         if (snap.empty) {
-          setError(tx.noExiste);
+          // ¿Es el que la mandó, abriendo su propio link?
+          const propia = await getDocs(query(
+            collection(db, 'ticket_transfers'),
+            where('token', '==', token),
+            where('fromUserId', '==', user.uid)
+          )).catch(() => null);
+          setError(propia && !propia.empty ? tx.propio : tx.otraCuenta(user.email || ''));
           setLoading(false);
           return;
         }
@@ -105,7 +128,8 @@ export default function ClaimTicket() {
     };
 
     loadTransfer();
-  }, [token]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, user?.uid, authLoading]);
 
   const [necesitaVerificar, setNecesitaVerificar] = useState(false);
   const [verificacionEnviada, setVerificacionEnviada] = useState(false);
@@ -185,6 +209,26 @@ export default function ClaimTicket() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+      </div>
+    );
+  }
+
+  // ============ FALTA INICIAR SESIÓN ============
+  if (necesitaSesion && !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black px-4">
+        <div className="max-w-md w-full p-8 rounded-3xl bg-zinc-900 border border-white/10 text-center space-y-5">
+          <h1 className="text-2xl font-heading font-black uppercase tracking-tight text-white">
+            {t.claim.teTransfirieron}
+          </h1>
+          <p className="text-sm text-zinc-400 leading-relaxed">{t.claim.sesionPrimero}</p>
+          <Link to={`/auth/login?redirect=/claim/${token}`}>
+            <button className="w-full px-6 py-4 rounded-xl orange-gradient hover:brightness-110 text-sm font-heading font-black transition flex items-center justify-center gap-2">
+              <LogIn className="w-4 h-4" />
+              {t.claim.iniciaORegistrate}
+            </button>
+          </Link>
+        </div>
       </div>
     );
   }

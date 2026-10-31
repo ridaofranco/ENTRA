@@ -394,6 +394,10 @@ const es = {
       `Fue enviado a ${e}. Tenés que cerrar sesión e iniciar con esa cuenta para poder reclamarlo.`,
     iniciaCon: (e: string) => `Iniciá sesión con ${e}`,
     iniciaORegistrate: 'Iniciá sesión o registrate para reclamar',
+    sesionPrimero:
+      'Para recibir la entrada, iniciá sesión (o registrate) con el mail al que te la mandaron. Después volvés a esta misma página.',
+    otraCuenta: (e: string) =>
+      `Este link no está a nombre de ${e || 'tu cuenta'}. Si te mandaron la entrada a otro mail, cerrá sesión e iniciá con esa cuenta.`,
     reclamando: 'Reclamando...',
     reclamarGratis: 'Reclamar ticket gratis',
     alReclamar:
@@ -699,6 +703,10 @@ const en: typeof es = {
       `It was sent to ${e}. Sign out and log in with that account to claim it.`,
     iniciaCon: (e: string) => `Log in as ${e}`,
     iniciaORegistrate: 'Log in or sign up to claim it',
+    sesionPrimero:
+      'To receive the ticket, log in (or sign up) with the email it was sent to. Then come back to this same page.',
+    otraCuenta: (e: string) =>
+      `This link isn't for ${e || 'your account'}. If the ticket was sent to another email, log out and log in with that account.`,
     reclamando: 'Claiming...',
     reclamarGratis: 'Claim your ticket, free',
     alReclamar:
