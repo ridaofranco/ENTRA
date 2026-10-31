@@ -46,11 +46,19 @@
       "destination": "/blog/index.html"
     },
     {
+      "source": "/blog/",
+      "destination": "/blog/index.html"
+    },
+    {
       "source": "/blog/:slug",
       "destination": "/blog/:slug.html"
     },
     {
       "source": "/vender-entradas",
+      "destination": "/vender-entradas/index.html"
+    },
+    {
+      "source": "/vender-entradas/",
       "destination": "/vender-entradas/index.html"
     },
     {
@@ -86,7 +94,7 @@
       "destination": "/_rutas/privacidad.html"
     },
     {
-      "source": "/((?!api/|assets|__/).*)",
+      "source": "/((?!api/|assets|__/|blog/.|vender-entradas/.).*)",
       "destination": "/_rutas/app.html"
     }
   ]
