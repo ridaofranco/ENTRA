@@ -156,6 +156,8 @@ const FIJAS: Array<[string, string, string]> = [
   ['/vender-entradas/talleres-y-charlas', 'monthly', '0.7'],
   ['/vender-entradas/eventos-gratuitos-con-reserva', 'monthly', '0.7'],
   ['/vender-entradas/stand-up-y-comedia', 'monthly', '0.7'],
+  ['/vender-entradas/after-office-y-eventos-de-empresa', 'monthly', '0.7'],
+  ['/vender-entradas/cultura-y-arte', 'monthly', '0.7'],
   ['/vender-entradas/salidas-y-visitas-con-cupo', 'monthly', '0.7'],
   ['/vender-entradas/ferias-y-gastronomia', 'monthly', '0.7'],
   ['/vender-entradas/eventos-solidarios', 'monthly', '0.7'],
