@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { Button } from '@/src/components/ui/button';
 import { Card } from '@/src/components/ui/card';
 import { Input } from '@/src/components/ui/input';
@@ -193,8 +193,10 @@ export default function Checkout() {
     );
   }
 
+  // Sin compra en curso (recargó la página, volvió atrás o entró por un link
+  // viejo): antes quedaba la pantalla en negro. Lo mandamos a la cartelera.
   if (!event || !selectedTickets) {
-    return null;
+    return <Navigate to="/eventos" replace />;
   }
 
   // Evento gratuito (reserva sin cobro). Se deriva TAMBIÉN del precio: un
