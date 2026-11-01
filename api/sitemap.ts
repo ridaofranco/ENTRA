@@ -167,6 +167,7 @@ const FIJAS: Array<[string, string, string]> = [
   ['/vender-entradas/eventos-infantiles', 'monthly', '0.7'],
   ['/vender-entradas/eventos-deportivos', 'monthly', '0.7'],
   ['/vender-entradas/transferencia-y-lista-o-ticketera', 'monthly', '0.7'],
+  ['/vender-entradas/comparar-ticketeras', 'monthly', '0.7'],
   ['/vender-entradas/bariloche', 'monthly', '0.7'],
   ['/vender-entradas/jujuy', 'monthly', '0.7'],
   ['/vender-entradas/san-juan', 'monthly', '0.7'],
