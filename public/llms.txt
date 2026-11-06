@@ -200,6 +200,31 @@ Sitio: https://www.entratickets.com
 - [Cómo poner precio a tus entradas y armar las tandas sin perder plata](https://www.entratickets.com/blog/poner-precio-entradas-tandas-preventa)
 - [Cómo promocionar tu evento y medir de dónde vienen las ventas](https://www.entratickets.com/blog/promocionar-evento-medir-ventas)
 
+<!-- blog-i18n:inicio (lo escribe scripts/blog-i18n.mjs, no tocar a mano) -->
+## Blog in other languages
+ENTRÁ is an Argentine ticketing platform: it sells tickets for events held in Argentina, priced in Argentine pesos. These guides are native versions of notes from the Spanish blog, for readers in English, Portuguese, French and Italian.
+
+### English (https://www.entratickets.com/en/blog)
+- [How to choose a ticketing platform: what to check in the fees](https://www.entratickets.com/en/blog/how-to-choose-a-ticketing-platform-fees)
+- [How to price your event tickets and set up tiers without losing money](https://www.entratickets.com/en/blog/how-to-price-event-tickets-early-bird)
+- [How to stop fake and duplicate tickets at the door](https://www.entratickets.com/en/blog/prevent-fake-duplicate-tickets-at-the-door)
+
+### Português (https://www.entratickets.com/pt/blog)
+- [Como definir o preço dos ingressos e montar os lotes sem perder dinheiro](https://www.entratickets.com/pt/blog/como-definir-preco-ingressos-lotes)
+- [Como escolher uma plataforma de ingressos: o que olhar nas taxas](https://www.entratickets.com/pt/blog/como-escolher-plataforma-de-ingressos-taxas)
+- [Como evitar ingressos falsos e duplicados na entrada](https://www.entratickets.com/pt/blog/evitar-ingressos-falsos-duplicados-na-entrada)
+
+### Français (https://www.entratickets.com/fr/blog)
+- [Choisir une billetterie en ligne : ce qu’il faut regarder dans les commissions](https://www.entratickets.com/fr/blog/choisir-billetterie-en-ligne-commissions)
+- [Éviter les faux billets et les doublons à l’entrée](https://www.entratickets.com/fr/blog/eviter-faux-billets-doublons-entree)
+- [Fixer le prix de vos billets et organiser les paliers sans perdre d’argent](https://www.entratickets.com/fr/blog/fixer-prix-billets-evenement-prevente)
+
+### Italiano (https://www.entratickets.com/it/blog)
+- [Come evitare biglietti falsi e duplicati all’ingresso](https://www.entratickets.com/it/blog/evitare-biglietti-falsi-duplicati-ingresso)
+- [Come fissare il prezzo dei biglietti e impostare le fasce senza perdere soldi](https://www.entratickets.com/it/blog/prezzo-biglietti-evento-prevendita)
+- [Come scegliere una biglietteria online: cosa guardare nelle commissioni](https://www.entratickets.com/it/blog/come-scegliere-biglietteria-online-commissioni)
+<!-- blog-i18n:fin -->
+
 ## Ecosistema SOMOS DER
 - SOMOS DER, productora de eventos: https://somosder.ar
 - PASE, acreditación y control de accesos: https://pase.somosder.ar

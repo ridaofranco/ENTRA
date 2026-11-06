@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="color-scheme" content="dark" />
+  <title>Come evitare biglietti falsi e duplicati | ENTRÁ</title>
+  <meta name="description" content="La vera frode non è la contraffazione: è lo stesso biglietto usato due volte. Come la blocca un QR unico validato in tempo reale e il protocollo all’ingresso." />
+  <link rel="canonical" href="https://www.entratickets.com/it/blog/evitare-biglietti-falsi-duplicati-ingresso" />
+  <!-- hreflang:inicio (lo escribe scripts/blog-i18n.mjs, no tocar a mano) -->
+  <link rel="alternate" hreflang="es-AR" href="https://www.entratickets.com/blog/entradas-truchas-duplicadas-puerta" />
+  <link rel="alternate" hreflang="en" href="https://www.entratickets.com/en/blog/prevent-fake-duplicate-tickets-at-the-door" />
+  <link rel="alternate" hreflang="pt" href="https://www.entratickets.com/pt/blog/evitar-ingressos-falsos-duplicados-na-entrada" />
+  <link rel="alternate" hreflang="fr" href="https://www.entratickets.com/fr/blog/eviter-faux-billets-doublons-entree" />
+  <link rel="alternate" hreflang="it" href="https://www.entratickets.com/it/blog/evitare-biglietti-falsi-duplicati-ingresso" />
+  <link rel="alternate" hreflang="x-default" href="https://www.entratickets.com/blog/entradas-truchas-duplicadas-puerta" />
+  <!-- hreflang:fin -->
+  <link rel="icon" type="image/png" href="/pwa-192.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="stylesheet" href="/blog.css" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="ENTRÁ" />
+  <meta property="og:locale" content="it_IT" />
+  <meta property="og:title" content="Come evitare biglietti falsi e duplicati all’ingresso" />
+  <meta property="og:description" content="La vera frode non è la contraffazione: è lo stesso biglietto usato due volte. Come la blocca un QR unico validato in tempo reale e il protocollo all’ingresso." />
+  <meta property="og:url" content="https://www.entratickets.com/it/blog/evitare-biglietti-falsi-duplicati-ingresso" />
+  <meta property="og:image" content="https://www.entratickets.com/og-image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Come evitare biglietti falsi e duplicati all’ingresso",
+  "description": "La vera frode non è la contraffazione: è lo stesso biglietto usato due volte. Come la blocca un QR unico validato in tempo reale e il protocollo all’ingresso.",
+  "inLanguage": "it",
+  "datePublished": "2026-07-29",
+  "dateModified": "2026-11-06",
+  "author": {
+    "@type": "Organization",
+    "name": "SOMOS DER",
+    "url": "https://somosder.ar"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "ENTRÁ",
+    "url": "https://www.entratickets.com/",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Buenos Aires",
+      "addressCountry": "AR"
+    }
+  },
+  "mainEntityOfPage": "https://www.entratickets.com/it/blog/evitare-biglietti-falsi-duplicati-ingresso",
+  "image": "https://www.entratickets.com/og-image.png",
+  "isBasedOn": "https://www.entratickets.com/blog/entradas-truchas-duplicadas-puerta"
+}
+  </script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Come si evita che qualcuno entri con lo screenshot del biglietto di un altro?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Con un QR monouso validato contro una base centrale. Lo screenshot contiene lo stesso codice dell’originale, quindi chi arriva per primo entra e la seconda scansione viene rifiutata. Su ENTRÁ, biglietteria argentina, lo scanner restituisce DENEGADO · YA UTILIZADO (negato, già utilizzato) insieme a da quanto tempo è entrato quel codice, il dato che serve allo staff per risolvere senza discutere."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Cambia qualcosa stampare il biglietto o mostrarlo dal telefono?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No: si valida il codice, non il supporto. Un PDF stampato e lo schermo del telefono hanno lo stesso codice e si comportano allo stesso modo. Quello che decide la sicurezza è che il codice sia unico, monouso e validato contro una base condivisa da tutti gli ingressi."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Cosa succede se salta internet all’ingresso?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Su ENTRÁ il controllo accessi continua a funzionare senza connessione: lo scanner segna subito il biglietto come usato nella cache locale, quindi la scansione successiva dello stesso QR lo vede usato anche offline, e la sincronizzazione con il server avviene da sola quando la connessione torna. In ogni caso, un evento serio porta una connessione di riserva: il piano B è organizzazione, non una funzione."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Come funziona il controllo negli eventi di più giorni?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Il biglietto si valida per giornata: il sistema verifica che il giorno sia tra quelli abilitati per quel biglietto e che la persona non sia già entrata quel giorno. Se il giorno non corrisponde, rifiuta; se è già entrata oggi, rifiuta come duplicato. Il biglietto non si consuma tutto subito: vale in ogni giornata abilitata."
+      }
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-in">
+      <a class="word" href="/">ENTR<b>Á</b></a>
+      <a class="btn btn-ghost" href="/it/blog">Blog</a>
+    </div>
+  </header>
+  <!-- idiomas:inicio (lo escribe scripts/blog-i18n.mjs, no tocar a mano) -->
+  <nav class="wrap idiomas" aria-label="Idioma" style="padding-top:14px;font-size:.85rem;opacity:.85;display:flex;gap:.9rem;flex-wrap:wrap;"><a href="/blog/entradas-truchas-duplicadas-puerta" hreflang="es-AR" lang="es">Español</a> <a href="/en/blog/prevent-fake-duplicate-tickets-at-the-door" hreflang="en" lang="en">English</a> <a href="/pt/blog/evitar-ingressos-falsos-duplicados-na-entrada" hreflang="pt" lang="pt">Português</a> <a href="/fr/blog/eviter-faux-billets-doublons-entree" hreflang="fr" lang="fr">Français</a> <b lang="it">Italiano</b></nav>
+  <!-- idiomas:fin -->
+
+  <div class="wrap">
+    <article>
+      <p class="kicker">Guida</p>
+      <h1>Come evitare biglietti falsi e duplicati all’ingresso</h1>
+      <p class="meta">Di SOMOS DER · 29 luglio 2026 · 6 min di lettura</p>
+
+      <p class="lead">Quando un organizzatore dice "voglio evitare i biglietti falsi", quasi mai parla di contraffazioni sofisticate. La vera frode all’ingresso è molto più banale e molto più frequente: <b>lo stesso biglietto, usato due volte</b>.</p>
+
+      <p class="pais" style="font-size:.95rem;opacity:.9;border-left:3px solid rgba(255,255,255,.25);padding-left:.9rem;">Prima di iniziare: <b>ENTRÁ è una biglietteria online argentina</b>. Vende biglietti per eventi che si tengono in Argentina, con prezzi in pesos argentini (ARS). Quello che dice questa guida vale per qualsiasi biglietteria; quando descrive come funziona ENTRÁ, parla dell’Argentina.</p>
+
+<p>Qualcuno manda lo screenshot del QR su WhatsApp per far entrare un amico. Qualcuno rivende un biglietto che ha già usato. Qualcuno inoltra l’e-mail d’acquisto a tre persone. In tutti e tre i casi il codice è legittimo: a cedere non è la carta, è il controllo.</p>
+
+      <h2>Il problema non è la carta, è il controllo</h2>
+      <p>Un biglietto stampato dalla migliore tipografia si può fotocopiare. Un QR si può fotografare. Nessun supporto è sicuro da solo. <b>L’unica cosa che rende sicuro un biglietto è un codice unico, monouso e validato contro una base condivisa da tutti gli ingressi.</b></p>
+      <p>Ecco la differenza con la lista cartacea: la lista non impedisce che lo stesso biglietto venga usato due volte, non registra a che ora è entrato ciascuno e, con tanta gente, crea code.</p>
+
+      <h2>Cosa deve rifiutare lo scanner (e come)</h2>
+      <p>Un controllo accessi serio non dice solo "sì" o "no". Deve dire <b>perché</b> rifiuta, perché ogni caso si risolve in modo diverso all’ingresso. Su ENTRÁ lo scanner distingue questi casi:</p>
+      <ul>
+        <li><b>Biglietto di un altro evento.</b> Il QR è valido, ma non qui. Succede più spesso di quanto sembri quando un organizzatore fa più date.</li>
+        <li><b>Biglietto annullato o rimborsato.</b> Il biglietto esisteva, ma non è più valido.</li>
+        <li><b>Già utilizzato.</b> Il caso più comune. Il sistema restituisce <code>DENEGADO · YA UTILIZADO</code> (negato, già utilizzato) <b>e da quanto tempo</b> è entrato quel codice.</li>
+        <li><b>Non valido oggi</b> (eventi di più giorni). Il biglietto è a posto, ma quella giornata non è abilitata.</li>
+        <li><b>Già entrato oggi</b> (più giorni). Il biglietto vale in ogni giornata abilitata, ma una volta al giorno: non si brucia tutto subito.</li>
+      </ul>
+      <p>Quel "entrato 8 minuti fa" sembra un dettaglio ed è il dato più utile di tutti: dà allo staff all’ingresso qualcosa di concreto da dire e trasforma una discussione in un fatto.</p>
+
+      <h2>Ogni tentativo resta registrato</h2>
+      <p>Ogni scansione, accettata o negata, finisce nello storico degli ingressi dell’evento: quale codice, quale tipo di biglietto, a che ora e con che esito. Serve a tre cose:</p>
+      <ol>
+        <li><b>Risolvere sul momento</b>: vedere da dove e quando è entrato il codice che ora risulta duplicato.</li>
+        <li><b>Avere una prova</b> se qualcuno protesta dopo.</li>
+        <li><b>Individuare schemi</b>: se compaiono molti duplicati dello stesso tipo di biglietto o della stessa vendita, c’è qualcosa da controllare.</li>
+      </ol>
+
+      <h2>Se salta internet, l’ingresso non può fermarsi</h2>
+      <p>È la domanda che separa un controllo serio dal resto. Su ENTRÁ lo scanner <b>segna subito il biglietto come usato nella sua cache locale</b>, quindi la scansione successiva dello stesso QR lo vede usato anche senza connessione, e la sincronizzazione con il server avviene da sola quando la rete torna.</p>
+      <p>Detto questo: un piano di emergenza è organizzazione, non una funzione. Un evento con migliaia di persone satura la rete mobile. Conviene comunque portare una connessione di riserva e provarla prima di aprire le porte, non quando c’è già la fila.</p>
+
+      <h2>Dai al tuo pubblico una strada legittima</h2>
+      <p>Buona parte degli screenshot che girano non è malafede: è gente che non può andare e vuole passare il biglietto a qualcuno. Se non le dai un modo per farlo, lo farà comunque, male.</p>
+      <p>Per questo conta abilitare il <b>trasferimento ufficiale</b>: con il trasferimento il codice precedente viene invalidato e si genera un QR nuovo per chi lo riceve. Il vecchio screenshot smette di funzionare da solo. È il modo per ridurre le frodi senza litigare con il tuo pubblico.</p>
+
+      <h2>La tecnologia è metà: il protocollo è l’altra metà</h2>
+      <p>Il sistema ti dice che il QR è duplicato. Quello che succede dopo dipende dalla tua organizzazione, e conviene averlo scritto <b>prima</b> dell’evento:</p>
+      <ul>
+        <li><b>Chi decide.</b> Così lo staff all’ingresso non deve improvvisare né andare a cercare qualcuno.</li>
+        <li><b>Dove si risolve.</b> Un punto a lato, fuori dalla fila. Un rifiuto discusso sulla porta blocca tutti quelli dietro.</li>
+        <li><b>Cosa si dice alla persona.</b> Con il dato dello storico: a che ora è entrato quel codice e da quale ingresso.</li>
+        <li><b>Cosa si fa con il caso.</b> A chi si segnala, cosa si registra.</li>
+      </ul>
+
+      <h2>Checklist veloce</h2>
+      <ul>
+        <li>Un <b>codice unico per biglietto</b>, monouso.</li>
+        <li>Validazione contro una <b>base condivisa</b> da tutti gli ingressi.</li>
+        <li>Rifiuti che dicono il motivo, con l’<b>ora dell’ingresso precedente</b>.</li>
+        <li><b>Storico</b> di tutti i tentativi, accettati e negati.</li>
+        <li>Funzionamento <b>senza connessione</b> e connessione di riserva provata.</li>
+        <li><b>Trasferimento ufficiale</b> abilitato.</li>
+        <li><b>Protocollo d’ingresso</b> scritto e conosciuto dallo staff.</li>
+      </ul>
+
+      <h2>Domande frequenti</h2>
+      <details open>
+        <summary>Come si evita che qualcuno entri con lo screenshot del biglietto di un altro?</summary>
+        <p>Con un QR monouso validato contro una base centrale. Lo screenshot contiene lo stesso codice dell’originale, quindi chi arriva per primo entra e la seconda scansione viene rifiutata. Su ENTRÁ, biglietteria argentina, lo scanner restituisce DENEGADO · YA UTILIZADO (negato, già utilizzato) insieme a da quanto tempo è entrato quel codice, il dato che serve allo staff per risolvere senza discutere.</p>
+      </details>
+      <details>
+        <summary>Cambia qualcosa stampare il biglietto o mostrarlo dal telefono?</summary>
+        <p>No: si valida il codice, non il supporto. Un PDF stampato e lo schermo del telefono hanno lo stesso codice e si comportano allo stesso modo. Quello che decide la sicurezza è che il codice sia unico, monouso e validato contro una base condivisa da tutti gli ingressi.</p>
+      </details>
+      <details>
+        <summary>Cosa succede se salta internet all’ingresso?</summary>
+        <p>Su ENTRÁ il controllo accessi continua a funzionare senza connessione: lo scanner segna subito il biglietto come usato nella cache locale, quindi la scansione successiva dello stesso QR lo vede usato anche offline, e la sincronizzazione con il server avviene da sola quando la connessione torna. In ogni caso, un evento serio porta una connessione di riserva: il piano B è organizzazione, non una funzione.</p>
+      </details>
+      <details>
+        <summary>Come funziona il controllo negli eventi di più giorni?</summary>
+        <p>Il biglietto si valida per giornata: il sistema verifica che il giorno sia tra quelli abilitati per quel biglietto e che la persona non sia già entrata quel giorno. Se il giorno non corrisponde, rifiuta; se è già entrata oggi, rifiuta come duplicato. Il biglietto non si consuma tutto subito: vale in ogni giornata abilitata.</p>
+      </details>
+
+      <div class="cta">
+        <h2>Devi gestire l’ingresso di un evento in Argentina?</h2>
+        <p>Ogni biglietto emesso da ENTRÁ è un QR unico e monouso, con controllo accessi integrato senza costi aggiuntivi: scansioni dal telefono, il sistema rifiuta i duplicati mostrando a che ora è entrato quel codice, e tutto resta registrato. Scrivici e ti mostriamo come funziona.</p>
+        <a class="btn btn-primary" href="https://wa.me/5491171540675?text=Ciao%21%20Ho%20letto%20la%20guida%20di%20ENTR%C3%81%20su%20biglietti%20falsi%20e%20duplicati%20e%20vorrei%20sapere%20come%20funziona%20il%20controllo%20accessi%20per%20un%20evento%20in%20Argentina.">Scrivici su WhatsApp</a>
+      </div>
+
+      <div class="more">
+        <p class="kicker">Continua a leggere</p>
+        <a href="/it/blog/come-scegliere-biglietteria-online-commissioni">Come scegliere una biglietteria online: cosa guardare nelle commissioni →</a>
+        <a href="/it/blog/prezzo-biglietti-evento-prevendita">Prezzo dei biglietti e prevendita: come impostarli →</a>
+        <a href="/it/blog">Tutte le guide in italiano →</a>
+      </div>
+
+      <div class="ecosistema" style="margin-top:2rem;padding-top:1.25rem;border-top:1px solid rgba(255,255,255,.12);font-size:.95rem;line-height:1.65;opacity:.9;">
+        <p><a href="https://somosder.ar">SOMOS DER</a>, società di produzione di eventi di Buenos Aires, ha vissuto questo scenario prima di costruire ENTRÁ. Per gli eventi che accreditano ospiti invece di vendere biglietti, lo stesso controllo con QR e rifiuto dei duplicati è in <a href="https://pase.somosder.ar">PASE</a>.</p>
+      </div>
+    </article>
+  </div>
+
+  <footer>
+    <div class="wrap foot-in">
+      <a class="word" href="/" style="font-size:1.1rem;">ENTR<b>Á</b></a>
+      <span>Biglietteria con controllo accessi · di <a href="https://somosder.ar">SOMOS DER</a>, Buenos Aires, Argentina · anche <a href="https://pase.somosder.ar">PASE</a> (accrediti) e <a href="https://laburo.somosder.ar">LABURO</a> (staff per eventi)</span>
+      <a href="/">Home →</a>
+    </div>
+    <div class="wrap" style="padding-top:12px;font-size:.8rem;opacity:.85">Desarrollo: <a href="https://hito.agency">hito.agency</a></div>
+  </footer>
+</body>
+</html>

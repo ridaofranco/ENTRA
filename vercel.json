@@ -6,7 +6,7 @@
       "permanent": false
     },
     {
-      "source": "/en/:path*",
+      "source": "/en/:path((?!blog$|blog/).*)",
       "destination": "/?lang=en",
       "permanent": false
     },
@@ -16,7 +16,7 @@
       "permanent": false
     },
     {
-      "source": "/pt/:path*",
+      "source": "/pt/:path((?!blog$|blog/).*)",
       "destination": "/",
       "permanent": false
     }
@@ -52,6 +52,18 @@
     {
       "source": "/blog/:slug",
       "destination": "/blog/:slug.html"
+    },
+    {
+      "source": "/:lang(en|pt|fr|it)/blog",
+      "destination": "/:lang/blog/index.html"
+    },
+    {
+      "source": "/:lang(en|pt|fr|it)/blog/",
+      "destination": "/:lang/blog/index.html"
+    },
+    {
+      "source": "/:lang(en|pt|fr|it)/blog/:slug",
+      "destination": "/:lang/blog/:slug.html"
     },
     {
       "source": "/vender-entradas",
@@ -94,7 +106,7 @@
       "destination": "/_rutas/privacidad.html"
     },
     {
-      "source": "/((?!api/|assets|__/|blog/.|vender-entradas/.).*)",
+      "source": "/((?!api/|assets|__/|blog/.|vender-entradas/.|(?:en|pt|fr|it)/blog/.).*)",
       "destination": "/_rutas/app.html"
     }
   ]

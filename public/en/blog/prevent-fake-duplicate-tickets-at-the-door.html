@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="color-scheme" content="dark" />
+  <title>How to Prevent Fake and Duplicate Tickets | ENTRÁ</title>
+  <meta name="description" content="Real ticket fraud is not forgery: it is the same ticket used twice. How a unique QR code validated in real time stops it, and the door protocol your team needs." />
+  <link rel="canonical" href="https://www.entratickets.com/en/blog/prevent-fake-duplicate-tickets-at-the-door" />
+  <!-- hreflang:inicio (lo escribe scripts/blog-i18n.mjs, no tocar a mano) -->
+  <link rel="alternate" hreflang="es-AR" href="https://www.entratickets.com/blog/entradas-truchas-duplicadas-puerta" />
+  <link rel="alternate" hreflang="en" href="https://www.entratickets.com/en/blog/prevent-fake-duplicate-tickets-at-the-door" />
+  <link rel="alternate" hreflang="pt" href="https://www.entratickets.com/pt/blog/evitar-ingressos-falsos-duplicados-na-entrada" />
+  <link rel="alternate" hreflang="fr" href="https://www.entratickets.com/fr/blog/eviter-faux-billets-doublons-entree" />
+  <link rel="alternate" hreflang="it" href="https://www.entratickets.com/it/blog/evitare-biglietti-falsi-duplicati-ingresso" />
+  <link rel="alternate" hreflang="x-default" href="https://www.entratickets.com/blog/entradas-truchas-duplicadas-puerta" />
+  <!-- hreflang:fin -->
+  <link rel="icon" type="image/png" href="/pwa-192.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="stylesheet" href="/blog.css" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="ENTRÁ" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:title" content="How to stop fake and duplicate tickets at the door" />
+  <meta property="og:description" content="Real ticket fraud is not forgery: it is the same ticket used twice. How a unique QR code validated in real time stops it, and the door protocol your team needs." />
+  <meta property="og:url" content="https://www.entratickets.com/en/blog/prevent-fake-duplicate-tickets-at-the-door" />
+  <meta property="og:image" content="https://www.entratickets.com/og-image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "How to stop fake and duplicate tickets at the door",
+  "description": "Real ticket fraud is not forgery: it is the same ticket used twice. How a unique QR code validated in real time stops it, and the door protocol your team needs.",
+  "inLanguage": "en",
+  "datePublished": "2026-07-29",
+  "dateModified": "2026-11-06",
+  "author": {
+    "@type": "Organization",
+    "name": "SOMOS DER",
+    "url": "https://somosder.ar"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "ENTRÁ",
+    "url": "https://www.entratickets.com/",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Buenos Aires",
+      "addressCountry": "AR"
+    }
+  },
+  "mainEntityOfPage": "https://www.entratickets.com/en/blog/prevent-fake-duplicate-tickets-at-the-door",
+  "image": "https://www.entratickets.com/og-image.png",
+  "isBasedOn": "https://www.entratickets.com/blog/entradas-truchas-duplicadas-puerta"
+}
+  </script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How do you stop people getting in with a screenshot of someone else's ticket?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "With a single use QR validated against a central database. The screenshot holds the same code as the original, so whoever arrives first gets in and the second scan is rejected. At ENTRÁ, an Argentine ticketing platform, the scanner returns DENEGADO · YA UTILIZADO (denied, already used) together with how long ago that code came in, which is what door staff need to handle it without an argument."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does it matter whether the ticket is printed or shown on a phone?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No: what gets validated is the code, not the format. A printed PDF and a phone screen carry the same code and behave the same way. What makes it secure is that the code is unique, single use and validated against a database shared by every door."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What happens if the internet goes down at the door?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "At ENTRÁ access control keeps working offline: the scanner marks the ticket as used in its local cache instantly, so the next scan of the same QR sees it as used even without a connection, and it syncs with the server on its own when the connection returns. Even so, a serious event brings backup connectivity: a contingency is a plan, not a feature."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How does door control work for multi-day events?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The ticket is validated per day: the system checks that the day is one of the days enabled for that ticket and that the person has not already come in that day. If the day does not match, it is rejected; if they already came in today, it is rejected as a duplicate. The ticket is not used up all at once: it works on each enabled day."
+      }
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-in">
+      <a class="word" href="/">ENTR<b>Á</b></a>
+      <a class="btn btn-ghost" href="/en/blog">Blog</a>
+    </div>
+  </header>
+  <!-- idiomas:inicio (lo escribe scripts/blog-i18n.mjs, no tocar a mano) -->
+  <nav class="wrap idiomas" aria-label="Idioma" style="padding-top:14px;font-size:.85rem;opacity:.85;display:flex;gap:.9rem;flex-wrap:wrap;"><a href="/blog/entradas-truchas-duplicadas-puerta" hreflang="es-AR" lang="es">Español</a> <b lang="en">English</b> <a href="/pt/blog/evitar-ingressos-falsos-duplicados-na-entrada" hreflang="pt" lang="pt">Português</a> <a href="/fr/blog/eviter-faux-billets-doublons-entree" hreflang="fr" lang="fr">Français</a> <a href="/it/blog/evitare-biglietti-falsi-duplicati-ingresso" hreflang="it" lang="it">Italiano</a></nav>
+  <!-- idiomas:fin -->
+
+  <div class="wrap">
+    <article>
+      <p class="kicker">Guide</p>
+      <h1>How to stop fake and duplicate tickets at the door</h1>
+      <p class="meta">By SOMOS DER · July 29, 2026 · 6 min read</p>
+
+      <p class="lead">When an organizer says "I want to stop fake tickets", they are almost never talking about sophisticated forgery. Real fraud at the door is much more boring and much more frequent: <b>the same ticket, used twice</b>.</p>
+
+      <p class="pais" style="font-size:.95rem;opacity:.9;border-left:3px solid rgba(255,255,255,.25);padding-left:.9rem;">A note before you start: <b>ENTRÁ is an Argentine ticketing platform</b>. It sells tickets for events held in Argentina, priced in Argentine pesos (ARS). What this guide says applies to any ticketing platform; when it describes how ENTRÁ works, it means in Argentina.</p>
+
+<p>Someone sends a screenshot of the QR on WhatsApp so a friend can get in. Someone resells a ticket they already used. Someone forwards the purchase email to three people. In all three cases the code is legitimate: what fails is not the paper, it is the control.</p>
+
+      <h2>The problem is not the paper, it is the control</h2>
+      <p>A ticket printed by the best printer in town can be photocopied. A QR can be screenshotted. No format is secure on its own. <b>The only thing that makes a ticket secure is a code that is unique, single use and validated against a database shared by every door.</b></p>
+      <p>That is the difference with a paper list: a list does not stop the same ticket from being used twice, leaves no record of what time each person came in, and creates queues at volume.</p>
+
+      <h2>What the scanner has to reject (and how)</h2>
+      <p>Serious access control does not just say "yes" or "no". It has to say <b>why</b> it rejects, because each case is handled differently at the door. At ENTRÁ the scanner tells these cases apart:</p>
+      <ul>
+        <li><b>Ticket for another event.</b> The QR is valid, just not here. It happens more than you would think when an organizer runs several dates.</li>
+        <li><b>Cancelled or refunded ticket.</b> The ticket existed, but it is no longer valid.</li>
+        <li><b>Already used.</b> The most common case. The system returns <code>DENEGADO · YA UTILIZADO</code> (denied, already used) <b>and how long ago</b> that code came in.</li>
+        <li><b>Not valid today</b> (multi-day events). The ticket is fine, but that day is not enabled for it.</li>
+        <li><b>Already entered today</b> (multi-day). The ticket works on each enabled day, but once per day: it is not burned all at once.</li>
+      </ul>
+      <p>That "came in 8 minutes ago" looks like a detail and it is the most useful piece of information of all: it gives door staff something concrete to say, and turns an argument into a fact.</p>
+
+      <h2>Every attempt is logged</h2>
+      <p>Every scan, accepted or denied, goes into the event's entry history: which code, which ticket type, what time and what result. It is useful for three things:</p>
+      <ol>
+        <li><b>Solving it on the spot</b>: seeing where and when the code that now shows up as a duplicate came in.</li>
+        <li><b>Having evidence</b> if someone complains later.</li>
+        <li><b>Spotting patterns</b>: if lots of duplicates show up for the same ticket type or the same sale, there is something to look into.</li>
+      </ol>
+
+      <h2>Losing the internet cannot bring down the door</h2>
+      <p>This is the question that separates serious control from the rest. At ENTRÁ the scanner <b>marks the ticket as used in its local cache instantly</b>, so the next scan of the same QR sees it as used even without a connection, and it syncs with the server on its own when the connection comes back.</p>
+      <p>That said: a contingency is a plan, not a feature. An event with thousands of people saturates the mobile network. You should still bring backup connectivity and test it before the doors open, not when there is already a queue.</p>
+
+      <h2>Give your audience a legitimate way</h2>
+      <p>Many of the screenshots going around are not bad faith: it is people who cannot go and want to pass the ticket on. If you do not give them a way to do it, they will do it anyway, badly.</p>
+      <p>That is why it matters to enable <b>official transfer</b>: when a ticket is transferred, the old code is invalidated and a new QR is generated for the person receiving it. The old screenshot stops working on its own. It is how you cut fraud without fighting your audience.</p>
+
+      <h2>Technology is half of it: the protocol is the other half</h2>
+      <p>The system tells you the QR is a duplicate. What happens next is down to your operation, and it is worth having it written down <b>before</b> the event:</p>
+      <ul>
+        <li><b>Who decides.</b> So door staff do not have to improvise or go looking for someone.</li>
+        <li><b>Where it gets sorted out.</b> A spot to the side, out of the line. A rejection argued at the door holds up everyone behind.</li>
+        <li><b>What you tell the person.</b> With the data from the history: what time that code came in and through which door.</li>
+        <li><b>What happens with the case.</b> Who it is escalated to, what gets recorded.</li>
+      </ul>
+
+      <h2>Quick checklist</h2>
+      <ul>
+        <li>A <b>unique code per ticket</b>, single use.</li>
+        <li>Validation against a <b>shared database</b> for every door.</li>
+        <li>Rejections that give the reason, with the <b>time of the previous entry</b>.</li>
+        <li>A <b>history</b> of every attempt, accepted and denied.</li>
+        <li>Works <b>offline</b>, with backup connectivity tested.</li>
+        <li><b>Official transfer</b> enabled.</li>
+        <li>A written <b>door protocol</b> the team knows.</li>
+      </ul>
+
+      <h2>Frequently asked questions</h2>
+      <details open>
+        <summary>How do you stop people getting in with a screenshot of someone else&#x27;s ticket?</summary>
+        <p>With a single use QR validated against a central database. The screenshot holds the same code as the original, so whoever arrives first gets in and the second scan is rejected. At ENTRÁ, an Argentine ticketing platform, the scanner returns DENEGADO · YA UTILIZADO (denied, already used) together with how long ago that code came in, which is what door staff need to handle it without an argument.</p>
+      </details>
+      <details>
+        <summary>Does it matter whether the ticket is printed or shown on a phone?</summary>
+        <p>No: what gets validated is the code, not the format. A printed PDF and a phone screen carry the same code and behave the same way. What makes it secure is that the code is unique, single use and validated against a database shared by every door.</p>
+      </details>
+      <details>
+        <summary>What happens if the internet goes down at the door?</summary>
+        <p>At ENTRÁ access control keeps working offline: the scanner marks the ticket as used in its local cache instantly, so the next scan of the same QR sees it as used even without a connection, and it syncs with the server on its own when the connection returns. Even so, a serious event brings backup connectivity: a contingency is a plan, not a feature.</p>
+      </details>
+      <details>
+        <summary>How does door control work for multi-day events?</summary>
+        <p>The ticket is validated per day: the system checks that the day is one of the days enabled for that ticket and that the person has not already come in that day. If the day does not match, it is rejected; if they already came in today, it is rejected as a duplicate. The ticket is not used up all at once: it works on each enabled day.</p>
+      </details>
+
+      <div class="cta">
+        <h2>Running the door at an event in Argentina?</h2>
+        <p>Every ticket issued by ENTRÁ is a unique, single use QR, with access control built in at no extra cost: you scan from a phone, the system rejects duplicates showing what time that code came in, and everything is logged. Write to us and we will show you how it works.</p>
+        <a class="btn btn-primary" href="https://wa.me/5491171540675?text=Hi%21%20I%20read%20the%20ENTR%C3%81%20guide%20on%20fake%20and%20duplicate%20tickets%20and%20I%20want%20to%20know%20how%20access%20control%20works%20for%20an%20event%20in%20Argentina.">Ask us on WhatsApp</a>
+      </div>
+
+      <div class="more">
+        <p class="kicker">Keep reading</p>
+        <a href="/en/blog/how-to-choose-a-ticketing-platform-fees">How to choose a ticketing platform: what to check in the fees →</a>
+        <a href="/en/blog/how-to-price-event-tickets-early-bird">How to price event tickets and set up early bird tiers →</a>
+        <a href="/en/blog">All guides in English →</a>
+      </div>
+
+      <div class="ecosistema" style="margin-top:2rem;padding-top:1.25rem;border-top:1px solid rgba(255,255,255,.12);font-size:.95rem;line-height:1.65;opacity:.9;">
+        <p><a href="https://somosder.ar">SOMOS DER</a>, an event production company in Buenos Aires, lived through the scenario above before building ENTRÁ. For events that accredit guests instead of selling tickets, the same QR control with duplicate rejection is in <a href="https://pase.somosder.ar">PASE</a>.</p>
+      </div>
+    </article>
+  </div>
+
+  <footer>
+    <div class="wrap foot-in">
+      <a class="word" href="/" style="font-size:1.1rem;">ENTR<b>Á</b></a>
+      <span>Ticketing with access control · by <a href="https://somosder.ar">SOMOS DER</a>, Buenos Aires, Argentina · also <a href="https://pase.somosder.ar">PASE</a> (accreditation) and <a href="https://laburo.somosder.ar">LABURO</a> (event staff)</span>
+      <a href="/">Home →</a>
+    </div>
+    <div class="wrap" style="padding-top:12px;font-size:.8rem;opacity:.85">Desarrollo: <a href="https://hito.agency">hito.agency</a></div>
+  </footer>
+</body>
+</html>

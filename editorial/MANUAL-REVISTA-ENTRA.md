@@ -41,6 +41,7 @@ Copiar una nota existente de `public/blog/` (por ejemplo `no-me-llego-la-entrada
 5. Línea en la sección «Blog» de `public/llms.txt`.
 6. Build, deploy, verificar 200 en producción y que aparezca en `/sitemap.xml`.
 7. Mandar la URL a IndexNow.
+8. Traducciones (en, pt, fr, it): ver `editorial/BLOG-5-IDIOMAS.md`. Se dejan en `editorial/traducciones/<slug>.<idioma>.html` y se suben con `npm run blog:i18n:subir` (hreflang, índices, sitemap y llms.txt salen solos).
 
 ## Publicadas (no repetir)
 Cómo elegir ticketera y comisiones · comprar sin estafas · control de acceso el día del evento · datos de ventas que tiene que dar una ticketera · entradas truchas y duplicadas · evento cancelado o reprogramado · me olvidé el celular · no me llegó la entrada al mail · checklist del primer evento · para qué sirve el QR · precio y tandas · promocionar y medir ventas.

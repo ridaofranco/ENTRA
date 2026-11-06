@@ -1,0 +1,26 @@
+{
+  "_leeme": "Pares de traducción del blog de ENTRÁ. Una entrada por nota española: { es, en, pt, fr, it } con el slug de cada idioma. Lo actualiza solo `node scripts/blog-i18n.mjs --subir`; si lo editás a mano, corré después `node scripts/blog-i18n.mjs`. Ver editorial/BLOG-5-IDIOMAS.md.",
+  "pares": [
+    {
+      "es": "como-elegir-ticketera-comisiones",
+      "en": "how-to-choose-a-ticketing-platform-fees",
+      "fr": "choisir-billetterie-en-ligne-commissions",
+      "it": "come-scegliere-biglietteria-online-commissioni",
+      "pt": "como-escolher-plataforma-de-ingressos-taxas"
+    },
+    {
+      "es": "entradas-truchas-duplicadas-puerta",
+      "en": "prevent-fake-duplicate-tickets-at-the-door",
+      "fr": "eviter-faux-billets-doublons-entree",
+      "it": "evitare-biglietti-falsi-duplicati-ingresso",
+      "pt": "evitar-ingressos-falsos-duplicados-na-entrada"
+    },
+    {
+      "es": "poner-precio-entradas-tandas-preventa",
+      "en": "how-to-price-event-tickets-early-bird",
+      "fr": "fixer-prix-billets-evenement-prevente",
+      "it": "prezzo-biglietti-evento-prevendita",
+      "pt": "como-definir-preco-ingressos-lotes"
+    }
+  ]
+}

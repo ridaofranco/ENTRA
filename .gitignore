@@ -10,3 +10,6 @@ coverage/
 
 # Docs internos: este repo es PUBLICO, no deben subirse nunca.
 DOCS-ENTRA/
+
+# Traducciones del blog ya subidas a public/<idioma>/blog (las mueve scripts/blog-i18n.mjs --subir)
+editorial/traducciones/subidas/

@@ -15,6 +15,9 @@
 
 import { getAdminDb } from './_lib/firebaseAdmin.js';
 import { DEMO_GRATIS_ID, DEMO_PAGO_ID } from './_demo-eventos.js';
+// Blog en en/pt/fr/it + hreflang de las notas traducidas. Archivo GENERADO por
+// scripts/blog-i18n.mjs (ver editorial/BLOG-5-IDIOMAS.md): no se edita a mano.
+import { BLOG_I18N_RUTAS, BLOG_I18N_ALTERNATES } from './_blog-i18n.js';
 
 const SITE = 'https://www.entratickets.com';
 
@@ -215,10 +218,13 @@ const esc = (s: unknown): string =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
-function url(loc: string, changefreq: string, priority: string, lastmod?: string): string {
+function url(loc: string, changefreq: string, priority: string, lastmod?: string, alternates?: Array<[string, string]>): string {
   return (
     `  <url>\n` +
     `    <loc>${esc(loc)}</loc>\n` +
+    (alternates || [])
+      .map(([lang, ruta]) => `    <xhtml:link rel="alternate" hreflang="${esc(lang)}" href="${esc(SITE + ruta)}" />\n`)
+      .join('') +
     (lastmod ? `    <lastmod>${esc(lastmod)}</lastmod>\n` : '') +
     `    <changefreq>${changefreq}</changefreq>\n` +
     `    <priority>${priority}</priority>\n` +
@@ -239,8 +245,11 @@ function iso(v: any): string | undefined {
 }
 
 export default async function handler(_req: any, res: any) {
-  let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-  for (const [ruta, freq, prio] of FIJAS) xml += url(`${SITE}${ruta}`, freq, prio);
+  let xml =
+    '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n';
+  for (const [ruta, freq, prio] of [...FIJAS, ...BLOG_I18N_RUTAS]) {
+    xml += url(`${SITE}${ruta}`, freq, prio, undefined, BLOG_I18N_ALTERNATES[ruta]);
+  }
 
   let eventos = 0;
   try {

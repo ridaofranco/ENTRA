@@ -91,7 +91,7 @@ export default defineConfig(() => {
           globPatterns: ['**/*.{js,css,html,png,svg,ico,woff,woff2}'],
           // Las imágenes para compartir y las páginas estáticas (blog, vender entradas) no son
           // parte de la app: precargarlas le bajaría varios MB a cada visitante.
-          globIgnores: ['og/**', 'blog/**', 'vender-entradas/**', '_rutas/**'],
+          globIgnores: ['og/**', 'blog/**', 'vender-entradas/**', '_rutas/**', 'en/**', 'pt/**', 'fr/**', 'it/**'],
           // El bundle de la ticketera es grande; subimos el tope de precache.
           maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
           // SPA: cualquier ruta desconocida cae al index (React Router la resuelve).
@@ -109,6 +109,8 @@ export default defineConfig(() => {
             /^\/vender-entradas(\/|$)/,
             /\.(txt|xml)$/,
             /^\/(en|pt)(\/|$)/,
+            // Blog en otros idiomas (public/<idioma>/blog, ver editorial/BLOG-5-IDIOMAS.md).
+            /^\/(fr|it)\/blog(\/|$)/,
           ],
           cleanupOutdatedCaches: true,
           clientsClaim: true,
