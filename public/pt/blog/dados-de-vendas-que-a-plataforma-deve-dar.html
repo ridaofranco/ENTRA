@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="color-scheme" content="dark" />
+  <title>Dados de vendas que a plataforma deve te dar | ENTRÁ</title>
+  <meta name="description" content="Que dados uma plataforma de ingressos deve te dar: vendidos sobre a capacidade, receita líquida, detalhe por tipo, curva de venda, base exportável e portaria." />
+  <link rel="canonical" href="https://www.entratickets.com/pt/blog/dados-de-vendas-que-a-plataforma-deve-dar" />
+  <!-- hreflang:inicio (lo escribe scripts/blog-i18n.mjs, no tocar a mano) -->
+  <link rel="alternate" hreflang="es-AR" href="https://www.entratickets.com/blog/datos-ventas-ticketera-productor" />
+  <link rel="alternate" hreflang="en" href="https://www.entratickets.com/en/blog/ticket-sales-data-organizers-need" />
+  <link rel="alternate" hreflang="pt" href="https://www.entratickets.com/pt/blog/dados-de-vendas-que-a-plataforma-deve-dar" />
+  <link rel="alternate" hreflang="fr" href="https://www.entratickets.com/fr/blog/donnees-ventes-billetterie-organisateur" />
+  <link rel="alternate" hreflang="it" href="https://www.entratickets.com/it/blog/dati-vendita-biglietteria-organizzatore" />
+  <link rel="alternate" hreflang="x-default" href="https://www.entratickets.com/blog/datos-ventas-ticketera-productor" />
+  <!-- hreflang:fin -->
+  <link rel="icon" type="image/png" href="/pwa-192.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="stylesheet" href="/blog.css" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="ENTRÁ" />
+  <meta property="og:locale" content="pt_BR" />
+  <meta property="og:title" content="Quais dados uma plataforma de ingressos tem que te dar para saber como vai a venda" />
+  <meta property="og:description" content="Que dados uma plataforma de ingressos deve te dar: vendidos sobre a capacidade, receita líquida, detalhe por tipo, curva de venda, base exportável e portaria." />
+  <meta property="og:url" content="https://www.entratickets.com/pt/blog/dados-de-vendas-que-a-plataforma-deve-dar" />
+  <meta property="og:image" content="https://www.entratickets.com/og-image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Quais dados uma plataforma de ingressos tem que te dar para saber como vai a venda",
+  "description": "Que dados uma plataforma de ingressos deve te dar: vendidos sobre a capacidade, receita líquida, detalhe por tipo, curva de venda, base exportável e portaria.",
+  "inLanguage": "pt",
+  "datePublished": "2026-07-29",
+  "dateModified": "2026-11-06",
+  "author": {
+    "@type": "Organization",
+    "name": "SOMOS DER",
+    "url": "https://somosder.ar"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "ENTRÁ",
+    "url": "https://www.entratickets.com/",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Buenos Aires",
+      "addressCountry": "AR"
+    }
+  },
+  "mainEntityOfPage": "https://www.entratickets.com/pt/blog/dados-de-vendas-que-a-plataforma-deve-dar",
+  "image": "https://www.entratickets.com/og-image.png",
+  "isBasedOn": "https://www.entratickets.com/blog/datos-ventas-ticketera-productor"
+}
+  </script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Quais dados mínimos uma plataforma de ingressos tem que me mostrar durante a venda?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Cinco: ingressos vendidos sobre a capacidade total, a receita líquida que fica com você, o detalhe de vendas por tipo de ingresso, quando cada ingresso foi vendido e a lista de compradores com seus dados de contato. Com isso você pode decidir se sobe de lote, se reforça a comunicação ou se precisa repensar o evento. Todo o resto é decoração."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "O valor de receita que vejo é o que eu recebo ou o que o público pagou?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "É a pergunta que precisa ser feita a qualquer plataforma antes de assinar, porque muda todo o orçamento. Na ENTRÁ o número de Ingresos (receita) do painel é o seu líquido: a soma dos preços que você definiu, sem taxas nem cortesias, porque o organizador recebe 100% do seu preço e a taxa de serviço é paga pelo comprador à parte. Se em outra plataforma o número é o bruto, você tem que descontar a comissão antes de usá-lo para qualquer coisa."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Como sei quantos ingressos foram vendidos a cada dia?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Exportando o CSV de vendas do painel do evento, que traz a data de cada pedido. Com uma tabela dinâmica no Excel ou no Google Sheets você agrupa por data em dois minutos e tem a curva de venda real. É mais trabalho do que olhar um gráfico, mas é o mesmo dado e fica com você para comparar entre eventos."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Posso exportar a base de dados dos meus compradores?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Na ENTRÁ sim, e sem custo extra: pelo painel do evento são exportados dois CSV, um de participantes (nome, e-mail, DNI, telefone, tipo de ingresso, preço, código do ingresso, data da compra, se entrou e se foi transferido) e outro de vendas (pedido, comprador, e-mail, detalhe, quantidade, subtotal, comissão, total, data, status e forma de pagamento). Se uma plataforma não te deixa exportar a sua base ou cobra à parte, essa base não é sua."
+      }
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-in">
+      <a class="word" href="/">ENTR<b>Á</b></a>
+      <a class="btn btn-ghost" href="/pt/blog">Blog</a>
+    </div>
+  </header>
+  <!-- idiomas:inicio (lo escribe scripts/blog-i18n.mjs, no tocar a mano) -->
+  <nav class="wrap idiomas" aria-label="Idioma" style="padding-top:14px;font-size:.85rem;opacity:.85;display:flex;gap:.9rem;flex-wrap:wrap;"><a href="/blog/datos-ventas-ticketera-productor" hreflang="es-AR" lang="es">Español</a> <a href="/en/blog/ticket-sales-data-organizers-need" hreflang="en" lang="en">English</a> <b lang="pt">Português</b> <a href="/fr/blog/donnees-ventes-billetterie-organisateur" hreflang="fr" lang="fr">Français</a> <a href="/it/blog/dati-vendita-biglietteria-organizzatore" hreflang="it" lang="it">Italiano</a></nav>
+  <!-- idiomas:fin -->
+
+  <div class="wrap">
+    <article>
+      <p class="kicker">Guia para organizadores</p>
+      <h1>Quais dados uma plataforma de ingressos tem que te dar para saber como vai a venda</h1>
+      <p class="meta">Por SOMOS DER · 29 de julho de 2026 · 6 min de leitura</p>
+
+      <p class="lead">Há uma diferença grande entre <b>ver</b> como vai a venda e <b>saber</b> como vai. Um número grande de ingressos vendidos em uma tela não te diz nada se você não sabe sobre qual capacidade, com qual lote e em que momento. Estes são os dados que de fato se usam para tomar decisões antes do evento.</p>
+
+      <p class="pais" style="font-size:.95rem;opacity:.9;border-left:3px solid rgba(255,255,255,.25);padding-left:.9rem;">Antes de começar: <b>a ENTRÁ é uma plataforma de ingressos argentina</b>. Ela vende ingressos para eventos realizados na Argentina, com preço em pesos argentinos (ARS). O painel descrito aqui é o que você usa para acompanhar a venda de um evento na Argentina.</p>
+
+      <h2>1. Vendidos sobre a capacidade, não vendidos e pronto</h2>
+      <p>«Você vendeu 340 ingressos» não é um dado: é um número. <b>«340 de 500, 68%»</b> é, porque diz se você vai lotar e quanto falta. Na ENTRÁ o painel do evento mostra assim, com a porcentagem ao lado, e as cortesias emitidas são contadas à parte para que você não infle o número com os convites.</p>
+      <p>Peça isso a qualquer plataforma. Se ela mostra o total vendido mas não contra qual capacidade, o dado não serve para decidir nada.</p>
+
+      <h2>2. Receita líquida: o que fica com você</h2>
+      <p>É aqui que mais orçamentos quebram. Há plataformas que no painel mostram o bruto (o que o público pagou, com comissões dentro) e o organizador monta o fluxo de caixa com esse número. Depois chega o repasse e falta dinheiro.</p>
+      <p>Na ENTRÁ o número de <b>Ingresos</b> (receita) é o seu líquido: a soma dos preços que você definiu, sem taxas e sem cortesias, porque a taxa de serviço é paga pelo comprador à parte e você recebe 100% do seu preço. Ao lado vem quanto foi devolvido e sobre quantas vendas. Pergunte sempre qual dos dois números você está olhando.</p>
+
+      <h2>3. Detalhe por tipo de ingresso</h2>
+      <p>O total esconde o problema. O que você precisa ver é <b>quanto foi vendido de cada lote</b>: pré-venda, geral, VIP, cada um com sua quantidade, sua porcentagem e seu preço unitário.</p>
+      <p>Daí saem as decisões concretas: se a pré-venda esgotou em três dias, você está barato e pode cortar antes. Se o VIP não andou, o problema não é o preço e sim que ninguém entendeu o que inclui. Se o geral estagnou, quem tem que se mexer é o marketing, não o preço.</p>
+
+      <h2>4. Quando cada ingresso foi vendido</h2>
+      <p>A curva de venda é o dado mais preditivo que existe em eventos e o que menos gente olha. Dois eventos com os mesmos 340 ingressos vendidos são coisas diferentes se um os vendeu na primeira semana e o outro vem arrastando de dez em dez por dia.</p>
+      <p>Na ENTRÁ o painel mostra a atividade recente ao vivo e o histórico completo de vendas com a data de cada pedido; <b>a curva por dia você monta exportando o CSV de vendas</b> e agrupando por data em uma planilha. São dois minutos de trabalho e fica um histórico próprio para comparar com o seu próximo evento, que é para o que realmente serve.</p>
+
+      <h2>5. Quem comprou: a base é sua</h2>
+      <p>O ativo que um evento te deixa não é a arrecadação, é a lista. Na ENTRÁ, pelo painel você exporta dois arquivos CSV sem custo extra:</p>
+      <ul>
+        <li><b>Participantes:</b> nome, e-mail, DNI (o documento de identidade argentino), telefone, tipo de ingresso, origem (compra ou cortesia), preço, código do ingresso, data da compra, se entrou ou não e se o ingresso foi transferido.</li>
+        <li><b>Vendas:</b> ID do pedido, comprador, e-mail, detalhe, quantidade, subtotal, comissão, total, data, status e forma de pagamento.</li>
+      </ul>
+      <p>Se uma plataforma não te deixa exportar essa base, ou cobra à parte por ela, essa base não é sua. É a pergunta que convém fazer antes de cadastrar o primeiro evento, não depois do terceiro.</p>
+
+      <h2>6. A portaria, ao vivo</h2>
+      <p>No dia do evento o dado muda: já não importa quanto você vendeu e sim quanta gente entrou. O controle de acesso da ENTRÁ mostra em tempo real <b>quantos entraram, vendidos e restantes</b>, com a porcentagem de comparecimento e o histórico das últimas entradas com hora e resultado.</p>
+      <p>Essa porcentagem é um dado de negócio, não operacional: o não comparecimento médio dos seus eventos é o que diz quanto você pode vender acima, quanto bar preparar e quanta equipe colocar. Se você nunca mediu, está adivinhando.</p>
+
+      <h2>7. Se o e-mail do ingresso chegou</h2>
+      <p>Um dado pouco glamoroso que evita problemas reais na porta: o painel tem uma aba de <b>envios de e-mail</b> onde você vê, comprador por comprador, se o ingresso saiu ou se o envio falhou. Quando alguém escreve «paguei e não chegou nada», em vez de discutir você olha se o e-mail saiu e para qual endereço.</p>
+
+      <h2>O que não é um dado</h2>
+      <p>Para fechar, três coisas que parecem bonitas e não mudam nenhuma decisão:</p>
+      <ul>
+        <li><b>Um gráfico sem números ao lado.</b> A tabela e o CSV mandam; o gráfico é a ilustração.</li>
+        <li><b>Métricas de vaidade</b> como visitas à página sem a conversão em venda.</li>
+        <li><b>Um painel que só atualiza quando você recarrega.</b> Se você está na porta com o celular, os dados têm que chegar sozinhos. Os do painel da ENTRÁ se atualizam ao vivo, sem recarregar.</li>
+      </ul>
+
+      <h2>Perguntas frequentes</h2>
+      <details open>
+        <summary>Quais dados mínimos uma plataforma de ingressos tem que me mostrar durante a venda?</summary>
+        <p>Cinco: ingressos vendidos sobre a capacidade total, a receita líquida que fica com você, o detalhe de vendas por tipo de ingresso, quando cada ingresso foi vendido e a lista de compradores com seus dados de contato. Com isso você pode decidir se sobe de lote, se reforça a comunicação ou se precisa repensar o evento. Todo o resto é decoração.</p>
+      </details>
+      <details>
+        <summary>O valor de receita que vejo é o que eu recebo ou o que o público pagou?</summary>
+        <p>É a pergunta que precisa ser feita a qualquer plataforma antes de assinar, porque muda todo o orçamento. Na ENTRÁ o número de Ingresos (receita) do painel é o seu líquido: a soma dos preços que você definiu, sem taxas nem cortesias, porque o organizador recebe 100% do seu preço e a taxa de serviço é paga pelo comprador à parte. Se em outra plataforma o número é o bruto, você tem que descontar a comissão antes de usá-lo para qualquer coisa.</p>
+      </details>
+      <details>
+        <summary>Como sei quantos ingressos foram vendidos a cada dia?</summary>
+        <p>Exportando o CSV de vendas do painel do evento, que traz a data de cada pedido. Com uma tabela dinâmica no Excel ou no Google Sheets você agrupa por data em dois minutos e tem a curva de venda real. É mais trabalho do que olhar um gráfico, mas é o mesmo dado e fica com você para comparar entre eventos.</p>
+      </details>
+      <details>
+        <summary>Posso exportar a base de dados dos meus compradores?</summary>
+        <p>Na ENTRÁ sim, e sem custo extra: pelo painel do evento são exportados dois CSV, um de participantes (nome, e-mail, DNI, telefone, tipo de ingresso, preço, código do ingresso, data da compra, se entrou e se foi transferido) e outro de vendas (pedido, comprador, e-mail, detalhe, quantidade, subtotal, comissão, total, data, status e forma de pagamento). Se uma plataforma não te deixa exportar a sua base ou cobra à parte, essa base não é sua.</p>
+      </details>
+
+      <div class="cta">
+        <h2>Quer acompanhar ao vivo a venda de um evento na Argentina?</h2>
+        <p>Vendidos sobre a capacidade, receita líquida, detalhe por lote, histórico de vendas, check-ins em tempo real e a sua base exportável em CSV. Tudo no painel do evento, sem custo extra. Fale com a gente.</p>
+        <a class="btn btn-primary" href="https://wa.me/5491171540675?text=Ol%C3%A1%21%20Li%20o%20guia%20da%20ENTR%C3%81%20sobre%20os%20dados%20de%20vendas%20e%20quero%20vender%20ingressos%20para%20um%20evento%20na%20Argentina.">Falar no WhatsApp</a>
+      </div>
+
+      <div class="more">
+        <p class="kicker">Continue lendo</p>
+        <a href="/pt/blog/como-definir-preco-ingressos-lotes">Como definir o preço dos ingressos e montar os lotes →</a>
+        <a href="/pt/blog/evitar-ingressos-falsos-duplicados-na-entrada">Como evitar ingressos falsos e duplicados na porta →</a>
+        <a href="/pt/blog/cupom-de-desconto-para-evento">Cupons de desconto para um evento: como usar sem dar a venda de graça →</a>
+        <a href="/pt/blog">Todos os guias em português →</a>
+      </div>
+
+      <div class="ecosistema" style="margin-top:2rem;padding-top:1.25rem;border-top:1px solid rgba(255,255,255,.12);font-size:.95rem;line-height:1.65;opacity:.9;">
+        <p>Estes são os dados que a <a href="https://somosder.ar">SOMOS DER</a> olha enquanto vende um evento próprio. A lista não saiu de um levantamento de funcionalidades: saiu das perguntas que aparecem com três semanas de pré-venda, quando é preciso decidir se abre outro lote.</p>
+      </div>
+    </article>
+  </div>
+
+  <footer>
+    <div class="wrap foot-in">
+      <a class="word" href="/" style="font-size:1.1rem;">ENTR<b>Á</b></a>
+      <span>Plataforma de ingressos com controle de acesso · por <a href="https://somosder.ar">SOMOS DER</a>, Buenos Aires, Argentina · também <a href="https://pase.somosder.ar">PASE</a> (credenciamento) e <a href="https://laburo.somosder.ar">LABURO</a> (equipe para eventos)</span>
+      <a href="/">Início →</a>
+    </div>
+    <div class="wrap" style="padding-top:12px;font-size:.8rem;opacity:.85">Desarrollo: <a href="https://hito.agency">hito.agency</a></div>
+  </footer>
+</body>
+</html>

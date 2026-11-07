@@ -2,11 +2,270 @@
   "_leeme": "Pares de traducción del blog de ENTRÁ. Una entrada por nota española: { es, en, pt, fr, it } con el slug de cada idioma. Lo actualiza solo `node scripts/blog-i18n.mjs --subir`; si lo editás a mano, corré después `node scripts/blog-i18n.mjs`. Ver editorial/BLOG-5-IDIOMAS.md.",
   "pares": [
     {
+      "es": "abono-o-entrada-por-dia-festival",
+      "en": "festival-pass-or-day-ticket",
+      "fr": "festival-pass-ou-billet-journee",
+      "it": "abbonamento-o-biglietto-giornaliero-festival",
+      "pt": "passaporte-ou-ingresso-por-dia-festival"
+    },
+    {
+      "es": "after-office-vender-entradas",
+      "en": "how-to-sell-tickets-after-work-event",
+      "fr": "afterwork-billets-prix-horaire",
+      "it": "aperitivo-after-work-con-biglietto",
+      "pt": "happy-hour-after-work-com-ingresso"
+    },
+    {
+      "es": "balance-despues-del-evento",
+      "en": "event-financial-report-after-the-event",
+      "fr": "bilan-apres-evenement-quoi-verifier",
+      "it": "bilancio-dopo-evento-cosa-controllare",
+      "pt": "balanco-depois-do-evento"
+    },
+    {
+      "es": "base-de-compradores-proxima-fecha",
+      "en": "use-buyer-list-for-next-event",
+      "fr": "fichier-acheteurs-prochaine-date",
+      "it": "lista-acquirenti-vendere-prossima-data",
+      "pt": "base-de-compradores-proxima-data"
+    },
+    {
+      "es": "batalla-de-freestyle-vender-entradas",
+      "en": "sell-tickets-freestyle-rap-battle",
+      "fr": "battle-freestyle-rap-billetterie",
+      "it": "battle-freestyle-rap-vendere-biglietti",
+      "pt": "batalha-de-rima-vender-ingressos"
+    },
+    {
+      "es": "bingo-o-cena-en-un-club-de-barrio",
+      "en": "bingo-or-dinner-at-a-local-club",
+      "fr": "loto-ou-diner-club-de-quartier",
+      "it": "tombola-cena-circolo-di-quartiere-biglietti",
+      "pt": "bingo-ou-jantar-em-clube-de-bairro"
+    },
+    {
+      "es": "capacidad-habilitada-cuantas-entradas-vender",
+      "en": "venue-capacity-how-many-tickets-to-sell",
+      "fr": "jauge-autorisee-combien-billets-vendre",
+      "it": "capienza-locale-quanti-biglietti-vendere",
+      "pt": "capacidade-do-local-quantos-ingressos-vender"
+    },
+    {
+      "es": "carrera-o-maraton-con-inscripcion-paga",
+      "en": "running-race-paid-registration",
+      "fr": "course-a-pied-inscription-payante",
+      "it": "corsa-podistica-iscrizione-a-pagamento",
+      "pt": "corrida-ou-caminhada-com-inscricao-paga"
+    },
+    {
+      "es": "cena-de-gala-o-fiesta-con-mesas-vender-entradas",
+      "en": "sell-tickets-gala-dinner-tables",
+      "fr": "diner-de-gala-vendre-tables",
+      "it": "cena-di-gala-vendere-tavoli",
+      "pt": "jantar-de-gala-vender-mesas"
+    },
+    {
+      "es": "cena-show-entrada-con-o-sin-cena",
+      "en": "dinner-show-tickets-with-or-without-dinner",
+      "fr": "diner-spectacle-billet-avec-ou-sans-repas",
+      "it": "cena-spettacolo-biglietto-con-o-senza-cena",
+      "pt": "jantar-show-ingresso-com-ou-sem-jantar"
+    },
+    {
+      "es": "ciclo-mensual-de-musica-vender-entradas",
+      "en": "monthly-music-series-ticket-sales",
+      "fr": "soiree-concert-mensuelle-billetterie",
+      "it": "rassegna-mensile-musica-vendere-biglietti",
+      "pt": "evento-mensal-de-musica-vender-ingressos"
+    },
+    {
+      "es": "cine-debate-o-proyeccion-con-entrada",
+      "en": "film-screening-with-tickets",
+      "fr": "cine-debat-projection-payante",
+      "it": "cineforum-proiezione-con-biglietto",
+      "pt": "cineclube-ou-sessao-de-cinema-com-ingresso"
+    },
+    {
+      "es": "circo-o-variete-en-carpa-vender-entradas",
+      "en": "sell-tickets-circus-or-variety-show",
+      "fr": "cirque-sous-chapiteau-billetterie",
+      "it": "circo-varieta-tendone-vendere-biglietti",
+      "pt": "circo-na-lona-vender-ingressos"
+    },
+    {
+      "es": "clase-de-cocina-o-taller-gastronomico-con-cupo",
+      "en": "cooking-class-limited-spots-tickets",
+      "fr": "cours-de-cuisine-places-limitees",
+      "it": "corso-di-cucina-posti-limitati",
+      "pt": "aula-de-culinaria-com-vagas-limitadas"
+    },
+    {
+      "es": "codigos-de-descuento-para-un-evento",
+      "en": "event-ticket-discount-codes",
+      "fr": "codes-promo-billets-evenement",
+      "it": "codici-sconto-biglietti-evento",
+      "pt": "cupom-de-desconto-para-evento"
+    },
+    {
       "es": "como-elegir-ticketera-comisiones",
       "en": "how-to-choose-a-ticketing-platform-fees",
       "fr": "choisir-billetterie-en-ligne-commissions",
       "it": "come-scegliere-biglietteria-online-commissioni",
       "pt": "como-escolher-plataforma-de-ingressos-taxas"
+    },
+    {
+      "es": "comprar-entradas-sin-estafas",
+      "en": "buy-event-tickets-without-scams",
+      "fr": "acheter-billets-sans-arnaque",
+      "it": "comprare-biglietti-online-senza-truffe",
+      "pt": "comprar-ingressos-sem-cair-em-golpe"
+    },
+    {
+      "es": "concierto-de-coro-o-musica-clasica-con-entrada",
+      "en": "classical-music-or-choir-concert-tickets",
+      "fr": "concert-chorale-musique-classique-billets",
+      "it": "concerto-coro-musica-classica-biglietti",
+      "pt": "concerto-de-coral-ou-musica-classica-ingresso"
+    },
+    {
+      "es": "concurso-de-bandas-inscripcion-y-entradas",
+      "en": "battle-of-the-bands-registration-tickets",
+      "fr": "tremplin-groupes-inscription-billets",
+      "it": "concorso-band-iscrizione-biglietti",
+      "pt": "concurso-de-bandas-inscricao-e-ingressos"
+    },
+    {
+      "es": "conseguir-sponsors-para-un-evento-chico",
+      "en": "get-sponsors-for-a-small-event",
+      "fr": "trouver-sponsors-petit-evenement",
+      "it": "trovare-sponsor-piccolo-evento",
+      "pt": "conseguir-patrocinio-para-evento-pequeno"
+    },
+    {
+      "es": "control-de-acceso-dia-del-evento",
+      "en": "event-day-access-control",
+      "fr": "controle-acces-jour-evenement",
+      "it": "controllo-accessi-giorno-evento",
+      "pt": "controle-de-acesso-no-dia-do-evento"
+    },
+    {
+      "es": "control-de-acceso-sin-internet",
+      "en": "event-access-control-without-internet",
+      "fr": "controle-acces-sans-internet",
+      "it": "controllo-accessi-senza-internet",
+      "pt": "controle-de-acesso-sem-internet"
+    },
+    {
+      "es": "convencion-de-anime-o-cosplay-vender-entradas",
+      "en": "sell-tickets-anime-cosplay-convention",
+      "fr": "convention-manga-cosplay-billetterie",
+      "it": "fiera-anime-cosplay-vendere-biglietti",
+      "pt": "evento-de-anime-ou-cosplay-ingressos"
+    },
+    {
+      "es": "cortesias-invitaciones-evento-cuantas-dar",
+      "en": "how-many-complimentary-tickets-to-give",
+      "fr": "invitations-gratuites-evenement-combien",
+      "it": "biglietti-omaggio-inviti-quanti-darne",
+      "pt": "cortesias-e-convites-quantos-dar"
+    },
+    {
+      "es": "cuando-abrir-la-venta-de-entradas",
+      "en": "when-to-open-ticket-sales",
+      "fr": "quand-ouvrir-billetterie-evenement",
+      "it": "quando-aprire-vendita-biglietti",
+      "pt": "quando-abrir-venda-de-ingressos"
+    },
+    {
+      "es": "cuanta-gente-poner-en-la-puerta-de-un-evento",
+      "en": "how-many-door-staff-for-an-event",
+      "fr": "combien-personnes-entree-evenement",
+      "it": "quante-persone-ingresso-evento",
+      "pt": "quantas-pessoas-na-portaria-do-evento"
+    },
+    {
+      "es": "cuantas-entradas-vender-para-no-perder-plata",
+      "en": "event-break-even-how-many-tickets",
+      "fr": "seuil-rentabilite-billets-evenement",
+      "it": "punto-di-pareggio-biglietti-evento",
+      "pt": "quantos-ingressos-vender-para-nao-ter-prejuizo"
+    },
+    {
+      "es": "datos-ventas-ticketera-productor",
+      "en": "ticket-sales-data-organizers-need",
+      "fr": "donnees-ventes-billetterie-organisateur",
+      "it": "dati-vendita-biglietteria-organizzatore",
+      "pt": "dados-de-vendas-que-a-plataforma-deve-dar"
+    },
+    {
+      "es": "degustacion-de-vinos-o-cerveza-con-entrada",
+      "en": "wine-or-beer-tasting-event-tickets",
+      "fr": "degustation-vin-biere-billets",
+      "it": "degustazione-vini-birra-con-biglietto",
+      "pt": "degustacao-de-vinhos-ou-cerveja-com-ingresso"
+    },
+    {
+      "es": "descripcion-del-evento-que-vende",
+      "en": "write-an-event-description-that-sells",
+      "fr": "rediger-page-evenement-qui-vend",
+      "it": "descrizione-evento-che-vende",
+      "pt": "descricao-do-evento-que-vende"
+    },
+    {
+      "es": "desfile-de-moda-con-entrada",
+      "en": "fashion-show-ticket-sales",
+      "fr": "defile-de-mode-billetterie",
+      "it": "sfilata-di-moda-con-biglietto",
+      "pt": "desfile-de-moda-com-ingresso"
+    },
+    {
+      "es": "devolver-entrada-comprada-online",
+      "en": "refund-ticket-bought-online-argentina",
+      "fr": "rembourser-billet-achete-en-ligne",
+      "it": "rimborso-biglietto-comprato-online",
+      "pt": "devolver-ingresso-comprado-online"
+    },
+    {
+      "es": "encuentro-de-autos-clasicos-o-exposicion-con-entrada",
+      "en": "classic-car-show-tickets",
+      "fr": "rassemblement-voitures-anciennes-billets",
+      "it": "raduno-auto-d-epoca-mostra-biglietti",
+      "pt": "encontro-de-carros-antigos-com-ingresso"
+    },
+    {
+      "es": "encuentro-de-networking-o-emprendedores-con-entrada",
+      "en": "networking-event-paid-tickets",
+      "fr": "soiree-networking-entree-payante",
+      "it": "evento-networking-imprenditori-biglietto",
+      "pt": "evento-de-networking-com-ingresso"
+    },
+    {
+      "es": "entrada-con-consumicion-combo",
+      "en": "ticket-with-drink-or-food-included",
+      "fr": "billet-avec-consommation-formule",
+      "it": "biglietto-con-consumazione-inclusa",
+      "pt": "ingresso-com-consumacao-ou-combo"
+    },
+    {
+      "es": "entrada-original-o-falsa-reventa",
+      "en": "is-a-resale-ticket-real-or-fake",
+      "fr": "billet-revente-vrai-ou-faux",
+      "it": "biglietto-originale-o-falso-rivendita",
+      "pt": "ingresso-original-ou-falso-revenda"
+    },
+    {
+      "es": "entradas-agotadas-lista-de-espera",
+      "en": "sold-out-event-waiting-list",
+      "fr": "billets-epuises-liste-attente",
+      "it": "biglietti-esauriti-lista-d-attesa",
+      "pt": "ingressos-esgotados-lista-de-espera"
+    },
+    {
+      "es": "entradas-numeradas-o-generales",
+      "en": "reserved-seating-or-general-admission",
+      "fr": "placement-numerote-ou-libre",
+      "it": "posti-numerati-o-posto-unico",
+      "pt": "ingressos-numerados-ou-pista"
     },
     {
       "es": "entradas-truchas-duplicadas-puerta",
@@ -16,11 +275,557 @@
       "pt": "evitar-ingressos-falsos-duplicados-na-entrada"
     },
     {
+      "es": "evento-al-aire-libre-lluvia-plan-b",
+      "en": "outdoor-event-rain-backup-plan",
+      "fr": "evenement-plein-air-pluie-plan-b",
+      "it": "evento-all-aperto-pioggia-piano-b",
+      "pt": "evento-ao-ar-livre-chuva-plano-b"
+    },
+    {
+      "es": "evento-cancelado-reprogramado-transferir-entrada",
+      "en": "event-cancelled-or-rescheduled-tickets",
+      "fr": "evenement-annule-reporte-billet",
+      "it": "evento-annullato-rinviato-biglietto",
+      "pt": "evento-cancelado-ou-adiado-seu-ingresso"
+    },
+    {
+      "es": "evento-con-streaming-entrada-presencial-y-online",
+      "en": "hybrid-event-in-person-and-streaming-tickets",
+      "fr": "evenement-streaming-billet-presentiel-en-ligne",
+      "it": "evento-in-streaming-biglietto-online",
+      "pt": "evento-com-transmissao-ingresso-presencial-e-online"
+    },
+    {
+      "es": "evento-de-reyes-para-chicos-con-entrada",
+      "en": "three-kings-day-kids-event-tickets",
+      "fr": "fete-des-rois-enfants-billets",
+      "it": "evento-re-magi-bambini-biglietti",
+      "pt": "evento-de-reis-magos-para-criancas"
+    },
+    {
+      "es": "evento-de-verano-con-calor-agua-sombra-horarios",
+      "en": "summer-event-heat-water-shade",
+      "fr": "evenement-ete-chaleur-eau-ombre",
+      "it": "evento-estivo-caldo-acqua-ombra-orari",
+      "pt": "evento-de-verao-calor-agua-sombra"
+    },
+    {
+      "es": "evento-en-una-ciudad-chica-del-interior",
+      "en": "event-in-a-small-town-ticket-sales",
+      "fr": "evenement-petite-ville-vendre-billets",
+      "it": "evento-in-una-piccola-citta",
+      "pt": "evento-em-cidade-pequena-do-interior"
+    },
+    {
+      "es": "evento-gratis-reservan-y-no-vienen",
+      "en": "free-event-no-shows-reservations",
+      "fr": "evenement-gratuit-inscrits-absents",
+      "it": "evento-gratuito-prenotati-che-non-vengono",
+      "pt": "evento-gratuito-inscritos-que-nao-aparecem"
+    },
+    {
+      "es": "evento-solidario-beneficio-vender-entradas",
+      "en": "charity-benefit-event-ticket-sales",
+      "fr": "evenement-caritatif-vendre-billets",
+      "it": "evento-di-beneficenza-vendere-biglietti",
+      "pt": "evento-beneficente-vender-ingressos"
+    },
+    {
+      "es": "evento-solo-mayores-de-18-control-de-edad",
+      "en": "18-plus-event-age-check-at-the-door",
+      "fr": "evenement-reserve-majeurs-controle-age",
+      "it": "evento-solo-maggiorenni-controllo-eta",
+      "pt": "evento-para-maiores-de-18-controle-de-idade"
+    },
+    {
+      "es": "eventos-de-verano-en-la-costa-vender-entradas",
+      "en": "beach-town-summer-event-tickets",
+      "fr": "evenements-ete-bord-de-mer-billets",
+      "it": "eventi-estivi-al-mare-vendere-biglietti",
+      "pt": "eventos-de-verao-no-litoral-ingressos"
+    },
+    {
+      "es": "facturar-venta-de-entradas-monotributista",
+      "en": "invoicing-ticket-sales-small-taxpayer",
+      "fr": "facturer-vente-billets-independant",
+      "it": "fatturare-vendita-biglietti-evento",
+      "pt": "emitir-nota-fiscal-venda-de-ingressos-argentina"
+    },
+    {
+      "es": "feria-de-vinilos-o-coleccionismo-con-entrada",
+      "en": "record-fair-or-collectors-fair-tickets",
+      "fr": "salon-vinyles-collection-entree-payante",
+      "it": "fiera-vinili-collezionismo-biglietto",
+      "pt": "feira-de-vinil-ou-colecionismo-com-ingresso"
+    },
+    {
+      "es": "feria-o-mercado-con-entrada",
+      "en": "fair-or-market-with-paid-entry",
+      "fr": "marche-ou-salon-entree-payante",
+      "it": "mercatino-fiera-con-biglietto",
+      "pt": "feira-com-ingresso-vagas-e-horarios"
+    },
+    {
+      "es": "festival-con-varias-bandas-repartir-recaudacion",
+      "en": "split-festival-revenue-between-bands",
+      "fr": "plateau-plusieurs-groupes-partager-recette",
+      "it": "serata-piu-band-dividere-incasso",
+      "pt": "show-com-varias-bandas-dividir-bilheteria"
+    },
+    {
+      "es": "festival-de-cine-o-cortos-abono-y-funciones",
+      "en": "film-festival-passes-and-screenings",
+      "fr": "festival-courts-metrages-pass-seances",
+      "it": "festival-cinema-cortometraggi-abbonamento",
+      "pt": "festival-de-cinema-passaporte-e-sessoes"
+    },
+    {
+      "es": "festival-gastronomico-o-de-food-trucks-con-entrada",
+      "en": "food-festival-food-truck-tickets",
+      "fr": "festival-food-trucks-entree-payante",
+      "it": "festival-gastronomico-food-truck-biglietto",
+      "pt": "festival-gastronomico-food-trucks-ingresso"
+    },
+    {
+      "es": "fiesta-de-ano-nuevo-vender-entradas",
+      "en": "sell-new-years-eve-party-tickets",
+      "fr": "soiree-nouvel-an-vendre-billets",
+      "it": "festa-di-capodanno-vendere-biglietti",
+      "pt": "festa-de-reveillon-vender-ingressos"
+    },
+    {
+      "es": "fiesta-de-carnaval-vender-entradas",
+      "en": "sell-carnival-party-tickets",
+      "fr": "soiree-carnaval-vendre-billets",
+      "it": "festa-di-carnevale-vendere-biglietti",
+      "pt": "festa-de-carnaval-vender-ingressos"
+    },
+    {
+      "es": "fiesta-de-egresados-vender-entradas",
+      "en": "graduation-party-ticket-sales",
+      "fr": "soiree-fin-etudes-billets-par-classe",
+      "it": "festa-di-diploma-vendere-biglietti",
+      "pt": "festa-de-formatura-ingressos-por-turma"
+    },
+    {
+      "es": "fiesta-de-fin-de-ano-de-empresa-entradas-o-lista",
+      "en": "company-year-end-party-tickets-or-list",
+      "fr": "soiree-entreprise-fin-annee-liste-billets",
+      "it": "festa-aziendale-fine-anno-lista-o-biglietto",
+      "pt": "festa-de-fim-de-ano-da-empresa-lista-ou-ingresso"
+    },
+    {
+      "es": "fiesta-de-halloween-vender-entradas",
+      "en": "sell-halloween-party-tickets",
+      "fr": "soiree-halloween-billets-preventes",
+      "it": "festa-di-halloween-con-biglietto",
+      "pt": "festa-de-halloween-vender-ingressos"
+    },
+    {
+      "es": "fiesta-del-dia-del-estudiante-o-primavera-entradas",
+      "en": "spring-or-student-day-party-tickets",
+      "fr": "fete-etudiants-printemps-billets",
+      "it": "festa-di-primavera-studenti-biglietti",
+      "pt": "festa-da-primavera-dia-do-estudante-argentina"
+    },
+    {
+      "es": "fiesta-del-pueblo-o-fiesta-patronal-con-entrada",
+      "en": "town-festival-patron-saint-tickets",
+      "fr": "fete-de-village-entree-payante",
+      "it": "festa-del-paese-patronale-biglietto",
+      "pt": "festa-da-cidade-ou-padroeiro-com-ingresso"
+    },
+    {
+      "es": "fiesta-electronica-vender-entradas-y-horarios",
+      "en": "electronic-music-party-tickets-set-times",
+      "fr": "soiree-electro-billets-horaires",
+      "it": "festa-musica-elettronica-biglietti-orari",
+      "pt": "festa-eletronica-ingressos-e-horarios"
+    },
+    {
+      "es": "fiesta-en-barco-o-paseo-en-catamaran-con-entrada",
+      "en": "boat-party-catamaran-tickets",
+      "fr": "soiree-bateau-catamaran-billets",
+      "it": "festa-in-barca-catamarano-biglietto",
+      "pt": "festa-no-barco-ou-catamara-com-ingresso"
+    },
+    {
+      "es": "fiesta-tematica-como-venderla",
+      "en": "how-to-sell-a-themed-party",
+      "fr": "soiree-a-theme-comment-la-vendre",
+      "it": "festa-a-tema-come-venderla",
+      "pt": "festa-tematica-como-vender"
+    },
+    {
+      "es": "flyer-del-evento-que-vende",
+      "en": "event-flyer-that-sells-tickets",
+      "fr": "flyer-evenement-qui-vend",
+      "it": "locandina-evento-che-vende",
+      "pt": "flyer-do-evento-que-vende"
+    },
+    {
+      "es": "gira-varias-ciudades-vender-entradas",
+      "en": "multi-city-tour-ticket-sales",
+      "fr": "tournee-plusieurs-villes-billetterie",
+      "it": "tour-in-piu-citta-vendere-biglietti",
+      "pt": "turne-por-varias-cidades-vender-ingressos"
+    },
+    {
+      "es": "inscripcion-taller-con-cupo",
+      "en": "workshop-registration-limited-spots",
+      "fr": "inscription-atelier-places-limitees",
+      "it": "iscrizione-laboratorio-posti-limitati",
+      "pt": "inscricao-oficina-com-vagas-limitadas"
+    },
+    {
+      "es": "jineteada-o-fiesta-criolla-vender-entradas",
+      "en": "gaucho-rodeo-festival-tickets",
+      "fr": "fete-gaucho-rodeo-argentin-billets",
+      "it": "jineteada-festa-criolla-biglietti",
+      "pt": "jineteada-festa-criolla-argentina-ingressos"
+    },
+    {
+      "es": "jornada-o-congreso-con-inscripcion-paga",
+      "en": "conference-paid-registration",
+      "fr": "journee-conference-inscription-payante",
+      "it": "convegno-giornata-iscrizione-a-pagamento",
+      "pt": "jornada-ou-congresso-com-inscricao-paga"
+    },
+    {
+      "es": "kermes-o-fiesta-de-la-escuela-con-bono",
+      "en": "school-fair-fundraiser-tickets",
+      "fr": "kermesse-fete-ecole-billets",
+      "it": "festa-della-scuola-con-biglietto",
+      "pt": "quermesse-ou-festa-da-escola-com-ingresso"
+    },
+    {
+      "es": "masterclass-o-clase-abierta-paga",
+      "en": "paid-masterclass-or-open-class",
+      "fr": "masterclass-payante-places-prix",
+      "it": "masterclass-lezione-aperta-a-pagamento",
+      "pt": "masterclass-ou-aula-aberta-paga"
+    },
+    {
+      "es": "me-olvide-el-celular-entrar-al-evento",
+      "en": "forgot-phone-get-into-event",
+      "fr": "oublie-telephone-entrer-evenement",
+      "it": "telefono-dimenticato-entrare-evento",
+      "pt": "esqueci-o-celular-entrar-no-evento"
+    },
+    {
+      "es": "micro-o-traslado-a-un-recital-entrada-y-viaje",
+      "en": "concert-bus-trip-ticket-and-ride",
+      "fr": "bus-vers-concert-billet-et-trajet",
+      "it": "pullman-per-concerto-biglietto-e-viaggio",
+      "pt": "excursao-de-onibus-para-show-ingresso-e-viagem"
+    },
+    {
+      "es": "muestra-de-arte-o-inauguracion-con-entrada",
+      "en": "art-exhibition-opening-tickets",
+      "fr": "vernissage-exposition-billet-reservation",
+      "it": "inaugurazione-mostra-arte-biglietto",
+      "pt": "vernissage-exposicao-de-arte-com-ingresso"
+    },
+    {
+      "es": "muestra-de-fin-de-ano-escuela-de-danza",
+      "en": "dance-school-recital-tickets",
+      "fr": "spectacle-fin-annee-ecole-danse-billets",
+      "it": "saggio-di-fine-anno-scuola-di-danza",
+      "pt": "apresentacao-de-fim-de-ano-escola-de-danca"
+    },
+    {
+      "es": "no-me-llego-la-entrada-al-mail",
+      "en": "ticket-email-not-received",
+      "fr": "billet-pas-recu-par-email",
+      "it": "biglietto-non-arrivato-email",
+      "pt": "ingresso-nao-chegou-no-email"
+    },
+    {
+      "es": "noche-de-jazz-o-ciclo-en-un-bar-con-entrada",
+      "en": "jazz-night-at-a-bar-tickets",
+      "fr": "soiree-jazz-bar-billets",
+      "it": "serata-jazz-locale-con-biglietto",
+      "pt": "noite-de-jazz-em-bar-com-ingresso"
+    },
+    {
+      "es": "noche-de-juegos-de-mesa-con-entrada",
+      "en": "board-game-night-tickets",
+      "fr": "soiree-jeux-de-societe-entree-payante",
+      "it": "serata-giochi-da-tavolo-biglietto",
+      "pt": "noite-de-jogos-de-tabuleiro-com-ingresso"
+    },
+    {
+      "es": "noche-de-open-mic-o-karaoke-entradas",
+      "en": "open-mic-or-karaoke-night-tickets",
+      "fr": "scene-ouverte-karaoke-entree",
+      "it": "serata-open-mic-karaoke-biglietto",
+      "pt": "open-mic-karaoke-ou-jam-ingresso"
+    },
+    {
+      "es": "noche-de-trivia-o-quiz-en-un-bar",
+      "en": "trivia-or-quiz-night-at-a-bar",
+      "fr": "soiree-quiz-bar-par-equipe",
+      "it": "serata-quiz-al-bar-biglietto",
+      "pt": "noite-de-quiz-em-bar-por-equipe"
+    },
+    {
+      "es": "obra-de-teatro-infantil-funciones-de-vacaciones",
+      "en": "kids-theater-holiday-shows-tickets",
+      "fr": "theatre-enfants-vacances-billetterie",
+      "it": "teatro-per-bambini-repliche-vacanze",
+      "pt": "teatro-infantil-nas-ferias-sessoes"
+    },
+    {
+      "es": "organizar-primer-evento-checklist",
+      "en": "first-event-checklist",
+      "fr": "organiser-premier-evenement-checklist",
+      "it": "organizzare-primo-evento-checklist",
+      "pt": "como-organizar-primeiro-evento-checklist"
+    },
+    {
+      "es": "para-que-sirve-el-qr-de-tu-entrada",
+      "en": "what-the-ticket-qr-code-is-for",
+      "fr": "a-quoi-sert-qr-code-billet",
+      "it": "a-cosa-serve-qr-biglietto",
+      "pt": "para-que-serve-qr-code-do-ingresso"
+    },
+    {
+      "es": "partido-a-beneficio-o-despedida-de-jugador-entradas",
+      "en": "charity-match-or-farewell-game-tickets",
+      "fr": "match-caritatif-jubile-billets",
+      "it": "partita-di-beneficenza-addio-calciatore",
+      "pt": "jogo-beneficente-ou-despedida-ingressos"
+    },
+    {
+      "es": "pena-folclorica-vender-entradas",
+      "en": "folk-music-night-pena-tickets",
+      "fr": "pena-folklorique-argentine-billets",
+      "it": "pena-folk-argentina-biglietti",
+      "pt": "pena-folclorica-argentina-ingressos"
+    },
+    {
+      "es": "permiso-para-hacer-un-evento-en-caba",
+      "en": "event-permit-buenos-aires-city",
+      "fr": "autorisation-evenement-buenos-aires",
+      "it": "permesso-evento-buenos-aires",
+      "pt": "permissao-evento-em-buenos-aires"
+    },
+    {
       "es": "poner-precio-entradas-tandas-preventa",
       "en": "how-to-price-event-tickets-early-bird",
       "fr": "fixer-prix-billets-evenement-prevente",
       "it": "prezzo-biglietti-evento-prevendita",
       "pt": "como-definir-preco-ingressos-lotes"
+    },
+    {
+      "es": "pool-party-o-fiesta-en-una-quinta-con-entrada",
+      "en": "pool-party-country-house-tickets",
+      "fr": "pool-party-maison-campagne-billets",
+      "it": "pool-party-in-villa-con-biglietto",
+      "pt": "pool-party-ou-festa-em-chacara-com-ingresso"
+    },
+    {
+      "es": "por-que-la-ticketera-pide-dni",
+      "en": "why-ticketing-platforms-ask-for-id",
+      "fr": "pourquoi-billetterie-demande-piece-identite",
+      "it": "perche-biglietteria-chiede-documento",
+      "pt": "por-que-a-plataforma-pede-documento"
+    },
+    {
+      "es": "por-que-no-se-venden-las-entradas",
+      "en": "why-event-tickets-are-not-selling",
+      "fr": "pourquoi-billets-ne-se-vendent-pas",
+      "it": "perche-non-si-vendono-i-biglietti",
+      "pt": "por-que-os-ingressos-nao-vendem"
+    },
+    {
+      "es": "presentacion-de-libro-o-disco-con-entrada",
+      "en": "book-or-album-launch-tickets",
+      "fr": "presentation-livre-album-entree-payante",
+      "it": "presentazione-libro-disco-con-biglietto",
+      "pt": "lancamento-de-livro-ou-disco-com-ingresso"
+    },
+    {
+      "es": "presupuesto-de-un-evento-chico-planilla",
+      "en": "small-event-budget-spreadsheet",
+      "fr": "budget-petit-evenement-tableur",
+      "it": "budget-piccolo-evento-foglio-di-calcolo",
+      "pt": "orcamento-de-evento-pequeno-planilha"
+    },
+    {
+      "es": "preventa-exclusiva-para-seguidores",
+      "en": "exclusive-presale-for-followers",
+      "fr": "prevente-exclusive-abonnes-code",
+      "it": "prevendita-esclusiva-per-follower",
+      "pt": "pre-venda-exclusiva-para-seguidores"
+    },
+    {
+      "es": "primera-fecha-de-tu-banda-cuantas-entradas",
+      "en": "first-band-gig-how-many-tickets",
+      "fr": "premier-concert-groupe-combien-public",
+      "it": "primo-concerto-band-quanti-biglietti",
+      "pt": "primeiro-show-da-banda-quantos-ingressos"
+    },
+    {
+      "es": "promocionar-evento-medir-ventas",
+      "en": "promote-event-and-track-ticket-sales",
+      "fr": "promouvoir-evenement-mesurer-ventes",
+      "it": "promuovere-evento-misurare-vendite",
+      "pt": "divulgar-evento-e-medir-vendas"
+    },
+    {
+      "es": "que-dia-y-horario-elegir-para-tu-evento",
+      "en": "best-day-and-time-for-your-event",
+      "fr": "choisir-jour-horaire-evenement",
+      "it": "che-giorno-e-orario-scegliere-evento",
+      "pt": "melhor-dia-e-horario-para-evento"
+    },
+    {
+      "es": "regalar-entradas-para-las-fiestas",
+      "en": "give-event-tickets-as-holiday-gift",
+      "fr": "offrir-billets-fetes-de-fin-annee",
+      "it": "regalare-biglietti-per-le-feste",
+      "pt": "dar-ingressos-de-presente-nas-festas"
+    },
+    {
+      "es": "responder-consultas-de-compradores",
+      "en": "answer-ticket-buyer-questions",
+      "fr": "repondre-questions-acheteurs-billets",
+      "it": "rispondere-domande-acquirenti-biglietti",
+      "pt": "responder-duvidas-de-compradores"
+    },
+    {
+      "es": "retiro-o-jornada-de-bienestar-con-cupo",
+      "en": "wellness-retreat-limited-spots",
+      "fr": "retraite-journee-bien-etre-places-limitees",
+      "it": "ritiro-giornata-benessere-posti-limitati",
+      "pt": "retiro-ou-vivencia-de-bem-estar-com-vagas"
+    },
+    {
+      "es": "sadaic-musica-en-un-evento",
+      "en": "music-rights-at-an-event-argentina",
+      "fr": "droits-musique-evenement-argentine-sadaic",
+      "it": "diritti-musicali-evento-argentina-sadaic",
+      "pt": "direitos-de-musica-em-evento-argentina-sadaic"
+    },
+    {
+      "es": "salida-de-trekking-o-excursion-con-cupo",
+      "en": "hiking-trip-limited-spots-tickets",
+      "fr": "randonnee-excursion-places-limitees",
+      "it": "escursione-trekking-posti-limitati",
+      "pt": "trilha-ou-passeio-de-um-dia-com-vagas"
+    },
+    {
+      "es": "show-infantil-entrada-de-chicos-y-adultos",
+      "en": "kids-show-tickets-children-and-adults",
+      "fr": "spectacle-enfants-billets-enfants-adultes",
+      "it": "spettacolo-bambini-biglietto-adulti",
+      "pt": "show-infantil-ingresso-crianca-e-adulto"
+    },
+    {
+      "es": "stand-up-o-show-de-comedia-vender-entradas",
+      "en": "sell-stand-up-comedy-tickets",
+      "fr": "stand-up-bar-places-tables-partage",
+      "it": "stand-up-comedy-al-bar-biglietti",
+      "pt": "show-de-stand-up-em-bar-ingressos"
+    },
+    {
+      "es": "taller-o-colonia-de-verano-con-inscripcion-por-semana",
+      "en": "summer-camp-weekly-registration",
+      "fr": "centre-de-loisirs-ete-inscription-semaine",
+      "it": "centro-estivo-iscrizione-settimanale",
+      "pt": "colonia-de-ferias-inscricao-por-semana"
+    },
+    {
+      "es": "torneo-de-padel-o-futbol-5-con-inscripcion",
+      "en": "padel-or-five-a-side-tournament-registration",
+      "fr": "tournoi-padel-foot-a-5-inscription",
+      "it": "torneo-padel-calcetto-iscrizione",
+      "pt": "torneio-de-padel-ou-futebol-society-inscricao"
+    },
+    {
+      "es": "torneo-gamer-evento-de-videojuegos-entradas",
+      "en": "gaming-tournament-event-tickets",
+      "fr": "tournoi-jeux-video-billets-joueurs-public",
+      "it": "torneo-videogiochi-biglietti-giocatori-pubblico",
+      "pt": "campeonato-gamer-ingresso-jogador-e-publico"
+    },
+    {
+      "es": "transferir-entrada-a-otra-persona",
+      "en": "transfer-ticket-to-someone-else",
+      "fr": "transferer-billet-autre-personne",
+      "it": "trasferire-biglietto-altra-persona",
+      "pt": "transferir-ingresso-para-outra-pessoa"
+    },
+    {
+      "es": "vacaciones-de-invierno-vender-entradas",
+      "en": "winter-holiday-event-ticket-sales",
+      "fr": "vacances-hiver-billets-par-seance",
+      "it": "vacanze-invernali-vendere-biglietti",
+      "pt": "ferias-de-inverno-vender-ingressos"
+    },
+    {
+      "es": "vender-entradas-con-mercado-pago",
+      "en": "sell-event-tickets-with-mercado-pago",
+      "fr": "vendre-billets-avec-mercado-pago",
+      "it": "vendere-biglietti-con-mercado-pago",
+      "pt": "vender-ingressos-com-mercado-pago"
+    },
+    {
+      "es": "vender-entradas-en-diciembre-aguinaldo-y-fiestas",
+      "en": "selling-tickets-in-december-argentina",
+      "fr": "vendre-billets-en-decembre-fetes",
+      "it": "vendere-biglietti-a-dicembre-tredicesima",
+      "pt": "vender-ingressos-em-dezembro"
+    },
+    {
+      "es": "vender-entradas-en-enero-y-febrero-temporada",
+      "en": "selling-tickets-in-january-and-february",
+      "fr": "vendre-billets-janvier-fevrier-ete-austral",
+      "it": "vendere-biglietti-gennaio-febbraio-estate",
+      "pt": "vender-ingressos-em-janeiro-e-fevereiro"
+    },
+    {
+      "es": "vender-entradas-en-la-puerta",
+      "en": "selling-tickets-at-the-door",
+      "fr": "vendre-billets-sur-place-ou-prevente",
+      "it": "vendere-biglietti-alla-porta",
+      "pt": "vender-ingressos-na-porta"
+    },
+    {
+      "es": "vender-entradas-milonga-clase-de-baile",
+      "en": "sell-tickets-milonga-or-dance-class",
+      "fr": "billets-milonga-cours-de-danse",
+      "it": "biglietti-milonga-lezioni-di-ballo",
+      "pt": "vender-ingressos-milonga-aula-de-danca"
+    },
+    {
+      "es": "vender-entradas-por-instagram-y-whatsapp",
+      "en": "sell-tickets-on-instagram-and-whatsapp",
+      "fr": "vendre-billets-instagram-whatsapp",
+      "it": "vendere-biglietti-instagram-whatsapp",
+      "pt": "vender-ingressos-pelo-instagram-e-whatsapp"
+    },
+    {
+      "es": "vender-entradas-recital-en-un-bar",
+      "en": "sell-tickets-for-a-gig-at-a-bar",
+      "fr": "vendre-billets-concert-dans-un-bar",
+      "it": "vendere-biglietti-concerto-in-un-locale",
+      "pt": "vender-ingressos-show-em-bar"
+    },
+    {
+      "es": "vender-entradas-teatro-independiente",
+      "en": "sell-tickets-independent-theater",
+      "fr": "billetterie-theatre-independant",
+      "it": "vendere-biglietti-teatro-indipendente",
+      "pt": "vender-ingressos-teatro-independente"
+    },
+    {
+      "es": "visita-guiada-con-cupo-por-horario",
+      "en": "guided-tour-time-slot-tickets",
+      "fr": "visite-guidee-places-par-creneau",
+      "it": "visita-guidata-posti-per-fascia-oraria",
+      "pt": "visita-guiada-com-vagas-por-horario"
     }
   ]
 }

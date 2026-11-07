@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="color-scheme" content="dark" />
+  <title>Event Access Control: How It Works on the Day | ENTRÁ</title>
+  <meta name="description" content="What you need at the door, what the person scanning sees, what the system rejects and why, and how to handle missing QR codes, signal drops and multi-day events." />
+  <link rel="canonical" href="https://www.entratickets.com/en/blog/event-day-access-control" />
+  <!-- hreflang:inicio (lo escribe scripts/blog-i18n.mjs, no tocar a mano) -->
+  <link rel="alternate" hreflang="es-AR" href="https://www.entratickets.com/blog/control-de-acceso-dia-del-evento" />
+  <link rel="alternate" hreflang="en" href="https://www.entratickets.com/en/blog/event-day-access-control" />
+  <link rel="alternate" hreflang="pt" href="https://www.entratickets.com/pt/blog/controle-de-acesso-no-dia-do-evento" />
+  <link rel="alternate" hreflang="fr" href="https://www.entratickets.com/fr/blog/controle-acces-jour-evenement" />
+  <link rel="alternate" hreflang="it" href="https://www.entratickets.com/it/blog/controllo-accessi-giorno-evento" />
+  <link rel="alternate" hreflang="x-default" href="https://www.entratickets.com/blog/control-de-acceso-dia-del-evento" />
+  <!-- hreflang:fin -->
+  <link rel="icon" type="image/png" href="/pwa-192.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="stylesheet" href="/blog.css" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="ENTRÁ" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:title" content="How access control works on the day of the event" />
+  <meta property="og:description" content="What you need at the door, what the person scanning sees, what the system rejects and why, and how to handle missing QR codes, signal drops and multi-day events." />
+  <meta property="og:url" content="https://www.entratickets.com/en/blog/event-day-access-control" />
+  <meta property="og:image" content="https://www.entratickets.com/og-image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "How access control works on the day of the event",
+  "description": "What you need at the door, what the person scanning sees, what the system rejects and why, and how to handle missing QR codes, signal drops and multi-day events.",
+  "inLanguage": "en",
+  "datePublished": "2026-07-30",
+  "dateModified": "2026-11-06",
+  "author": {
+    "@type": "Organization",
+    "name": "SOMOS DER",
+    "url": "https://somosder.ar"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "ENTRÁ",
+    "url": "https://www.entratickets.com/",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Buenos Aires",
+      "addressCountry": "AR"
+    }
+  },
+  "mainEntityOfPage": "https://www.entratickets.com/en/blog/event-day-access-control",
+  "image": "https://www.entratickets.com/og-image.png",
+  "isBasedOn": "https://www.entratickets.com/blog/control-de-acceso-dia-del-evento"
+}
+  </script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What do I need to control entry to my event?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "A phone with a camera and an account enabled for access control, with the event selected before the audience arrives. You don't need to buy scanners or install anything special: tickets are scanned from the phone's browser. What you do need is one person dedicated only to scanning and another who can sort out the odd cases off to the side, without holding up the line."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What happens if someone tries to get in with a ticket that was already used?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The scanner rejects it with a red message saying it was already used, and shows whose name it is in and how long ago they got in. That detail settles the argument at the door: if the entry was two minutes ago, someone passed the QR screenshot around; if it was two hours ago, the person is already inside. Every rejected attempt is logged in the event history."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How does someone who bought a ticket but doesn't have the QR at hand get in?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "From the same control screen you can search for the purchase by name, email or ID number (DNI), see the status of the ticket and validate it right there. That is why it is worth asking your audience to bring their DNI: it is the fastest way to sort out someone whose battery died, who deleted the email or who bought for someone else."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can access be controlled without internet at the door?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Access control saves entries on the phone as soon as you scan and syncs them with the server when the connection comes back, so the line doesn't stop because of a signal drop. The same ticket scanned twice on that phone is still rejected, because its status is marked locally. Even so, backup mobile data is a good idea, especially if there is more than one check point."
+      }
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-in">
+      <a class="word" href="/">ENTR<b>Á</b></a>
+      <a class="btn btn-ghost" href="/en/blog">Blog</a>
+    </div>
+  </header>
+  <!-- idiomas:inicio (lo escribe scripts/blog-i18n.mjs, no tocar a mano) -->
+  <nav class="wrap idiomas" aria-label="Idioma" style="padding-top:14px;font-size:.85rem;opacity:.85;display:flex;gap:.9rem;flex-wrap:wrap;"><a href="/blog/control-de-acceso-dia-del-evento" hreflang="es-AR" lang="es">Español</a> <b lang="en">English</b> <a href="/pt/blog/controle-de-acesso-no-dia-do-evento" hreflang="pt" lang="pt">Português</a> <a href="/fr/blog/controle-acces-jour-evenement" hreflang="fr" lang="fr">Français</a> <a href="/it/blog/controllo-accessi-giorno-evento" hreflang="it" lang="it">Italiano</a></nav>
+  <!-- idiomas:fin -->
+
+  <div class="wrap">
+    <article>
+      <p class="kicker">Guide for organizers</p>
+      <h1>How access control works on the day of the event</h1>
+      <p class="meta">By SOMOS DER · July 30, 2026 · 6 min read</p>
+
+      <p class="lead">Ticket sales take weeks. The door is decided in two hours, and it is the only moment your whole audience sees you at work. This guide covers those two hours: what you need, what the person scanning sees and what to do with the cases that always come up.</p>
+
+      <p class="pais" style="font-size:.95rem;opacity:.9;border-left:3px solid rgba(255,255,255,.25);padding-left:.9rem;">A note before you start: <b>ENTRÁ is an Argentine ticketing platform</b>. It sells tickets for events held in Argentina, priced in Argentine pesos (ARS). What this guide says applies to most events; when it describes how ENTRÁ works, it means in Argentina.</p>
+
+<h2>1. What you need at the door</h2>
+      <ul>
+        <li><b>A phone with a camera</b> per check point. No need to buy scanners: tickets are scanned from the phone's browser.</li>
+        <li><b>An account enabled</b> for access control, signed in <b>before</b> the audience arrives.</li>
+        <li><b>The event selected</b> on the control screen. If you have several events, picking it is the first step.</li>
+        <li><b>Battery and data.</b> Obvious, and yet it is what fails most. Bring a power bank.</li>
+        <li><b>One person</b> dedicated only to scanning, and another who sorts out the odd cases off to the side.</li>
+      </ul>
+      <p>That last point is not a luxury: it is the difference between a line that moves and a line that stalls because the person scanning started investigating a case.</p>
+
+      <h2>2. What the person scanning sees</h2>
+      <p>You point the camera at the QR and the answer appears right away, big and in color:</p>
+      <ul>
+        <li><b>Green:</b> entry allowed, with the <b>name</b> of the buyer and the <b>ticket type</b>. That detail matters: if the type says VIP, that person goes to the VIP area.</li>
+        <li><b>Red:</b> denied, with the reason written out.</li>
+      </ul>
+      <p>After each scan there is a short pause before the next code is accepted. It sounds like a detail, but it avoids the classic problem of the camera reading the same QR three times while the person is still putting their phone away.</p>
+
+      <h2>3. What the system rejects, and why</h2>
+      <ul>
+        <li><b>Ticket already used.</b> The most common case and the one that saves you the most money. It shows whose name it is in and <b>how long ago they got in</b>: if it was two minutes ago, someone passed the screenshot around; if it was two hours ago, that person is already inside.</li>
+        <li><b>Ticket for another event.</b> It happens more than you would think with people going to several things on the same weekend.</li>
+        <li><b>Cancelled or refunded ticket.</b> If you refunded it, the QR stops working.</li>
+        <li><b>Code that does not exist.</b> That is where made up QR codes and edited screenshots end up.</li>
+      </ul>
+      <p>Every attempt, allowed or rejected, is logged with its time. When the event is over you have the full history: how many people got in, at what time and how many rejections there were. That log is what turns an argument into a fact.</p>
+
+      <h2>4. The person who bought but doesn't have the QR</h2>
+      <p>It always happens: their battery died, they deleted the email, their sister bought the ticket. From the same control screen you can <b>search for the purchase by name, email or ID number (DNI, the Argentine national ID)</b>, see the status of that ticket and validate it right there.</p>
+      <p>That is why, in all your communication, you should ask for just one thing: <b>bring your DNI</b>. It turns a ten minute problem into a ten second one.</p>
+      <p>You can also <b>type the code in by hand</b> when the buyer's screen is broken, scratched or so dim the camera can't pick it up.</p>
+
+      <h2>5. If the internet goes down</h2>
+      <p>Signal at the door of an event is bad by definition: lots of people, little coverage, a warehouse. Access control is designed for that: when you scan, the entry <b>is saved on the phone instantly</b> and synced with the server when the connection comes back. The line doesn't stop.</p>
+      <p>With an honest caveat worth understanding: while there is no connection, <b>each phone only knows what it scanned itself</b>. If you have two check points and the network goes down, the same ticket could get through both. For events with several check points, backup mobile data is not optional.</p>
+
+      <h2>6. Multi-day events</h2>
+      <p>If you set up the event with separate days, tickets are validated per day: the system checks that <b>today</b> is a day that ticket is valid for and allows <b>one entry per day</b>. If someone tries again the same day, it rejects them; if they come back the next day and their ticket covers it, they get in.</p>
+      <p>And if they try to get in on a day their ticket doesn't cover, the message tells them which days it is valid for, so the person at the door doesn't have to look it up anywhere.</p>
+
+      <h2>7. How many people to put at the door</h2>
+      <p>A clean scan takes a few seconds, but the real line is not set by the scanner: it is set by the people who arrive without the QR open. To know how many check points to open, time how long it takes one person to get through your door and do the math with the number of people you expect at peak time: if everyone arrives at once, as at a show with a set time for the band, you will need more than if arrivals are staggered. The step by step is in <a href="/en/blog/how-many-door-staff-for-an-event">how many people to put at the door of an event</a>.</p>
+      <p>And always add one more person than you think you need, without a phone in hand, for the odd cases.</p>
+
+      <h2>Door checklist</h2>
+      <ul>
+        <li>Signed in and event selected <b>before</b> opening.</li>
+        <li>A power bank for each phone.</li>
+        <li>Someone who can sort things out off to the side, out of the line.</li>
+        <li>A message to the audience: <b>bring your DNI</b> and have the QR open before you arrive.</li>
+        <li>A rule decided in advance for the "ticket already used" rejection.</li>
+      </ul>
+
+      <h2>Frequently asked questions</h2>
+      <details open>
+        <summary>What do I need to control entry to my event?</summary>
+        <p>A phone with a camera and an account enabled for access control, with the event selected before the audience arrives. You don't need to buy scanners or install anything special: tickets are scanned from the phone's browser. What you do need is one person dedicated only to scanning and another who can sort out the odd cases off to the side, without holding up the line.</p>
+      </details>
+      <details>
+        <summary>What happens if someone tries to get in with a ticket that was already used?</summary>
+        <p>The scanner rejects it with a red message saying it was already used, and shows whose name it is in and how long ago they got in. That detail settles the argument at the door: if the entry was two minutes ago, someone passed the QR screenshot around; if it was two hours ago, the person is already inside. Every rejected attempt is logged in the event history.</p>
+      </details>
+      <details>
+        <summary>How does someone who bought a ticket but doesn't have the QR at hand get in?</summary>
+        <p>From the same control screen you can search for the purchase by name, email or ID number (DNI), see the status of the ticket and validate it right there. That is why it is worth asking your audience to bring their DNI: it is the fastest way to sort out someone whose battery died, who deleted the email or who bought for someone else.</p>
+      </details>
+      <details>
+        <summary>Can access be controlled without internet at the door?</summary>
+        <p>Yes. Access control saves entries on the phone as soon as you scan and syncs them with the server when the connection comes back, so the line doesn't stop because of a signal drop. The same ticket scanned twice on that phone is still rejected, because its status is marked locally. Even so, backup mobile data is a good idea, especially if there is more than one check point.</p>
+      </details>
+
+      <div class="cta">
+        <h2>Run the door with ENTRÁ</h2>
+        <p>Phone scanner, duplicate rejection showing when the ticket was used, search by name or ID number and a log of everything that happened at the door.</p>
+        <a class="btn btn-primary" href="https://wa.me/5491171540675?text=Hi%21%20I%20read%20the%20ENTR%C3%81%20guide%20on%20access%20control%20on%20the%20day%20of%20the%20event%20and%20I%20want%20to%20know%20how%20it%20works%20for%20an%20event%20in%20Argentina.">Ask us on WhatsApp</a>
+      </div>
+
+      <div class="more">
+        <p class="kicker">Keep reading</p>
+        <a href="/en/blog/prevent-fake-duplicate-tickets-at-the-door">How to stop fake and duplicate tickets at the door →</a>
+        <a href="/en/blog/event-access-control-without-internet">Access control without internet: what happens if the signal drops →</a>
+        <a href="/en/blog">All guides in English →</a>
+      </div>
+
+      <div class="ecosistema" style="margin-top:2rem;padding-top:1.25rem;border-top:1px solid rgba(255,255,255,.12);font-size:.95rem;line-height:1.65;opacity:.9;">
+        <p>ENTRÁ was not built by a software company: it was built by <a href="https://somosder.ar">SOMOS DER</a>, an event production company in Buenos Aires that knows where events break. That is why the numbers are visible on every sale.</p>
+      </div>
+    </article>
+  </div>
+
+  <footer>
+    <div class="wrap foot-in">
+      <a class="word" href="/" style="font-size:1.1rem;">ENTR<b>Á</b></a>
+      <span>Ticketing with access control · by <a href="https://somosder.ar">SOMOS DER</a>, Buenos Aires, Argentina · also <a href="https://pase.somosder.ar">PASE</a> (accreditation) and <a href="https://laburo.somosder.ar">LABURO</a> (event staff)</span>
+      <a href="/">Home →</a>
+    </div>
+    <div class="wrap" style="padding-top:12px;font-size:.8rem;opacity:.85">Desarrollo: <a href="https://hito.agency">hito.agency</a></div>
+  </footer>
+</body>
+</html>

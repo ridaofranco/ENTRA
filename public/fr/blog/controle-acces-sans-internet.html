@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="color-scheme" content="dark" />
+  <title>Contrôle d’accès sans internet : si le réseau tombe | ENTRÁ</title>
+  <meta name="description" content="Le réseau tombe à l’entrée de votre événement : ce que fait le scanner d’ENTRÁ sans connexion, sa vraie limite avec plusieurs postes et le plan B à prévoir." />
+  <link rel="canonical" href="https://www.entratickets.com/fr/blog/controle-acces-sans-internet" />
+  <!-- hreflang:inicio (lo escribe scripts/blog-i18n.mjs, no tocar a mano) -->
+  <link rel="alternate" hreflang="es-AR" href="https://www.entratickets.com/blog/control-de-acceso-sin-internet" />
+  <link rel="alternate" hreflang="en" href="https://www.entratickets.com/en/blog/event-access-control-without-internet" />
+  <link rel="alternate" hreflang="pt" href="https://www.entratickets.com/pt/blog/controle-de-acesso-sem-internet" />
+  <link rel="alternate" hreflang="fr" href="https://www.entratickets.com/fr/blog/controle-acces-sans-internet" />
+  <link rel="alternate" hreflang="it" href="https://www.entratickets.com/it/blog/controllo-accessi-senza-internet" />
+  <link rel="alternate" hreflang="x-default" href="https://www.entratickets.com/blog/control-de-acceso-sin-internet" />
+  <!-- hreflang:fin -->
+  <link rel="icon" type="image/png" href="/pwa-192.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="stylesheet" href="/blog.css" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="ENTRÁ" />
+  <meta property="og:locale" content="fr_FR" />
+  <meta property="og:title" content="Contrôle d’accès sans internet : que se passe-t-il si le réseau tombe à l’entrée" />
+  <meta property="og:description" content="Le réseau tombe à l’entrée de votre événement : ce que fait le scanner d’ENTRÁ sans connexion, sa vraie limite avec plusieurs postes et le plan B à prévoir." />
+  <meta property="og:url" content="https://www.entratickets.com/fr/blog/controle-acces-sans-internet" />
+  <meta property="og:image" content="https://www.entratickets.com/og-image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Contrôle d’accès sans internet : que se passe-t-il si le réseau tombe à l’entrée",
+  "description": "Le réseau tombe à l’entrée de votre événement : ce que fait le scanner d’ENTRÁ sans connexion, sa vraie limite avec plusieurs postes et le plan B à prévoir.",
+  "inLanguage": "fr",
+  "datePublished": "2026-10-29",
+  "dateModified": "2026-11-06",
+  "author": {
+    "@type": "Organization",
+    "name": "SOMOS DER",
+    "url": "https://somosder.ar"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "ENTRÁ",
+    "url": "https://www.entratickets.com/",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Buenos Aires",
+      "addressCountry": "AR"
+    }
+  },
+  "mainEntityOfPage": "https://www.entratickets.com/fr/blog/controle-acces-sans-internet",
+  "image": "https://www.entratickets.com/og-image.png",
+  "isBasedOn": "https://www.entratickets.com/blog/control-de-acceso-sin-internet"
+}
+  </script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Le scanner d’ENTRÁ fonctionne-t-il sans internet ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oui. Le scanner continue de valider avec les données de l’événement que le téléphone avait déjà téléchargées, marque chaque billet comme utilisé sur le moment et enregistre les entrées sur le téléphone. Quand la connexion revient, tout se synchronise seul avec le tableau de bord."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Un même billet peut-il entrer deux fois s’il n’y a pas de réseau ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sur un même téléphone, non : le deuxième scan le voit comme utilisé même sans internet. Avec deux postes qui travaillent en même temps sans connexion, oui, c’est possible, car chaque téléphone ne connaît que ce qu’il a scanné. À la reconnexion, le tableau de bord de l’événement montre quels billets sont passés deux fois et par quel poste."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Comment savoir que le scanner travaille sans connexion ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Un bandeau jaune s’affiche en haut du scanner : il indique qu’il n’y a pas de connexion et que vous validez avec les données déjà chargées. Le même bandeau explique la limite des postes multiples et affiche le nom du poste de ce téléphone."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Quel plan B prévoir à l’entrée ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "La liste des participants exportée en CSV depuis le tableau de bord avant de partir, un deuxième téléphone avec le scanner ouvert et des données mobiles d’un autre opérateur pour partager la connexion. Ainsi, même si un téléphone ou le réseau lâche, l’entrée continue de fonctionner."
+      }
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-in">
+      <a class="word" href="/">ENTR<b>Á</b></a>
+      <a class="btn btn-ghost" href="/fr/blog">Blog</a>
+    </div>
+  </header>
+  <!-- idiomas:inicio (lo escribe scripts/blog-i18n.mjs, no tocar a mano) -->
+  <nav class="wrap idiomas" aria-label="Idioma" style="padding-top:14px;font-size:.85rem;opacity:.85;display:flex;gap:.9rem;flex-wrap:wrap;"><a href="/blog/control-de-acceso-sin-internet" hreflang="es-AR" lang="es">Español</a> <a href="/en/blog/event-access-control-without-internet" hreflang="en" lang="en">English</a> <a href="/pt/blog/controle-de-acesso-sem-internet" hreflang="pt" lang="pt">Português</a> <b lang="fr">Français</b> <a href="/it/blog/controllo-accessi-senza-internet" hreflang="it" lang="it">Italiano</a></nav>
+  <!-- idiomas:fin -->
+
+  <div class="wrap">
+    <article>
+      <p class="kicker">Guide pour les organisateurs</p>
+      <h1>Contrôle d’accès sans internet : que se passe-t-il si le réseau tombe à l’entrée</h1>
+      <p class="meta">Par SOMOS DER · 29 octobre 2026 · 6 min de lecture</p>
+
+      <p class="lead">Une cave, un hangar aux murs épais, un terrain en périphérie ou simplement cinq cents personnes le téléphone à la main en même temps : le réseau tombe pile quand la file se forme. Si votre contrôle d’accès dépend d’internet, l’entrée se bloque. Voici ce que fait le scanner d’ENTRÁ quand il n’y a pas de connexion, quelle est sa vraie limite et quel plan B il vaut mieux prévoir quand même.</p>
+
+      <p class="pais" style="font-size:.95rem;opacity:.9;border-left:3px solid rgba(255,255,255,.25);padding-left:.9rem;">Avant de commencer : <b>ENTRÁ est une billetterie en ligne argentine</b>. Elle vend des billets pour des événements organisés en Argentine, en pesos argentins (ARS). Les conseils de ce guide valent partout ; quand il décrit le fonctionnement d’ENTRÁ, il parle de l’Argentine.</p>
+
+      <h2>Ce que fait le scanner quand internet coupe</h2>
+      <p>Le scanner d’ENTRÁ <b>continue de valider sans connexion</b>. Voici comment :</p>
+      <ul>
+        <li><b>Il valide à partir de ce qu’il a déjà téléchargé.</b> Quand vous choisissez l’événement avec internet, le téléphone enregistre les billets dans sa mémoire. Sans réseau, chaque QR est cherché là.</li>
+        <li><b>Il marque le billet comme utilisé immédiatement.</b> Le message d’entrée s’affiche sans attendre le serveur, et si quelqu’un repasse le même QR sur ce téléphone, il obtient « DENEGADO · YA UTILIZADO » (refusé, déjà utilisé).</li>
+        <li><b>Il enregistre chaque entrée sur le téléphone</b>, y compris les tentatives refusées, et les <b>synchronise tout seul</b> quand la connexion revient. Vous n’avez rien à faire.</li>
+        <li><b>La recherche par personne utilise aussi les données téléchargées</b> : si quelqu’un arrive sans son QR, vous le cherchez par nom de famille, numéro de pièce d’identité ou e-mail et vous validez depuis là.</li>
+      </ul>
+      <p>Tant qu’il n’y a pas de réseau, un <b>bandeau jaune</b> s’affiche en haut du scanner pour signaler l’absence de connexion et le fait que vous validez avec les données déjà chargées. La personne à l’entrée sait ainsi dans quel mode elle travaille.</p>
+
+      <h2>La limite à connaître : plusieurs postes en même temps</h2>
+      <p>C’est le point important, et le bandeau lui-même le dit : tant qu’il n’y a pas d’internet, <b>chaque téléphone ne connaît que les entrées qu’il a scannées</b>. Avec une seule entrée, rien ne change. Mais si deux postes travaillent en même temps et perdent tous les deux le réseau, un même billet (par exemple une capture d’écran partagée) pourrait passer une fois à chaque poste, parce que les deux téléphones ne communiquent plus.</p>
+      <p>L’empêcher sans réseau n’est pas possible. Ce que fait ENTRÁ, c’est ne pas perdre la trace :</p>
+      <ul>
+        <li>Chaque téléphone a un <b>nom de poste</b> que vous saisissez en haut du scanner (« Puerta 1 », « VIP », « Prensa »).</li>
+        <li>Chaque entrée est <b>signée avec ce poste</b>.</li>
+        <li>À la reconnexion, <b>le tableau de bord de l’événement signale les billets passés deux fois</b> et par quels postes.</li>
+      </ul>
+      <p>En pratique : si vous savez que le lieu capte mal, le plus sûr est <b>une seule file par téléphone pour chaque type de billet</b>, ou de garder au moins un des postes connecté. Pour en savoir plus sur les doublons, voyez <a href="/fr/blog/eviter-faux-billets-doublons-entree">comment éviter les faux billets et les doublons à l’entrée</a>.</p>
+
+      <h2>Avant d’ouvrir les portes : ce qui doit se faire avec du réseau</h2>
+      <p>Comme le scanner travaille avec ce qu’il a déjà téléchargé, certaines choses se font de préférence quand vous avez encore internet :</p>
+      <ul>
+        <li><b>Ouvrez le scanner et choisissez l’événement</b> sur chaque téléphone qui ira à l’entrée, avec connexion. C’est là que les billets se chargent.</li>
+        <li><b>Donnez un nom à chaque poste</b>, pour que le registre indique par où chacun est entré.</li>
+        <li><b>Testez un QR</b> sur chaque téléphone avant l’arrivée du public.</li>
+        <li><b>Pensez aux ventes de dernière minute.</b> Un téléphone sans réseau ne sait rien de ce qui a été vendu ou remboursé après sa dernière connexion. Si vous continuez à vendre pendant l’événement, c’est une raison de plus pour garder un poste avec des données mobiles.</li>
+      </ul>
+      <p>Le reste de la préparation de l’entrée (personnel, files, horaires) se trouve dans <a href="/fr/blog/controle-acces-jour-evenement">le contrôle d’accès le jour de l’événement</a>.</p>
+
+      <h2>Le plan B pratique</h2>
+      <p>Le mode hors connexion couvre la chute du réseau. Il ne couvre pas une batterie à plat, un écran cassé ou une session fermée par erreur. Pour cela, prévoyez :</p>
+      <ul>
+        <li><b>La liste des participants en CSV.</b> Depuis le tableau de bord de l’événement, vous exportez la liste : nom, e-mail, numéro de pièce d’identité, téléphone, type de billet, origine (achat ou invitation), code du billet et état du check-in. Téléchargez-la avant de partir et gardez-la sur un téléphone ou un ordinateur, ou imprimez-la. Si tout le reste lâche, vous cherchez la personne par nom ou pièce d’identité et vous la cochez à la main. Ensuite, avec du réseau, vous validez ces billets depuis la recherche par personne pour que le registre soit complet.</li>
+        <li><b>Des données mobiles d’un autre opérateur.</b> Si le réseau du lieu ou votre opérateur tombe, un téléphone avec une autre ligne peut partager sa connexion avec les autres. Parfois, il suffit de s’éloigner de la zone la plus bondée pour retrouver du réseau et synchroniser.</li>
+        <li><b>Plus d’un téléphone.</b> Un de secours avec le scanner déjà ouvert et l’événement choisi, chargé à 100 %. Et un chargeur ou une batterie externe par poste.</li>
+        <li><b>Une personne qui sait utiliser la recherche.</b> La file des « mon QR n’arrive pas » ou « je l’ai effacé » avance vite si quelqu’un cherche par nom de famille ou pièce d’identité pendant que les autres scannent.</li>
+      </ul>
+      <p>Si votre événement est en plein air ou sur un grand terrain, là où le réseau est le premier problème, le guide sur <a href="/fr/blog/festival-pass-ou-billet-journee">le pass festival ou le billet à la journée</a> couvre une autre partie de l’organisation.</p>
+
+      <h2>Questions fréquentes</h2>
+      <details open>
+        <summary>Le scanner d’ENTRÁ fonctionne-t-il sans internet ?</summary>
+        <p>Oui. Le scanner continue de valider avec les données de l’événement que le téléphone avait déjà téléchargées, marque chaque billet comme utilisé sur le moment et enregistre les entrées sur le téléphone. Quand la connexion revient, tout se synchronise seul avec le tableau de bord.</p>
+      </details>
+      <details>
+        <summary>Un même billet peut-il entrer deux fois s’il n’y a pas de réseau ?</summary>
+        <p>Sur un même téléphone, non : le deuxième scan le voit comme utilisé même sans internet. Avec deux postes qui travaillent en même temps sans connexion, oui, c’est possible, car chaque téléphone ne connaît que ce qu’il a scanné. À la reconnexion, le tableau de bord de l’événement montre quels billets sont passés deux fois et par quel poste.</p>
+      </details>
+      <details>
+        <summary>Comment savoir que le scanner travaille sans connexion ?</summary>
+        <p>Un bandeau jaune s’affiche en haut du scanner : il indique qu’il n’y a pas de connexion et que vous validez avec les données déjà chargées. Le même bandeau explique la limite des postes multiples et affiche le nom du poste de ce téléphone.</p>
+      </details>
+      <details>
+        <summary>Quel plan B prévoir à l’entrée ?</summary>
+        <p>La liste des participants exportée en CSV depuis le tableau de bord avant de partir, un deuxième téléphone avec le scanner ouvert et des données mobiles d’un autre opérateur pour partager la connexion. Ainsi, même si un téléphone ou le réseau lâche, l’entrée continue de fonctionner.</p>
+      </details>
+
+      <div class="cta">
+        <h2>Un scanner qui continue sans réseau</h2>
+        <p>Le scanner d’ENTRÁ valide hors connexion, enregistre chaque entrée avec le nom du poste et synchronise tout au retour du réseau. Pour un événement en Argentine dans un lieu mal couvert, écrivez-nous.</p>
+        <a class="btn btn-primary" href="https://wa.me/5491171540675?text=Bonjour%20%21%20J%E2%80%99ai%20lu%20le%20guide%20d%E2%80%99ENTR%C3%81%20sur%20le%20contr%C3%B4le%20d%E2%80%99acc%C3%A8s%20sans%20internet%20et%20je%20voudrais%20savoir%20comment%20%C3%A7a%20marche%20pour%20un%20%C3%A9v%C3%A9nement%20en%20Argentine.">Nous écrire sur WhatsApp</a>
+      </div>
+
+      <div class="more">
+        <p class="kicker">À lire aussi</p>
+        <a href="/fr/blog/controle-acces-jour-evenement">Contrôle d’accès le jour de l’événement : organiser l’entrée →</a>
+        <a href="/fr/blog/eviter-faux-billets-doublons-entree">Éviter les faux billets et les doublons à l’entrée →</a>
+        <a href="/fr/blog">Tous les guides en français →</a>
+      </div>
+
+      <div class="ecosistema" style="margin-top:2rem;padding-top:1.25rem;border-top:1px solid rgba(255,255,255,.12);font-size:.95rem;line-height:1.65;opacity:.9;">
+        <p>ENTRÁ n’a pas été créée par un éditeur de logiciels, mais par <a href="https://somosder.ar">SOMOS DER</a>, une agence de production d’événements de Buenos Aires lassée de payer des commissions qu’elle ne comprenait pas. C’est pour ça que le chiffre est visible à chaque vente, et pas caché dans le relevé de fin de mois.</p>
+      </div>
+    </article>
+  </div>
+
+  <footer>
+    <div class="wrap foot-in">
+      <a class="word" href="/" style="font-size:1.1rem;">ENTR<b>Á</b></a>
+      <span>Billetterie avec contrôle d’accès · par <a href="https://somosder.ar">SOMOS DER</a>, Buenos Aires, Argentine · aussi <a href="https://pase.somosder.ar">PASE</a> (accréditation) et <a href="https://laburo.somosder.ar">LABURO</a> (personnel événementiel)</span>
+      <a href="/">Accueil →</a>
+    </div>
+    <div class="wrap" style="padding-top:12px;font-size:.8rem;opacity:.85">Desarrollo: <a href="https://hito.agency">hito.agency</a></div>
+  </footer>
+</body>
+</html>
