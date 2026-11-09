@@ -185,6 +185,7 @@ Sitio: https://www.entratickets.com
 - [Entrada original o falsa: cómo saberlo antes de comprar de reventa](https://www.entratickets.com/blog/entrada-original-o-falsa-reventa)
 - [Cómo transferir tu entrada a otra persona sin riesgo](https://www.entratickets.com/blog/transferir-entrada-a-otra-persona)
 - [Cómo vender entradas con Mercado Pago para tu evento](https://www.entratickets.com/blog/vender-entradas-con-mercado-pago)
+- [Cargo por servicio en una entrada: qué es y cuándo lo tenés que ver](https://www.entratickets.com/blog/cargo-por-servicio-en-una-entrada)
 - [Cómo facturar la venta de entradas de un evento si sos monotributista](https://www.entratickets.com/blog/facturar-venta-de-entradas-monotributista)
 - [Cortesías e invitaciones: cuántas dar y cómo controlarlas](https://www.entratickets.com/blog/cortesias-invitaciones-evento-cuantas-dar)
 - [Cómo elegir una ticketera: qué mirar de las comisiones](https://www.entratickets.com/blog/como-elegir-ticketera-comisiones)
@@ -205,6 +206,7 @@ Sitio: https://www.entratickets.com
 ENTRÁ is an Argentine ticketing platform: it sells tickets for events held in Argentina, priced in Argentine pesos. These guides are native versions of notes from the Spanish blog, for readers in English, Portuguese, French and Italian.
 
 ### English (https://www.entratickets.com/en/blog)
+- [Ticket service fee: what it is and when you should see it](https://www.entratickets.com/en/blog/ticket-service-fee-explained)
 - [A bus to a concert or festival in another city: how to sell the trip](https://www.entratickets.com/en/blog/concert-bus-trip-ticket-and-ride)
 - [A town festival or patron saint festival with tickets: what to charge for and what not](https://www.entratickets.com/en/blog/town-festival-patron-saint-tickets)
 - [Anime or cosplay convention: passes, minors, contest and queues](https://www.entratickets.com/en/blog/sell-tickets-anime-cosplay-convention)
@@ -325,6 +327,7 @@ ENTRÁ is an Argentine ticketing platform: it sells tickets for events held in A
 - [You paid and your ticket never reached your email: what to do](https://www.entratickets.com/en/blog/ticket-email-not-received)
 
 ### Português (https://www.entratickets.com/pt/blog)
+- [Taxa de serviço do ingresso: o que é e quando você deve vê-la](https://www.entratickets.com/pt/blog/taxa-de-servico-ingresso)
 - [Aula de culinária ou oficina gastronômica com vagas: postos, ingredientes e alergias](https://www.entratickets.com/pt/blog/aula-de-culinaria-com-vagas-limitadas)
 - [Circo ou variedades na lona: sessões, crianças e chuva](https://www.entratickets.com/pt/blog/circo-na-lona-vender-ingressos)
 - [Concerto de coral ou música clássica: ingresso, contribuição e programa](https://www.entratickets.com/pt/blog/concerto-de-coral-ou-musica-classica-ingresso)
@@ -445,6 +448,7 @@ ENTRÁ is an Argentine ticketing platform: it sells tickets for events held in A
 - [Você pagou e o ingresso não chegou no e-mail: o que fazer](https://www.entratickets.com/pt/blog/ingresso-nao-chegou-no-email)
 
 ### Français (https://www.entratickets.com/fr/blog)
+- [Frais de service d’un billet : ce que c’est et quand les voir](https://www.entratickets.com/fr/blog/frais-de-service-billet)
 - [Car pour un concert ou un festival dans une autre ville : comment vendre le voyage](https://www.entratickets.com/fr/blog/bus-vers-concert-billet-et-trajet)
 - [Cirque ou cabaret sous chapiteau : séances, enfants et pluie](https://www.entratickets.com/fr/blog/cirque-sous-chapiteau-billetterie)
 - [Concert de chorale ou de musique classique : billet, contribution et programme](https://www.entratickets.com/fr/blog/concert-chorale-musique-classique-billets)
@@ -565,6 +569,7 @@ ENTRÁ is an Argentine ticketing platform: it sells tickets for events held in A
 - [Vous avez payé et le billet n’est pas arrivé par e-mail : que faire](https://www.entratickets.com/fr/blog/billet-pas-recu-par-email)
 
 ### Italiano (https://www.entratickets.com/it/blog)
+- [Commissione di servizio sul biglietto: cos’è e quando devi vederla](https://www.entratickets.com/it/blog/commissione-di-servizio-biglietto)
 - [Cena di gala o festa con tavoli: come vendere il tavolo intero](https://www.entratickets.com/it/blog/cena-di-gala-vendere-tavoli)
 - [Circo o varietà sotto il tendone: spettacoli, bambini e pioggia](https://www.entratickets.com/it/blog/circo-varieta-tendone-vendere-biglietti)
 - [Concerto di coro o musica classica: biglietto, contributo e programma](https://www.entratickets.com/it/blog/concerto-coro-musica-classica-biglietti)

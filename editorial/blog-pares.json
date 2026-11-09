@@ -51,6 +51,13 @@
       "pt": "capacidade-do-local-quantos-ingressos-vender"
     },
     {
+      "es": "cargo-por-servicio-en-una-entrada",
+      "en": "ticket-service-fee-explained",
+      "fr": "frais-de-service-billet",
+      "it": "commissione-di-servizio-biglietto",
+      "pt": "taxa-de-servico-ingresso"
+    },
+    {
       "es": "carrera-o-maraton-con-inscripcion-paga",
       "en": "running-race-paid-registration",
       "fr": "course-a-pied-inscription-payante",
