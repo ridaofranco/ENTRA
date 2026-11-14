@@ -723,6 +723,13 @@
       "pt": "trilha-ou-passeio-de-um-dia-com-vagas"
     },
     {
+      "es": "salir-y-volver-a-entrar-reingreso-evento",
+      "en": "re-entry-leave-and-come-back-event",
+      "fr": "sortir-et-revenir-evenement-reentree",
+      "it": "uscire-e-rientrare-evento",
+      "pt": "reentrada-sair-e-voltar-evento"
+    },
+    {
       "es": "show-infantil-entrada-de-chicos-y-adultos",
       "en": "kids-show-tickets-children-and-adults",
       "fr": "spectacle-enfants-billets-enfants-adultes",
