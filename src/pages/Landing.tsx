@@ -10,6 +10,7 @@ import { db } from '@/src/lib/firebase';
 import { useAuth } from '@/src/context/AuthContext';
 import HeroAtmosphere from '@/src/components/HeroAtmosphere';
 import PosterFallback from '@/src/components/PosterFallback';
+import PortadaOrganizadores from '@/src/components/PortadaOrganizadores';
 import { eventPath } from '@/src/lib/slug';
 import { cn, isEventFinished } from '@/src/lib/utils';
 import { useLang, textos, dateLocale } from '@/src/lib/i18n';
@@ -92,6 +93,11 @@ export default function Landing() {
           >
             <div className="space-y-4">
               <h1 className="text-[clamp(2rem,11vw,3rem)] sm:text-7xl md:text-8xl lg:text-[100px] font-heading font-black tracking-tighter leading-[0.9] sm:leading-[0.85] uppercase select-none break-words">
+                {/* Qué es ENTRÁ, dentro del h1 y en chico: el título grande es de marca y no
+                    dice «ticketera» ni «vender entradas», que es como nos buscan. */}
+                <span className="block text-[10px] sm:text-xs font-sans font-bold tracking-[0.2em] leading-normal text-primary mb-5">
+                  {t.home.kicker}
+                </span>
                 {t.home.tituloA}<br />
                 <span className="orange-text-gradient">{t.home.tituloB}</span><br />
                 {t.home.tituloC}
@@ -239,6 +245,11 @@ export default function Landing() {
           4 imagenes de Unsplash de eventos ajenos: no eran nuestras, y puestas de
           adorno le daban a la home cara de plantilla generica. Las unicas fotos de
           esta pantalla son las de los eventos reales que estan a la venta. */}
+
+      {/* 5. PARA QUIEN ORGANIZA: qué es, cómo se cobra, pasos, tipos de evento, ciudades y
+          preguntas frecuentes, con los enlaces a /vender-entradas y sus guías. Solo en español:
+          las guías están en español y la home en inglés es para quien compra. */}
+      {lang === 'es' && <PortadaOrganizadores variante="home" />}
 
       {/* 6. FRANJA PRODUCTORES (Discreto, al final, único guiño B2B) */}
       <section className="border-t border-white/5 bg-[#0b0b0d] py-16 px-6">

@@ -9,6 +9,7 @@ import {
   BarChart3, HelpCircle, ArrowRight, Layers
 } from 'lucide-react';
 import { WhatsAppIcon } from '@/src/components/icons/WhatsAppIcon';
+import PortadaOrganizadores from '@/src/components/PortadaOrganizadores';
 
 const whatsappNumber = '5491171540675';
 const whatsappUrl = `https://wa.me/${whatsappNumber}?text=Hola!%20Quiero%20vender%20mis%20eventos%20con%20ENTRÁ`;
@@ -53,11 +54,12 @@ export default function Productores() {
           
           {/* Left info column */}
           <div className="lg:col-span-7">
-            <span className="block text-[10px] font-sans font-black tracking-[0.3em] uppercase text-primary">
-              PARA PRODUCTORES
-            </span>
-
-            <h1 className="text-5xl sm:text-6xl md:text-7xl font-heading font-black tracking-tighter uppercase text-white mt-5" style={{ lineHeight: '0.9' }}>
+            {/* La línea chica va dentro del h1 para que el título de la página diga qué es
+                (ticketera para productores), no solo la frase de marca. */}
+            <h1 className="text-5xl sm:text-6xl md:text-7xl font-heading font-black tracking-tighter uppercase text-white" style={{ lineHeight: '0.9' }}>
+              <span className="block text-[10px] font-sans font-black tracking-[0.3em] leading-normal text-primary mb-5">
+                Ticketera para productores de eventos
+              </span>
               Control total <br />
               <span className="orange-text-gradient">del acceso.</span>
             </h1>
@@ -303,6 +305,10 @@ export default function Productores() {
         </div>
       </section>
 
+      {/* Guías por tipo de evento y por ciudad, y cómo comparar ticketeras (antes era una
+          línea con cinco enlaces debajo del botón final). */}
+      <PortadaOrganizadores variante="productores" />
+
       {/* 5. CTA — minimal, bold, huge text */}
       <section className="bg-black py-32 border-t border-white/5 text-center px-6">
         <div className="max-w-4xl mx-auto">
@@ -328,16 +334,6 @@ export default function Productores() {
               </Button>
             </a>
           </div>
-          {/* Guías en HTML estático (public/vender-entradas): van con <a>, no con <Link>. */}
-          <p className="text-muted-foreground font-sans text-sm mt-10">
-            Guías según tu evento:{' '}
-            <a href="/vender-entradas/fiestas" className="text-primary hover:underline">fiestas</a>,{' '}
-            <a href="/vender-entradas/recitales-y-shows" className="text-primary hover:underline">recitales</a>,{' '}
-            <a href="/vender-entradas/festivales" className="text-primary hover:underline">festivales</a>,{' '}
-            <a href="/vender-entradas/teatro" className="text-primary hover:underline">teatro</a>,{' '}
-            <a href="/vender-entradas/talleres-y-charlas" className="text-primary hover:underline">talleres</a> y{' '}
-            <a href="/vender-entradas" className="text-primary hover:underline">todas</a>.
-          </p>
         </div>
       </section>
     </div>

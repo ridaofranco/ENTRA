@@ -88,6 +88,10 @@ article h1 {
   margin: 14px 0 0;
 }
 .meta { color: var(--dim); font-size: 0.84rem; margin: 16px 0 26px; }
+/* Miga de las guías (el kicker enlaza a /vender-entradas) y línea fija de las notas en español. */
+.kicker a { color: inherit; text-underline-offset: 3px; }
+.origen { color: var(--dim2); font-size: 0.9rem; margin: 0 0 26px; }
+.meta + .origen { margin-top: -14px; }
 article h2 {
   font-family: 'Jost', sans-serif;
   font-weight: 800;

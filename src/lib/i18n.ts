@@ -11,8 +11,9 @@
  * ── CÓMO DECIDE, en este orden ──
  * 1. `?lang=en` en la URL (para links que se comparten a audiencias en inglés).
  * 2. La elección manual guardada (`localStorage`, clave `entra_lang`).
- * 3. El idioma del navegador: si no arranca con `es`, va en inglés.
- * 4. Español.
+ * 3. Si es un buscador (Googlebot, Bing…), español: es el idioma de la URL sin `?lang=`.
+ * 4. El idioma del navegador: si no arranca con `es`, va en inglés.
+ * 5. Español.
  *
  * A diferencia de PASE (que resuelve una vez por render), ENTRÁ es una SPA con
  * un switcher en el navbar: `useLang()` usa useSyncExternalStore para que TODAS
@@ -23,6 +24,9 @@ import { useSyncExternalStore } from 'react';
 export type Lang = 'es' | 'en';
 
 const CLAVE = 'entra_lang';
+
+// Rastreadores de buscadores e IA que corren JavaScript.
+const ES_BUSCADOR = /Googlebot|Google-InspectionTool|GoogleOther|Storebot-Google|bingbot|BingPreview|DuckDuckBot|YandexBot|Applebot|Baiduspider|PetalBot|GPTBot|OAI-SearchBot|ChatGPT-User|ClaudeBot|Claude-User|PerplexityBot/i;
 
 export function detectarIdioma(): Lang {
   try {
@@ -35,7 +39,11 @@ export function detectarIdioma(): Lang {
     // 2. Elección manual previa.
     const guardado = localStorage.getItem(CLAVE);
     if (guardado === 'en' || guardado === 'es') return guardado;
-    // 3. El idioma del navegador.
+    // 3. Los buscadores leen el sitio en español, que es el idioma de cada URL sin `?lang=`.
+    //    Googlebot navega con el navegador en inglés (en-US): sin esto, Google veía la home
+    //    y la cartelera en inglés bajo un título en español (medido el 16/11/2026).
+    if (ES_BUSCADOR.test(navigator.userAgent || '')) return 'es';
+    // 4. El idioma del navegador.
     const nav = (navigator.languages?.[0] || navigator.language || 'es').toLowerCase();
     return nav.startsWith('es') ? 'es' : 'en';
   } catch {
@@ -154,6 +162,9 @@ const es = {
   home: {
     // Un solo hero, el aprobado. No hay variantes que se alternen solas:
     // la home no cambia de cara sin que alguien la edite a mano.
+    // Línea chica arriba del título, dentro del h1: dice qué es ENTRÁ con las palabras
+    // con las que se busca (ticketera, vender entradas online).
+    kicker: 'Ticketera para comprar y vender entradas online',
     tituloA: 'Acceso a',
     tituloB: 'experiencias',
     tituloC: 'en vivo.',
@@ -467,6 +478,7 @@ const en: typeof es = {
     verEvento: 'View event',
   },
   home: {
+    kicker: 'Online ticketing to buy and sell event tickets',
     tituloA: 'Access to',
     tituloB: 'live',
     tituloC: 'experiences.',

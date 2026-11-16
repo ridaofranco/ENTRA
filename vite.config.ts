@@ -5,14 +5,27 @@ import fs from 'fs';
 import { defineConfig, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { RUTAS, SITIO } from './src/lib/routeMeta';
+import { htmlPortada, htmlProductores, htmlRuta, jsonLdPreguntas } from './src/lib/portada';
 
 // HTML propio por ruta pública (30/10/2026). Vercel servía el mismo index.html para
 // /productores, /ayuda, /contacto, etc.: mismo título, sin canonical y sin texto para quien no
 // corre JavaScript (las IA). Acá se copia el index.html ya armado a dist/_rutas/<archivo>.html
-// con el <head> y el <noscript> de cada ruta (tabla en src/lib/routeMeta.ts), y vercel.json
+// con el <head> y el texto de cada ruta (tabla en src/lib/routeMeta.ts), y vercel.json
 // reescribe cada ruta a su archivo. El JS es el mismo: React Router arma la pantalla igual.
+//
+// 16/11/2026: el texto ya no va en un <noscript> (Google no lo cuenta como contenido) sino como
+// HTML dentro de <div id="root">, que React reemplaza al arrancar. La portada y /productores
+// llevan el contenido completo de src/lib/portada.ts (qué es, cómo se cobra, pasos, tipos de
+// evento, ciudades y preguntas frecuentes), el mismo que muestra PortadaOrganizadores.tsx.
+// El respaldo de la app (_rutas/app.html) queda como estaba, con su <noscript>.
 function htmlPorRuta(): Plugin {
   const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const RAIZ = /<div id="root"><\/div>/;
+  const NOSCRIPT = /\s*<!-- Texto para buscadores[\s\S]*?<\/noscript>/;
+  const conTexto = (html: string, texto: string) => {
+    for (const re of [RAIZ, NOSCRIPT]) if (!re.test(html)) throw new Error(`html-por-ruta: no encontré ${re} en index.html`);
+    return html.replace(NOSCRIPT, '').replace(RAIZ, () => `<div id="root">${texto}</div>`);
+  };
   return {
     name: 'html-por-ruta',
     apply: 'build',
@@ -31,7 +44,6 @@ function htmlPorRuta(): Plugin {
           [/(<meta property="og:url" content=")[^"]*/, `$1${url}`],
           [/(<meta property="(?:og|twitter):title" content=")[^"]*/g, `$1${esc(m.title)}`],
           [/(<meta property="(?:og|twitter):description" content=")[^"]*/g, `$1${esc(m.description)}`],
-          [/(<noscript>\s*)<h1>[^<]*<\/h1>\s*<p>[^<]*<\/p>/, `$1<h1>${esc(m.h1 ?? m.title)}</h1>\n      <p>${esc(m.resumen ?? m.description)}</p>`],
         ];
         let html = base;
         for (const [re, por] of reemplazos) {
@@ -39,6 +51,9 @@ function htmlPorRuta(): Plugin {
           re.lastIndex = 0;
           html = html.replace(re, por);
         }
+        const h1 = m.h1 ?? m.title;
+        const resumen = m.resumen ?? m.description;
+        html = conTexto(html, m.archivo === 'productores' ? htmlProductores(h1, resumen) : htmlRuta(h1, resumen));
         fs.writeFileSync(path.join(dir, '_rutas', `${m.archivo}.html`), html);
       }
       // La home lleva canonical propio en el HTML (30/10/2026). Como Vercel sirve index.html en "/"
@@ -46,10 +61,14 @@ function htmlPorRuta(): Plugin {
       // ser _rutas/app.html (el mismo HTML SIN canonical) y solo index.html, que es "/", lo trae.
       fs.writeFileSync(path.join(dir, '_rutas', 'app.html'), base);
       if (!/<title>[^<]*<\/title>/.test(base)) throw new Error('html-por-ruta: index.html sin <title>');
-      fs.writeFileSync(
-        path.join(dir, 'index.html'),
-        base.replace(/(<title>[^<]*<\/title>)/, `$1\n    <link rel="canonical" href="${SITIO}/" />`),
-      );
+      const home = RUTAS['/'];
+      if (base.match(/<title>([^<]*)<\/title>/)![1] !== home.title) {
+        throw new Error('html-por-ruta: el <title> de index.html no coincide con el de la home en src/lib/routeMeta.ts');
+      }
+      const portada = conTexto(base, htmlPortada(home.h1 ?? home.title))
+        .replace(/(<title>[^<]*<\/title>)/, `$1\n    <link rel="canonical" href="${SITIO}/" />`)
+        .replace('</head>', () => `  <script type="application/ld+json">${jsonLdPreguntas()}</script>\n  </head>`);
+      fs.writeFileSync(path.join(dir, 'index.html'), portada);
     },
   };
 }

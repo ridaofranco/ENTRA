@@ -2,7 +2,7 @@
 // Lo usan dos lados:
 //  - src/components/RouteMeta.tsx, que los aplica en el navegador al cambiar de ruta;
 //  - vite.config.ts (plugin htmlPorRuta), que en el build escribe dist/_rutas/<archivo>.html
-//    con estos datos ya puestos en el <head> y en el <noscript>, para que Google y las IA
+//    con estos datos ya puestos en el <head> y en el HTML de <div id="root">, para que Google y las IA
 //    (que no corren JavaScript) no vean la misma página para /productores, /ayuda, etc.
 //    vercel.json reescribe cada ruta pública a su archivo.
 // Este archivo no puede importar nada: lo carga Node en el build.
@@ -16,16 +16,18 @@ export interface MetaRuta {
   canonical?: string;
   // Pantallas privadas o de un solo uso: no se indexan.
   noindex?: boolean;
-  // Solo rutas públicas: archivo que genera el build y párrafo propio del <noscript>.
+  // Solo rutas públicas: archivo que genera el build, y h1 y párrafo propios del HTML sin JavaScript.
   archivo?: string;
   h1?: string;
   resumen?: string;
 }
 
 const HOME: MetaRuta = {
-  title: 'ENTRÁ: ticketera online para vender entradas',
-  description: 'Acceso a experiencias en vivo. Comprá y vendé entradas, gestioná tus eventos y controlá el acceso desde el celular.',
+  title: 'Ticketera online para vender entradas en Argentina | ENTRÁ',
+  description: 'ENTRÁ es la ticketera de SOMOS DER para vender entradas online: cargás tu evento sin costo, cobrás el 100% del precio y validás cada QR desde el celular.',
   canonical: '/',
+  // Lo que lee quien no corre JavaScript: h1 de la portada (el resto sale de src/lib/portada.ts).
+  h1: 'ENTRÁ, la ticketera online para vender entradas de tu evento',
 };
 
 const EVENTOS: MetaRuta = {
@@ -42,10 +44,12 @@ export const RUTAS: Record<string, MetaRuta> = {
   '/eventos': EVENTOS,
   '/comprar': EVENTOS,
   '/productores': {
-    title: 'Vender entradas online: cobrás el 100% | ENTRÁ',
+    // «Vender entradas online» es la búsqueda de /vender-entradas; esta página va por
+    // «ticketera para eventos» (16/11/2026).
+    title: 'Ticketera para eventos: cobrás el 100% del precio | ENTRÁ',
     description: 'Creá tu evento gratis, vendé entradas online y validalas en la puerta con QR desde el celular. Cobrás el 100% del precio; el costo de servicio lo paga quien compra.',
     archivo: 'productores',
-    h1: 'Vender entradas con ENTRÁ: el organizador cobra el 100%',
+    h1: 'Ticketera para eventos: el organizador cobra el 100% del precio',
     resumen: 'Ponés tu entrada al precio que querés y recibís ese precio completo: los costos de servicio y procesamiento los paga quien compra, con el desglose a la vista en el checkout. Crear la cuenta y publicar el evento no tiene costo, y el día del evento las entradas se validan en la puerta desde el celular con un QR único por entrada.',
   },
   '/ayuda': {
