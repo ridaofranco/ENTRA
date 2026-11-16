@@ -48,6 +48,7 @@ Copiar una nota existente de `public/blog/` (por ejemplo `no-me-llego-la-entrada
 
 ## Publicadas (no repetir)
 Cómo elegir ticketera y comisiones · comprar sin estafas · control de acceso el día del evento · datos de ventas que tiene que dar una ticketera · entradas truchas y duplicadas · evento cancelado o reprogramado · me olvidé el celular · no me llegó la entrada al mail · checklist del primer evento · para qué sirve el QR · precio y tandas · promocionar y medir ventas.
+16/11: entrada VIP o general, tipos de entrada (5 idiomas). Ojo: un tipo con «preventa», «anticipada», «early», «promo» o «lote» en el nombre se oculta al lanzar la venta oficial (EventDetail.tsx).
 Borrador 29/10: facturar la venta de entradas si sos monotributista · cortesías e invitaciones.
 
 ## Próximos 15 temas (búsqueda que atacan)
