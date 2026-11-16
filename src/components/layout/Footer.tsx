@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useLang, textos } from '@/src/lib/i18n';
 import { LangSwitcher } from '@/src/components/LangSwitcher';
+import { FAMILIA, FAMILIA_EN } from '@/src/lib/portada';
 
 export function Footer() {
   const lang = useLang();
@@ -42,6 +43,17 @@ export function Footer() {
           <span className="hidden sm:inline text-white/5">•</span>
           <span>+54 9 11 7154-0675</span>
         </div>
+
+        {/* La familia de productos de SOMOS DER (16/11). Mismo texto que el pie de las páginas HTML. */}
+        <p className="max-w-3xl text-xs text-muted-foreground leading-relaxed">
+          {lang === 'es' ? 'De la misma casa: ' : 'From the same team: '}
+          {(lang === 'es' ? FAMILIA : FAMILIA_EN).map((e, i) => (
+            <span key={e.href}>
+              {i > 0 && ' · '}
+              <a href={e.href} className="hover:text-primary transition-colors underline underline-offset-2 decoration-white/20">{e.texto}</a>
+            </span>
+          ))}
+        </p>
       </div>
     </footer>
   );

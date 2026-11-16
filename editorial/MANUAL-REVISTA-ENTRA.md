@@ -66,3 +66,11 @@ Borrador 29/10: facturar la venta de entradas si sos monotributista · cortesía
 13. **Qué hacer si se cae internet en la puerta** («control de acceso sin internet»). Verificar en el escáner qué pasa offline antes de escribir.
 14. **Qué datos pedir a quien compra y por qué (DNI, mail)** («ticketera pide DNI»).
 15. **Evento gratuito: cómo evitar que reserven y no vengan** («evento gratis no vienen los inscriptos»).
+
+## Pie con la familia y liquidación (16/11)
+- Después de crear una nota o una guía (en cualquier idioma) corré `python3 scripts/pie-familia.py`: pone en el pie el bloque
+  `<!-- familia -->` con los enlaces a SOMOS DER, PASE, LABURO e HITO en el idioma de la página. No se escribe a mano.
+  `--check` avisa si a alguna página le falta.
+- Cuándo cobra el organizador: el plazo depende del medio de cobro; en Argentina es Mercado Pago, la venta entra directo a la
+  cuenta de Mercado Pago que el organizador conecta desde el panel y se libera en los plazos de Mercado Pago según esa cuenta.
+  Nunca poner días ni porcentajes de Mercado Pago en una nota.

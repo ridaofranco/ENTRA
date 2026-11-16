@@ -37,6 +37,10 @@ const faqs = [
   {
     q: 'Soy organizador, ¿cómo publico un evento?',
     a: 'Creás tu cuenta, activás el panel de productor desde ahí mismo y cargás tu evento: fecha, lugar, flyer, tipos de entrada y cupo. Antes de publicarlo lo revisamos, normalmente el mismo día, y te avisamos por mail apenas queda a la venta. Después, desde el panel seguís las ventas, generás cortesías y códigos de descuento, y controlás la puerta con el escáner de QR. Si necesitás una mano en cualquier momento, escribinos a soporte@entratickets.com.'
+  },
+  {
+    q: 'Soy organizador, ¿cuándo cobro la plata de las entradas?',
+    a: 'El plazo depende del medio de cobro. En Argentina se cobra con Mercado Pago: conectás tu cuenta desde el panel, cada venta entra directo a tu Mercado Pago y la plata queda disponible en los plazos de Mercado Pago, según tu cuenta y el medio con que pagó cada persona. Ese plazo no lo fija ENTRÁ: miralo en tu cuenta de Mercado Pago antes de comprometer pagos a proveedores.'
   }
 ];
 

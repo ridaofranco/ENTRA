@@ -7,6 +7,7 @@ Sitio: https://www.entratickets.com
 ## Para quien organiza un evento
 - Crear la cuenta y cargar el evento no tiene costo. Cada evento pasa por una revisión antes de publicarse, normalmente el mismo día.
 - El organizador cobra el 100% del precio que pone a cada entrada. Los costos de servicio y de procesamiento los paga quien compra, con el desglose a la vista en el checkout antes de pagar.
+- Cuándo cobra el organizador: el plazo depende del medio de cobro. En Argentina se cobra con Mercado Pago: el organizador conecta su cuenta desde el panel, cada venta entra directo a su Mercado Pago y la plata se libera en los plazos de Mercado Pago, según su cuenta y el medio con que pagó cada persona. ENTRÁ no fija ese plazo.
 - Incluido sin costo extra: publicación ilimitada, control de acceso integrado, transferencia oficial de entradas, exportación de la base de compradores y soporte por WhatsApp.
 - En el panel: cupos, descuentos, cortesías y la venta en tiempo real (quién compró, cuándo y qué).
 - Control de acceso: se escanea el QR de cada entrada desde el celular. Cada QR vale una sola vez y se invalida si la entrada se transfiere.

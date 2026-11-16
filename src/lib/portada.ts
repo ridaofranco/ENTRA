@@ -7,8 +7,10 @@
 //    JavaScript lea lo mismo que ve una persona. React lo reemplaza al arrancar.
 // Todo lo que dice acá ya está publicado en /vender-entradas/como-funciona, en
 // /vender-entradas/comparar-ticketeras y en public/llms.txt. Si cambia una condición (comisión,
-// revisión, qué incluye), se cambia en esos lugares y acá. No sumar plazos de liquidación ni
-// medios de pago mientras no estén publicados.
+// revisión, qué incluye), se cambia en esos lugares y acá.
+// Liquidación (decisión de Franco, 16/11): el plazo depende del medio de cobro; en Argentina es
+// Mercado Pago y la plata se libera en los plazos de Mercado Pago según la cuenta del organizador.
+// NUNCA poner días ni porcentajes de Mercado Pago. No sumar otros medios de pago mientras no existan.
 // Este archivo no puede importar nada: lo carga Node en el build.
 
 export interface Enlace {
@@ -28,7 +30,8 @@ export const PORTADA = {
     'Crear la cuenta y cargar el evento no tiene costo.',
     'Vos ponés el precio de cada entrada y cobrás el 100% de ese precio.',
     'Quien compra paga el cargo de servicio, del 8% + IVA sobre el precio de la entrada, y el procesamiento del pago. Lo ve desglosado en el checkout antes de pagar.',
-    'El pago lo procesa Mercado Pago.',
+    'El pago lo procesa Mercado Pago. Conectás tu cuenta desde el panel y cada venta entra directo a tu Mercado Pago.',
+    'Cuándo tenés la plata disponible depende del medio de cobro. En Argentina es Mercado Pago, y se libera en los plazos de Mercado Pago según tu cuenta.',
     'En los eventos gratuitos la reserva no tiene ningún cargo.',
   ],
 
@@ -131,6 +134,10 @@ export const PORTADA = {
       a: 'Crear la cuenta y cargar el evento no tiene costo, y cobrás el 100% del precio que le ponés a cada entrada. El cargo de servicio, del 8% + IVA sobre el precio de la entrada, y el procesamiento del pago los paga quien compra, con el desglose a la vista en el checkout antes de pagar.',
     },
     {
+      q: '¿Cuándo cobro la plata de las entradas?',
+      a: 'El plazo depende del medio de cobro. En Argentina se cobra con Mercado Pago: conectás tu cuenta desde el panel, cada venta entra directo a tu Mercado Pago y la plata queda disponible en los plazos de Mercado Pago, según tu cuenta y el medio con que pagó cada persona. Ese plazo no lo fija ENTRÁ: miralo en tu cuenta de Mercado Pago antes de comprometer pagos a proveedores.',
+    },
+    {
       q: '¿Cuánto tarda en publicarse mi evento?',
       a: 'Cada evento pasa por una revisión antes de publicarse, normalmente el mismo día. Te avisamos por mail apenas queda a la venta.',
     },
@@ -193,8 +200,25 @@ ${p.preguntas.map((f) => `        <h4>${esc(f.q)}</h4>\n        <p>${esc(f.a)}</
         ${ul(p.guias.map(a))}${preguntas}`;
 }
 
+/** La familia de productos de SOMOS DER (16/11: «mis productos entre sí deberían hablarse»).
+ *  El texto del enlace es la búsqueda que pelea cada producto. Lo usan el pie de la portada
+ *  sin JavaScript (PIE) y el pie de la app (src/components/layout/Footer.tsx). Las páginas
+ *  HTML de public/ llevan lo mismo con scripts/pie-familia.py. */
+export const FAMILIA: Enlace[] = [
+  { href: 'https://www.somosder.ar', texto: 'Productora de eventos: SOMOS DER' },
+  { href: 'https://pase.somosder.ar', texto: 'Acreditación y control de acceso para eventos: PASE' },
+  { href: 'https://laburo.somosder.ar', texto: 'Personal para eventos: LABURO' },
+  { href: 'https://hito.agency', texto: 'Consultoría y web para emprendedores de eventos: HITO' },
+];
+export const FAMILIA_EN: Enlace[] = [
+  { href: 'https://somosder.com/', texto: 'Event production company in Argentina: SOMOS DER' },
+  { href: 'https://pase.somosder.ar/en/', texto: 'Event accreditation and access control: PASE' },
+  { href: 'https://laburo.somosder.ar', texto: 'Event staff in Argentina: LABURO' },
+  { href: 'https://hito.agency/en/', texto: 'Consulting and websites for event entrepreneurs: HITO' },
+];
+
 const PIE = `
-        <p>Para acreditación de congresos y eventos corporativos, SOMOS DER tiene <a href="https://pase.somosder.ar">PASE</a>; para staff de eventos, <a href="https://laburo.somosder.ar">LABURO</a>. <a href="/llms.txt">Resumen para asistentes de IA</a>.</p>`;
+        <p>De la misma casa: ${FAMILIA.map(a).join(' · ')}. <a href="/llms.txt">Resumen para asistentes de IA</a>.</p>`;
 
 /** Portada: lo que queda dentro de <div id="root"> en dist/index.html. */
 export function htmlPortada(h1: string): string {
