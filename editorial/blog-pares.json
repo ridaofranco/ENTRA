@@ -261,6 +261,13 @@
       "pt": "ingresso-original-ou-falso-revenda"
     },
     {
+      "es": "entrada-vip-o-general-tipos-de-entrada",
+      "en": "vip-or-general-admission-ticket-types",
+      "fr": "billet-vip-ou-standard-types-de-billets",
+      "it": "biglietto-vip-o-normale-tipi-di-biglietto",
+      "pt": "ingresso-vip-ou-pista-tipos-de-ingresso"
+    },
+    {
       "es": "entradas-agotadas-lista-de-espera",
       "en": "sold-out-event-waiting-list",
       "fr": "billets-epuises-liste-attente",
