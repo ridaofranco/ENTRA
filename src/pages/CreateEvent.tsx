@@ -390,7 +390,8 @@ export default function CreateEvent() {
         <h1 className="text-4xl font-heading font-black tracking-tighter uppercase">Crear <span className="orange-text-gradient">Evento</span></h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-12">
+      {/* data-origen="no": cargar un evento no es una consulta, el rastreador de origen no lo cuenta. */}
+      <form data-origen="no" onSubmit={handleSubmit} className="space-y-12">
         {/* Basic Info */}
         <section className="space-y-6">
           <div className="flex items-center gap-2 text-primary">

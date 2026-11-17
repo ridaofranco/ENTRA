@@ -17,6 +17,9 @@ export default function Contact() {
   // el lead queda guardado en la misma lista que los de somosder.ar, el aviso va
   // a contacto@ con [ENTRA] en el asunto, y la confirmación le llega al cliente
   // con la marca ENTRÁ.
+  //
+  // 17/11/2026: `data-origen="contacto"` es el nombre con el que el rastreador de origen
+  // (public/origen-casa.js) anota este envío en Sales OS. El visitante no lo ve.
   const [enviando, setEnviando] = React.useState(false);
   const [listo, setListo] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -118,7 +121,7 @@ export default function Contact() {
               </p>
             </div>
           ) : (
-          <form className="space-y-6" method="post" onSubmit={onSubmit}>
+          <form className="space-y-6" method="post" onSubmit={onSubmit} data-origen="contacto">
             {/* Honeypot: invisible para una persona, tentador para un script. */}
             <input type="text" name="sitio" tabIndex={-1} autoComplete="off" aria-hidden="true"
                    className="absolute left-[-9999px] w-px h-px overflow-hidden" />

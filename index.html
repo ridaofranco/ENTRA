@@ -10,6 +10,11 @@
          corren JavaScript. Con JavaScript no se muestra: React lo reemplaza al arrancar con la
          misma información, así la app carga igual que siempre. -->
     <script>document.documentElement.setAttribute('data-js', '');</script>
+    <!-- Origen de cada consulta (17/11/2026): guarda de dónde vino la visita y avisa a
+         somosder.ar/api/origen cuando alguien toca WhatsApp, un mail o manda el formulario
+         de contacto. El visitante no ve nada. El archivo está en public/ y no pasa por el
+         empaquetado. Los formularios que no son consultas llevan data-origen="no". -->
+    <script defer src="/origen-casa.js"></script>
     <style>
       .pre { max-width: 46rem; margin: 0 auto; padding: 2rem 1.25rem; font: 16px/1.6 system-ui, sans-serif; color: #e4e4e7; }
       .pre h1, .pre h2, .pre h3, .pre h4 { font-weight: 700; line-height: 1.2; margin: 1.5em 0 0.5em; }

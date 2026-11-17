@@ -295,9 +295,12 @@ export default function Auth() {
                 </div>
               )}
 
+              {/* Los cuatro formularios de esta pantalla llevan data-origen="no": entrar, crear la
+                  cuenta o recuperar la clave no es una consulta, y el rastreador de origen
+                  (public/origen-casa.js) no los cuenta. */}
               {/* EMAIL LOGIN FORM */}
               {view === 'email-login' && (
-                <form onSubmit={handleEmailLogin} className="space-y-4">
+                <form data-origen="no" onSubmit={handleEmailLogin} className="space-y-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-[#71717a] uppercase tracking-wider block">Email</label>
                     <input
@@ -375,7 +378,7 @@ export default function Auth() {
 
               {/* EMAIL REGISTER FORM */}
               {view === 'email-register' && (
-                <form onSubmit={handleEmailRegister} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+                <form data-origen="no" onSubmit={handleEmailRegister} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-[#71717a] uppercase tracking-wider block">Nombre completo</label>
                     <input
@@ -470,7 +473,7 @@ export default function Auth() {
 
               {/* PASSWORD RESET FORM */}
               {view === 'forgot' && (
-                <form onSubmit={handleResetPassword} className="space-y-4">
+                <form data-origen="no" onSubmit={handleResetPassword} className="space-y-4">
                   <p className="text-xs text-muted-foreground font-sans leading-relaxed text-center mb-2">
                     Te enviaremos un email con un link para reestablecer tu acceso de forma inmediata.
                   </p>
@@ -509,7 +512,7 @@ export default function Auth() {
 
               {/* COMPLETE PROFILE (Google Flow Post-auth details completion) */}
               {view === 'complete-profile' && (
-                <form onSubmit={handleCompleteProfile} className="space-y-4 animate-in fade-in duration-200">
+                <form data-origen="no" onSubmit={handleCompleteProfile} className="space-y-4 animate-in fade-in duration-200">
                   <div className="text-center mb-2">
                     <p className="text-xs text-zinc-400 font-sans">
                       Completá estos campos mínimos requeridos únicamente para habilitar el envío oficial de tus futuras entradas.
