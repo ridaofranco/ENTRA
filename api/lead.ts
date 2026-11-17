@@ -19,6 +19,7 @@
 // hace falta una más, hay que mirar primero si algo de `api/` no es un endpoint
 // de verdad: Vercel ignora todo lo que empieza con guión bajo.
 import { frenado } from './_rate-limit.js';
+import { filaOrigen } from './_origen.js';
 
 // ⚠️ CON www. El dominio pelado devuelve un 308 hacia `www.somosder.ar` y ese
 // salto no sobrevive adentro de la función: el reenvío falla entero.
@@ -75,6 +76,9 @@ export default async function handler(req: any, res: any) {
         fields: [
           ...(asunto ? [{ label: 'Asunto', value: asunto }] : []),
           { label: 'Mensaje', value: mensaje },
+          // De dónde vino la persona (cookie `der_o`, ver _origen.ts). Va solo al aviso
+          // interno y a la base: el receptor no pone `fields` en la confirmación al cliente.
+          filaOrigen(req),
         ],
       }),
       signal: ctrl.signal,
