@@ -72,6 +72,10 @@ Borrador 29/10: facturar la venta de entradas si sos monotributista · cortesía
 - Después de crear una nota o una guía (en cualquier idioma) corré `python3 scripts/pie-familia.py`: pone en el pie el bloque
   `<!-- familia -->` con los enlaces a SOMOS DER, PASE, LABURO e HITO en el idioma de la página. No se escribe a mano.
   `--check` avisa si a alguna página le falta.
+- Origen de las consultas (17/11): toda página pública carga una sola vez `<script defer src="/origen-casa.js"></script>` antes de
+  `</head>` (guarda de dónde vino la visita y avisa cuando alguien toca WhatsApp o un mail; el visitante no ve nada). Las notas
+  copiadas de una existente ya lo traen; igual, después de crear una nota o una guía corré `python3 scripts/origen-casa.py`
+  (no duplica; `--check` avisa si a alguna página le falta).
 - Cuándo cobra el organizador: el plazo depende del medio de cobro; en Argentina es Mercado Pago, la venta entra directo a la
   cuenta de Mercado Pago que el organizador conecta desde el panel y se libera en los plazos de Mercado Pago según esa cuenta.
   Nunca poner días ni porcentajes de Mercado Pago en una nota.

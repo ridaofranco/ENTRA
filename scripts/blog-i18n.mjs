@@ -251,6 +251,7 @@ ${bloqueHreflang(grupoIndices)}  <link rel="icon" type="image/png" href="/pwa-19
   <script type="application/ld+json">
 ${JSON.stringify(ld, null, 2)}
   </script>
+  <script defer src="/origen-casa.js"></script>
 </head>
 <body>
   <header class="nav">
