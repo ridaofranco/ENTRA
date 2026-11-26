@@ -1,0 +1,7 @@
+[
+  {
+    "ruta": "^/(eventos|comprar)$",
+    "tipo": "hueco",
+    "motivo": "Cartelera: la cantidad de tarjetas depende de los eventos publicados. Con 1, 2 o 4 eventos la grilla se acomoda sola (Comprar.tsx); con 5, 7 u 8 la última fila de tres queda incompleta y no hay tarjeta que estirar sin deformar el afiche."
+  }
+]

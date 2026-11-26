@@ -87,6 +87,12 @@ article h1 {
   font-size: clamp(1.9rem, 5.2vw, 2.9rem);
   margin: 14px 0 0;
 }
+/* TÍTULOS LARGOS (26/11/2026). El tamaño baja con el largo para que un titular de 90 letras
+   no ocupe 7 renglones en el celular. Las clases las pone sola la compilación
+   (vite.config.ts, tituloSegunLargo): t-largo desde 70 letras, t-muy-largo desde 85.
+   No hace falta escribirlas a mano en cada nota. */
+article h1.t-largo { font-size: clamp(1.7rem, 4.6vw, 2.5rem); }
+article h1.t-muy-largo { font-size: clamp(1.5rem, 4.1vw, 2.2rem); }
 .meta { color: var(--dim); font-size: 0.84rem; margin: 16px 0 26px; }
 /* Miga de las guías (el kicker enlaza a /vender-entradas) y línea fija de las notas en español. */
 .kicker a { color: inherit; text-underline-offset: 3px; }

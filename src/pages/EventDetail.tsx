@@ -304,7 +304,9 @@ export default function EventDetail() {
           <Badge className="orange-gradient border-none font-bold uppercase tracking-widest text-xs px-4 py-1.5 mb-6">
             {event.category}
           </Badge>
-          <h1 className="text-4xl md:text-7xl font-heading font-black tracking-tighter mb-6 max-w-4xl">
+          {/* El tamaño baja con el largo del nombre (26/11/2026): un nombre de 60 letras a
+              72 px se partía en cuatro renglones y tapaba el afiche. */}
+          <h1 className={`${(event.title || '').length > 70 ? 'text-2xl md:text-4xl' : (event.title || '').length > 38 ? 'text-3xl md:text-5xl' : 'text-4xl md:text-7xl'} font-heading font-black tracking-tighter mb-6 max-w-4xl`}>
             {event.title}
           </h1>
           <div className="flex flex-wrap gap-6 text-sm font-bold uppercase tracking-wider">

@@ -344,8 +344,17 @@ export default function Comprar() {
             )}
           </motion.div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          /* SIN HUECOS EN LA GRILLA (26/11/2026). Con 2 eventos en tres columnas quedaba un
+             tercio de la pantalla vacío. Igual que en la portada (Landing.tsx): con 1, 2 o 4
+             eventos la grilla es de una o dos columnas y la imagen va apaisada; con el resto
+             vuelve la grilla de tres con el afiche vertical. */
+          <div className={
+            filteredEvents.length === 1 ? "grid gap-8 grid-cols-1 max-w-4xl mx-auto"
+              : filteredEvents.length === 2 || filteredEvents.length === 4 ? "grid gap-8 grid-cols-1 md:grid-cols-2"
+              : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+          }>
             {filteredEvents.map((event, i) => {
+              const apaisado = [1, 2, 4].includes(filteredEvents.length);
               const soldOut = isSoldOut(event);
               // Stock real disponible (suma de todos los tipos de entrada) — para el
               // badge de "últimas entradas", que antes se ponía falsamente al 2º evento.
@@ -397,7 +406,7 @@ export default function Comprar() {
                   <Link to={eventPath(event)}>
                     <div className="flex flex-col h-full space-y-4">
                       {/* Image Frame */}
-                      <div className="relative aspect-[4/5] rounded-[2rem] border border-white/10 overflow-hidden bg-black group-hover:border-primary/40 transition-colors duration-300">
+                      <div className={`relative ${apaisado ? 'aspect-[4/3] md:aspect-[16/9]' : 'aspect-[4/5]'} rounded-[2rem] border border-white/10 overflow-hidden bg-black group-hover:border-primary/40 transition-colors duration-300`}>
                         {event.image ? (
                           <img
                             src={event.image}

@@ -73,12 +73,40 @@ function htmlPorRuta(): Plugin {
   };
 }
 
+// TÍTULOS SEGÚN SU LARGO (26/11/2026). Las notas y guías son HTML suelto en public/ y todas
+// usaban el mismo tamaño de h1: un titular de 90 letras ocupaba 7 renglones en el celular.
+// Al compilar, a cada h1 de 70 letras o más se le agrega la clase t-largo (85 o más:
+// t-muy-largo), que public/blog.css achica. Así nadie tiene que acordarse al escribir la nota.
+function tituloSegunLargo(): Plugin {
+  const CARPETAS = ['blog', 'vender-entradas', 'en', 'pt', 'fr', 'it'];
+  const recorrer = (dir: string): string[] =>
+    fs.existsSync(dir)
+      ? fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+          e.isDirectory() ? recorrer(path.join(dir, e.name)) : e.name.endsWith('.html') ? [path.join(dir, e.name)] : [])
+      : [];
+  return {
+    name: 'titulo-segun-largo',
+    apply: 'build',
+    closeBundle() {
+      for (const archivo of CARPETAS.flatMap((c) => recorrer(path.join('dist', c)))) {
+        const html = fs.readFileSync(archivo, 'utf8');
+        const nuevo = html.replace(/<h1>([\s\S]*?)<\/h1>/, (todo, dentro: string) => {
+          const largo = dentro.replace(/<[^>]+>/g, '').replace(/&[a-z#0-9]+;/gi, 'x').trim().length;
+          return largo >= 85 ? `<h1 class="t-muy-largo">${dentro}</h1>` : largo >= 70 ? `<h1 class="t-largo">${dentro}</h1>` : todo;
+        });
+        if (nuevo !== html) fs.writeFileSync(archivo, nuevo);
+      }
+    },
+  };
+}
+
 export default defineConfig(() => {
   return {
     plugins: [
       react(),
       tailwindcss(),
       htmlPorRuta(),
+      tituloSegunLargo(),
       // PWA: service worker + manifest para que ENTRÁ se instale y ABRA sin internet.
       // Clave para el control de acceso en la puerta: con la app instalada, el operador
       // entra a /control-acceso aunque no haya señal (los tickets ya están en la caché de
