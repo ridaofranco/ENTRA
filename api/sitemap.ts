@@ -157,6 +157,7 @@ const FIJAS: Array<[string, string, string]> = [
   // Páginas por público (28/10/2026): HTML estáticos en public/vender-entradas.
   ['/vender-entradas', 'monthly', '0.7'],
   ['/vender-entradas/como-funciona', 'monthly', '0.8'],
+  ['/vender-entradas/pagina-web-para-tu-evento', 'monthly', '0.7'],
   ['/vender-entradas/fiestas', 'monthly', '0.7'],
   ['/vender-entradas/recitales-y-shows', 'monthly', '0.7'],
   ['/vender-entradas/festivales', 'monthly', '0.7'],
