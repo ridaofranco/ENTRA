@@ -154,6 +154,7 @@ const FIJAS: Array<[string, string, string]> = [
   ['/blog/salir-y-volver-a-entrar-reingreso-evento', 'monthly', '0.6'],
   ['/blog/entrada-vip-o-general-tipos-de-entrada', 'monthly', '0.6'],
   ['/blog/comprar-entradas-para-un-grupo-de-amigos', 'monthly', '0.6'],
+  ['/blog/pago-rechazado-o-pendiente-entrada', 'monthly', '0.6'],
   // Páginas por público (28/10/2026): HTML estáticos en public/vender-entradas.
   ['/vender-entradas', 'monthly', '0.7'],
   ['/vender-entradas/como-funciona', 'monthly', '0.8'],

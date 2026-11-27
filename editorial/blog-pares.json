@@ -604,6 +604,13 @@
       "pt": "como-organizar-primeiro-evento-checklist"
     },
     {
+      "es": "pago-rechazado-o-pendiente-entrada",
+      "en": "ticket-payment-declined-or-pending",
+      "fr": "paiement-billet-refuse-ou-en-attente",
+      "it": "pagamento-biglietto-rifiutato-o-in-sospeso",
+      "pt": "pagamento-ingresso-recusado-ou-pendente"
+    },
+    {
       "es": "para-que-sirve-el-qr-de-tu-entrada",
       "en": "what-the-ticket-qr-code-is-for",
       "fr": "a-quoi-sert-qr-code-billet",
